@@ -39,8 +39,20 @@ chmod +x ./sing-box-deve.sh
 
 VPS 已支持协议：
 
-- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`socks5`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`argo`、`anytls`、`any-reality`、`warp`
-- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`socks5`、`trojan`、`argo`
+- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`argo`、`anytls`、`any-reality`、`warp`
+- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`trojan`、`argo`
+
+补充能力：
+
+- 支持“上游出站代理”模式（`direct/socks/http/https`），用于让 `vless+reality` 等入站流量通过上游代理转发出去（不是额外暴露本地 socks/http 入口）
+
+示例（通过上游 socks 转发出站）：
+
+```bash
+./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality \
+  --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 \
+  --outbound-proxy-user demo --outbound-proxy-pass demo
+```
 
 ## 交互原则
 
@@ -103,6 +115,7 @@ VPS 已支持协议：
 - `docs/Serv00.md`
 - `docs/SAP.md`
 - `docs/Docker.md`
+- `docs/CONVENTIONS.md`（命名与目录规范）
 
 自动化与保活模板：
 

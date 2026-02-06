@@ -197,6 +197,34 @@
           <input id="sapSpace" type="text" placeholder="space">
         </div>
       </div>
+
+      <div class="row">
+        <label for="outboundProxyMode">上游出站代理模式</label>
+        <select id="outboundProxyMode">
+          <option value="direct">direct</option>
+          <option value="socks">socks</option>
+          <option value="http">http</option>
+          <option value="https">https</option>
+        </select>
+      </div>
+      <div id="outboundProxyFields" class="hidden">
+        <div class="row">
+          <label for="outboundProxyHost">OUTBOUND_PROXY_HOST</label>
+          <input id="outboundProxyHost" type="text" placeholder="上游代理地址">
+        </div>
+        <div class="row">
+          <label for="outboundProxyPort">OUTBOUND_PROXY_PORT</label>
+          <input id="outboundProxyPort" type="number" placeholder="1080 或 8080">
+        </div>
+        <div class="row">
+          <label for="outboundProxyUser">OUTBOUND_PROXY_USER</label>
+          <input id="outboundProxyUser" type="text" placeholder="可选用户名">
+        </div>
+        <div class="row">
+          <label for="outboundProxyPass">OUTBOUND_PROXY_PASS</label>
+          <input id="outboundProxyPass" type="text" placeholder="可选密码">
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -216,7 +244,6 @@
       "vless-xhttp": "风险: 中 | 资源: 中 | 需 xray",
       "vless-ws": "风险: 中 | 资源: 低 | 结构简单",
       "shadowsocks-2022": "风险: 低 | 资源: 低 | 需安全保管密码",
-      "socks5": "风险: 高 | 资源: 低 | 不建议公网直暴露",
       "hysteria2": "风险: 中 | 资源: 中 | 高吞吐下 UDP 开销较高",
       "tuic": "风险: 中 | 资源: 中 | UDP + TLS",
       "anytls": "风险: 中 | 资源: 中 | 客户端生态较少",
@@ -260,11 +287,13 @@
       const provider = document.getElementById("provider").value;
       const argoMode = document.getElementById("argoMode").value;
       const warpMode = document.getElementById("warpMode").value;
+      const outboundProxyMode = document.getElementById("outboundProxyMode").value;
 
       document.getElementById("argoFixed").classList.toggle("hidden", argoMode !== "fixed");
       document.getElementById("warpKeys").classList.toggle("hidden", warpMode !== "global");
       document.getElementById("serv00Fields").classList.toggle("hidden", provider !== "serv00");
       document.getElementById("sapFields").classList.toggle("hidden", provider !== "sap");
+      document.getElementById("outboundProxyFields").classList.toggle("hidden", outboundProxyMode === "direct");
     }
 
     function validateForm() {
@@ -277,6 +306,9 @@
       const warpMode = document.getElementById("warpMode").value;
       const warpPrivateKey = document.getElementById("warpPrivateKey").value.trim();
       const warpPeerPublicKey = document.getElementById("warpPeerPublicKey").value.trim();
+      const outboundProxyMode = document.getElementById("outboundProxyMode").value;
+      const outboundProxyHost = document.getElementById("outboundProxyHost").value.trim();
+      const outboundProxyPort = document.getElementById("outboundProxyPort").value.trim();
 
       if (!protocols.length) return "至少选择一个协议";
       if (profile === "lite" && protocols.length > 2) return "Lite 模式最多 2 个协议";
@@ -286,6 +318,7 @@
       if (argoMode === "fixed" && !argoToken) return "Argo fixed 模式必须填写 token";
       if (protocols.includes("warp") && warpMode !== "global") return "启用 warp 协议时，WARP 模式建议使用 global";
       if (warpMode === "global" && (!warpPrivateKey || !warpPeerPublicKey)) return "WARP global 模式必须填写两项 key";
+      if (outboundProxyMode !== "direct" && (!outboundProxyHost || !outboundProxyPort)) return "出站代理启用时必须填写 host 和 port";
       if (provider === "serv00") {
         const host = document.getElementById("serv00Host").value.trim();
         const user = document.getElementById("serv00User").value.trim();
@@ -309,6 +342,11 @@
       const argoDomain = document.getElementById("argoDomain").value.trim();
       const argoToken = document.getElementById("argoToken").value.trim();
       const warpMode = document.getElementById("warpMode").value;
+      const outboundProxyMode = document.getElementById("outboundProxyMode").value;
+      const outboundProxyHost = document.getElementById("outboundProxyHost").value.trim();
+      const outboundProxyPort = document.getElementById("outboundProxyPort").value.trim();
+      const outboundProxyUser = document.getElementById("outboundProxyUser").value.trim();
+      const outboundProxyPass = document.getElementById("outboundProxyPass").value.trim();
       const err = validateForm();
       if (err) {
         alert(err);
@@ -322,10 +360,17 @@
         `--engine ${engine}`,
         `--protocols ${protocols.join(",")}`,
         `--argo ${argoMode}`,
-        `--warp-mode ${warpMode}`
+        `--warp-mode ${warpMode}`,
+        `--outbound-proxy-mode ${outboundProxyMode}`
       ];
       if (argoDomain) args.push(`--argo-domain ${argoDomain}`);
       if (argoToken) args.push(`--argo-token ${argoToken}`);
+      if (outboundProxyMode !== "direct") {
+        args.push(`--outbound-proxy-host ${outboundProxyHost}`);
+        args.push(`--outbound-proxy-port ${outboundProxyPort}`);
+        if (outboundProxyUser) args.push(`--outbound-proxy-user ${outboundProxyUser}`);
+        if (outboundProxyPass) args.push(`--outbound-proxy-pass ${outboundProxyPass}`);
+      }
 
       const cmd = `bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) ${args.join(" ")}`;
       document.getElementById("resultHint").textContent = "生成命令：";
@@ -343,6 +388,11 @@
       const warpMode = document.getElementById("warpMode").value;
       const warpPrivateKey = document.getElementById("warpPrivateKey").value.trim();
       const warpPeerPublicKey = document.getElementById("warpPeerPublicKey").value.trim();
+      const outboundProxyMode = document.getElementById("outboundProxyMode").value;
+      const outboundProxyHost = document.getElementById("outboundProxyHost").value.trim();
+      const outboundProxyPort = document.getElementById("outboundProxyPort").value.trim();
+      const outboundProxyUser = document.getElementById("outboundProxyUser").value.trim();
+      const outboundProxyPass = document.getElementById("outboundProxyPass").value.trim();
 
       const err = validateForm();
       if (err) {
@@ -359,6 +409,11 @@
         `argo_domain=${argoDomain}`,
         `argo_token=${argoToken}`,
         `warp_mode=${warpMode}`,
+        `outbound_proxy_mode=${outboundProxyMode}`,
+        `outbound_proxy_host=${outboundProxyHost}`,
+        `outbound_proxy_port=${outboundProxyPort}`,
+        `outbound_proxy_user=${outboundProxyUser}`,
+        `outbound_proxy_pass=${outboundProxyPass}`,
         `WARP_PRIVATE_KEY=${warpPrivateKey}`,
         `WARP_PEER_PUBLIC_KEY=${warpPeerPublicKey}`,
       ];
@@ -383,6 +438,7 @@
     document.getElementById("provider").addEventListener("change", toggleAdvancedFields);
     document.getElementById("argoMode").addEventListener("change", toggleAdvancedFields);
     document.getElementById("warpMode").addEventListener("change", toggleAdvancedFields);
+    document.getElementById("outboundProxyMode").addEventListener("change", toggleAdvancedFields);
     document.getElementById("protocols").addEventListener("change", refreshProtocolHint);
 
     initProtocolList();

@@ -8,7 +8,6 @@ protocol_port_map() {
     vless-xhttp) echo "tcp:9443" ;;
     vless-ws) echo "tcp:8444" ;;
     shadowsocks-2022) echo "tcp:2443" ;;
-    socks5) echo "tcp:1080" ;;
     hysteria2) echo "udp:8443" ;;
     tuic) echo "udp:10443" ;;
     anytls) echo "tcp:20443" ;;
@@ -39,6 +38,21 @@ validate_feature_modes() {
     off|global) ;;
     *) die "Invalid WARP_MODE: ${WARP_MODE}" ;;
   esac
+
+  case "${OUTBOUND_PROXY_MODE:-direct}" in
+    direct|socks|http|https) ;;
+    *) die "Invalid OUTBOUND_PROXY_MODE: ${OUTBOUND_PROXY_MODE}" ;;
+  esac
+
+  if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
+    [[ -n "${OUTBOUND_PROXY_HOST:-}" ]] || die "OUTBOUND_PROXY_HOST is required when outbound proxy mode is not direct"
+    [[ -n "${OUTBOUND_PROXY_PORT:-}" ]] || die "OUTBOUND_PROXY_PORT is required when outbound proxy mode is not direct"
+    [[ "${OUTBOUND_PROXY_PORT}" =~ ^[0-9]+$ ]] || die "OUTBOUND_PROXY_PORT must be numeric"
+  fi
+
+  if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" && "${WARP_MODE:-off}" == "global" ]]; then
+    die "WARP_MODE=global conflicts with OUTBOUND_PROXY_MODE!=direct; choose one outbound strategy"
+  fi
 }
 
 detect_public_ip() {
@@ -168,13 +182,13 @@ engine_supports_protocol() {
   case "$engine" in
     sing-box)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|shadowsocks-2022|socks5|hysteria2|tuic|trojan|wireguard|argo|warp|anytls|any-reality) return 0 ;;
+        vless-reality|vmess-ws|vless-ws|shadowsocks-2022|hysteria2|tuic|trojan|wireguard|argo|warp|anytls|any-reality) return 0 ;;
         *) return 1 ;;
       esac
       ;;
     xray)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|socks5|trojan|argo) return 0 ;;
+        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|argo) return 0 ;;
         *) return 1 ;;
       esac
       ;;
@@ -197,75 +211,75 @@ build_warp_outbound_singbox() {
 EOF
 }
 
+build_upstream_outbound_singbox() {
+  local mode="${OUTBOUND_PROXY_MODE:-direct}"
+  [[ "$mode" != "direct" ]] || return 0
+
+  local host port user pass auth
+  host="${OUTBOUND_PROXY_HOST}"
+  port="${OUTBOUND_PROXY_PORT}"
+  user="${OUTBOUND_PROXY_USER:-}"
+  pass="${OUTBOUND_PROXY_PASS:-}"
+
+  auth=""
+  if [[ -n "$user" || -n "$pass" ]]; then
+    auth=", \"username\": \"${user}\", \"password\": \"${pass}\""
+  fi
+
+  case "$mode" in
+    socks)
+      cat <<EOF
+    {"type": "socks", "tag": "proxy-out", "server": "${host}", "server_port": ${port}${auth}}
+EOF
+      ;;
+    http|https)
+      cat <<EOF
+    {"type": "http", "tag": "proxy-out", "server": "${host}", "server_port": ${port}${auth}}
+EOF
+      ;;
+  esac
+}
+
+build_upstream_outbound_xray() {
+  local mode="${OUTBOUND_PROXY_MODE:-direct}"
+  [[ "$mode" != "direct" ]] || return 0
+
+  local protocol host port user pass users_json stream_tls
+  host="${OUTBOUND_PROXY_HOST}"
+  port="${OUTBOUND_PROXY_PORT}"
+  user="${OUTBOUND_PROXY_USER:-}"
+  pass="${OUTBOUND_PROXY_PASS:-}"
+
+  users_json="[]"
+  if [[ -n "$user" || -n "$pass" ]]; then
+    users_json="[{\"user\":\"${user}\",\"pass\":\"${pass}\"}]"
+  fi
+
+  case "$mode" in
+    socks)
+      protocol="socks"
+      stream_tls=""
+      ;;
+    http)
+      protocol="http"
+      stream_tls=""
+      ;;
+    https)
+      protocol="http"
+      stream_tls=",\"streamSettings\":{\"security\":\"tls\"}"
+      ;;
+  esac
+
+  cat <<EOF
+    {"protocol":"${protocol}","tag":"proxy-out","settings":{"servers":[{"address":"${host}","port":${port},"users":${users_json}}]}${stream_tls}}
+EOF
+}
+
 assert_engine_protocol_compatibility() {
   local engine="$1"
   local protocols_csv="$2"
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
-
-  if protocol_enabled "vmess-ws" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "vmess",\n'
-    inbounds+=$'      "tag": "vmess-ws",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 8443,\n'
-    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "transport": {"type": "ws", "path": "/vmess"}\n'
-    inbounds+=$'    }'
-  fi
-
-  if protocol_enabled "vless-xhttp" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "vless-xhttp",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "port": 9443,\n'
-    inbounds+=$'      "protocol": "vless",\n'
-    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
-    inbounds+=$'      "streamSettings": {\n'
-    inbounds+=$'        "network": "xhttp",\n'
-    inbounds+=$'        "security": "reality",\n'
-    inbounds+=$'        "realitySettings": {"show": false, "dest": "apple.com:443", "xver": 0, "serverNames": ["apple.com"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]},\n'
-    inbounds+=$'        "xhttpSettings": {"path": "/'"${uuid}"'-xh", "mode": "auto"}\n'
-    inbounds+=$'      }\n'
-    inbounds+=$'    }'
-  fi
-
-  if protocol_enabled "vless-ws" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "vless",\n'
-    inbounds+=$'      "tag": "vless-ws",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 8444,\n'
-    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "transport": {"type": "ws", "path": "/vless"}\n'
-    inbounds+=$'    }'
-  fi
-
-  if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "shadowsocks",\n'
-    inbounds+=$'      "tag": "ss-2022",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 2443,\n'
-    inbounds+=$'      "method": "2022-blake3-aes-128-gcm",\n'
-    inbounds+=$'      "password": "'"${uuid}"'"\n'
-    inbounds+=$'    }'
-  fi
-
-  if protocol_enabled "socks5" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "socks",\n'
-    inbounds+=$'      "tag": "socks5",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 1080,\n'
-    inbounds+=$'      "users": [{"username": "sbd", "password": "'"${uuid}"'"}]\n'
-    inbounds+=$'    }'
-  fi
   local p
   for p in "${protocols[@]}"; do
     engine_supports_protocol "$engine" "$p" || die "Protocol '${p}' is not implemented for engine '${engine}' yet"
@@ -400,7 +414,7 @@ generate_reality_keys() {
 
 build_sing_box_config() {
   local protocols_csv="$1"
-  local config_file="${SBD_CONFIG_DIR}/sing-box.json"
+  local config_file="${SBD_CONFIG_DIR}/config.json"
   local uuid
   uuid="$(ensure_uuid)"
   ensure_self_signed_cert
@@ -441,6 +455,44 @@ build_sing_box_config() {
       log_warn "Protocol 'warp' enabled but WARP_MODE is '${WARP_MODE:-off}', warp outbound disabled"
     fi
   fi
+
+  if protocol_enabled "vmess-ws" "${protocols[@]}"; then
+    inbounds+=$',\n'
+    inbounds+=$'    {\n'
+    inbounds+=$'      "type": "vmess",\n'
+    inbounds+=$'      "tag": "vmess-ws",\n'
+    inbounds+=$'      "listen": "::",\n'
+    inbounds+=$'      "listen_port": 8443,\n'
+    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
+    inbounds+=$'      "transport": {"type": "ws", "path": "/vmess"}\n'
+    inbounds+=$'    }'
+  fi
+
+  if protocol_enabled "vless-ws" "${protocols[@]}"; then
+    inbounds+=$',\n'
+    inbounds+=$'    {\n'
+    inbounds+=$'      "type": "vless",\n'
+    inbounds+=$'      "tag": "vless-ws",\n'
+    inbounds+=$'      "listen": "::",\n'
+    inbounds+=$'      "listen_port": 8444,\n'
+    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
+    inbounds+=$'      "transport": {"type": "ws", "path": "/vless"}\n'
+    inbounds+=$'    }'
+  fi
+
+  if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
+    inbounds+=$',\n'
+    inbounds+=$'    {\n'
+    inbounds+=$'      "type": "shadowsocks",\n'
+    inbounds+=$'      "tag": "ss-2022",\n'
+    inbounds+=$'      "listen": "::",\n'
+    inbounds+=$'      "listen_port": 2443,\n'
+    inbounds+=$'      "method": "2022-blake3-aes-128-gcm",\n'
+    inbounds+=$'      "password": "'"${uuid}"'"\n'
+    inbounds+=$'    }'
+  fi
+
+
 
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
     inbounds+=$',\n'
@@ -557,10 +609,19 @@ build_sing_box_config() {
   local final_tag="direct"
   outbounds=$'    {"type": "direct", "tag": "direct"},\n'
   outbounds+=$'    {"type": "block", "tag": "block"}'
+
+  local upstream_mode
+  upstream_mode="${OUTBOUND_PROXY_MODE:-direct}"
+  if [[ "$upstream_mode" != "direct" ]]; then
+    outbounds+=$',\n'
+    outbounds+="$(build_upstream_outbound_singbox)"
+    final_tag="proxy-out"
+  fi
+
   if [[ "$has_warp" == "true" ]]; then
     outbounds+=$',\n'
     outbounds+="$(build_warp_outbound_singbox)"
-    if [[ "${WARP_MODE:-off}" == "global" ]]; then
+    if [[ "${WARP_MODE:-off}" == "global" && "$upstream_mode" == "direct" ]]; then
       final_tag="warp-out"
     fi
   fi
@@ -585,7 +646,7 @@ EOF
 
 build_xray_config() {
   local protocols_csv="$1"
-  local config_file="${SBD_CONFIG_DIR}/xray.json"
+  local config_file="${SBD_CONFIG_DIR}/xray-config.json"
   local uuid
   uuid="$(ensure_uuid)"
   local private_key public_key short_id
@@ -669,15 +730,16 @@ build_xray_config() {
     inbounds+=$'    }'
   fi
 
-  if protocol_enabled "socks5" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "socks5",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "port": 1080,\n'
-    inbounds+=$'      "protocol": "socks",\n'
-    inbounds+=$'      "settings": {"auth": "password", "accounts": [{"user": "sbd", "pass": "'"${uuid}"'"}]}\n'
-    inbounds+=$'    }'
+
+  local xray_outbounds xray_routing
+  xray_outbounds=$'    {"protocol": "freedom", "tag": "direct"},\n'
+  xray_outbounds+=$'    {"protocol": "blackhole", "tag": "block"}'
+  xray_routing=""
+
+  if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
+    xray_outbounds+=$',\n'
+    xray_outbounds+="$(build_upstream_outbound_xray)"
+    xray_routing=$',\n  "routing": {"domainStrategy": "AsIs", "rules": [{"type": "field", "network": "tcp,udp", "outboundTag": "proxy-out"}]}'
   fi
 
   cat > "$config_file" <<EOF
@@ -687,9 +749,8 @@ build_xray_config() {
 ${inbounds}
   ],
   "outbounds": [
-    {"protocol": "freedom", "tag": "direct"},
-    {"protocol": "blackhole", "tag": "block"}
-  ]
+${xray_outbounds}
+  ]${xray_routing}
 }
 EOF
 
@@ -704,12 +765,12 @@ write_systemd_service() {
 
   case "$engine" in
     sing-box)
-      config_path="${SBD_CONFIG_DIR}/sing-box.json"
+      config_path="${SBD_CONFIG_DIR}/config.json"
       binary_path="${SBD_BIN_DIR}/sing-box"
       exec_args="run -c ${config_path}"
       ;;
     xray)
-      config_path="${SBD_CONFIG_DIR}/xray.json"
+      config_path="${SBD_CONFIG_DIR}/xray-config.json"
       binary_path="${SBD_BIN_DIR}/xray"
       exec_args="run -config ${config_path}"
       ;;
@@ -874,6 +935,9 @@ engine=${engine}
 protocols=${protocols_csv}
 argo_mode=${ARGO_MODE:-off}
 warp_mode=${WARP_MODE:-off}
+outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
+outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
+outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
@@ -930,6 +994,9 @@ engine=${engine}
 protocols=${protocols_csv}
 argo_mode=${ARGO_MODE:-off}
 warp_mode=${WARP_MODE:-off}
+outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
+outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
+outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
@@ -1007,6 +1074,9 @@ engine=${engine}
 protocols=${protocols_csv}
 argo_mode=${ARGO_MODE:-off}
 warp_mode=${WARP_MODE:-off}
+outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
+outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
+outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
@@ -1131,6 +1201,11 @@ ARGO_MODE=${ARGO_MODE:-off}
 ARGO_DOMAIN=${ARGO_DOMAIN:-}
 ARGO_TOKEN=${ARGO_TOKEN:-}
 WARP_MODE=${WARP_MODE:-off}
+OUTBOUND_PROXY_MODE=${OUTBOUND_PROXY_MODE:-direct}
+OUTBOUND_PROXY_HOST=${OUTBOUND_PROXY_HOST:-}
+OUTBOUND_PROXY_PORT=${OUTBOUND_PROXY_PORT:-}
+OUTBOUND_PROXY_USER=${OUTBOUND_PROXY_USER:-}
+OUTBOUND_PROXY_PASS=${OUTBOUND_PROXY_PASS:-}
 WARP_PRIVATE_KEY=${WARP_PRIVATE_KEY:-}
 WARP_PEER_PUBLIC_KEY=${WARP_PEER_PUBLIC_KEY:-}
 EOF
@@ -1269,14 +1344,14 @@ provider_doctor() {
     log_info "Runtime state detected"
     # shellcheck disable=SC1091
     source /etc/sing-box-deve/runtime.env
-    if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/sing-box.json" && -x "${SBD_BIN_DIR}/sing-box" ]]; then
-      if "${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/sing-box.json" >/dev/null 2>&1; then
+    if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" && -x "${SBD_BIN_DIR}/sing-box" ]]; then
+      if "${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/config.json" >/dev/null 2>&1; then
         log_success "sing-box config check passed"
       else
         log_warn "sing-box config check failed"
       fi
-    elif [[ "${engine:-}" == "xray" && -f "${SBD_CONFIG_DIR}/xray.json" && -x "${SBD_BIN_DIR}/xray" ]]; then
-      if "${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray.json" >/dev/null 2>&1; then
+    elif [[ "${engine:-}" == "xray" && -f "${SBD_CONFIG_DIR}/xray-config.json" && -x "${SBD_BIN_DIR}/xray" ]]; then
+      if "${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray-config.json" >/dev/null 2>&1; then
         log_success "xray config check passed"
       else
         log_warn "xray config check failed"
@@ -1313,11 +1388,19 @@ provider_doctor() {
       else
         if [[ -n "${WARP_PRIVATE_KEY:-}" && -n "${WARP_PEER_PUBLIC_KEY:-}" ]]; then
           log_success "WARP diagnostic: keys found in current environment"
-        elif [[ -f "${SBD_CONFIG_DIR}/sing-box.json" ]] && grep -q '"tag": "warp-out"' "${SBD_CONFIG_DIR}/sing-box.json"; then
+        elif [[ -f "${SBD_CONFIG_DIR}/config.json" ]] && grep -q '"tag": "warp-out"' "${SBD_CONFIG_DIR}/config.json"; then
           log_success "WARP diagnostic: warp-out configured in sing-box.json"
         else
           log_warn "WARP diagnostic: warp keys not found in env and warp-out not detected"
         fi
+      fi
+    fi
+
+    if [[ "${outbound_proxy_mode:-direct}" != "direct" ]]; then
+      if [[ -n "${outbound_proxy_host:-}" && -n "${outbound_proxy_port:-}" ]]; then
+        log_success "Outbound proxy diagnostic: ${outbound_proxy_mode}://${outbound_proxy_host}:${outbound_proxy_port}"
+      else
+        log_warn "Outbound proxy diagnostic: mode enabled but host/port missing in runtime state"
       fi
     fi
   else

@@ -6,7 +6,6 @@ ALL_PROTOCOLS=(
   vless-xhttp
   vless-ws
   shadowsocks-2022
-  socks5
   hysteria2
   tuic
   anytls
@@ -131,9 +130,6 @@ protocol_hint() {
       ;;
     shadowsocks-2022)
       echo "risk=low;resource=low;note=password management required"
-      ;;
-    socks5)
-      echo "risk=high;resource=low;note=avoid public exposure"
       ;;
     hysteria2)
       echo "risk=medium;resource=medium;note=udp heavy at high throughput"

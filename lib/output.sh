@@ -14,6 +14,11 @@ Provider : ${provider}
 Profile  : ${profile}
 Engine   : ${engine}
 Protocols: ${protocols_csv}
+Argo     : ${ARGO_MODE:-off}
+WARP     : ${WARP_MODE:-off}
+Egress   : ${OUTBOUND_PROXY_MODE:-direct}
+
+$(if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then echo "Outbound Proxy: ${OUTBOUND_PROXY_MODE}://${OUTBOUND_PROXY_HOST:-}:${OUTBOUND_PROXY_PORT:-}"; fi)
 
 Safety
 ------
@@ -38,6 +43,9 @@ Provider : ${provider}
 Profile  : ${profile}
 Engine   : ${engine}
 Protocols: ${protocols_csv}
+Argo     : ${ARGO_MODE:-off}
+WARP     : ${WARP_MODE:-off}
+Egress   : ${OUTBOUND_PROXY_MODE:-direct}
 
 Generated Files
 ---------------

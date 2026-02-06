@@ -14,7 +14,7 @@ usage() {
   cat <<'EOF'
 Usage:
   sing-box-deve.sh wizard
-  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--yes]
+  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh list
   sing-box-deve.sh restart
@@ -45,6 +45,11 @@ parse_install_args() {
   ARGO_DOMAIN="${ARGO_DOMAIN:-}"
   ARGO_TOKEN="${ARGO_TOKEN:-}"
   WARP_MODE="${WARP_MODE:-off}"
+  OUTBOUND_PROXY_MODE="${OUTBOUND_PROXY_MODE:-direct}"
+  OUTBOUND_PROXY_HOST="${OUTBOUND_PROXY_HOST:-}"
+  OUTBOUND_PROXY_PORT="${OUTBOUND_PROXY_PORT:-}"
+  OUTBOUND_PROXY_USER="${OUTBOUND_PROXY_USER:-}"
+  OUTBOUND_PROXY_PASS="${OUTBOUND_PROXY_PASS:-}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -68,6 +73,16 @@ parse_install_args() {
         ARGO_TOKEN="$2"; shift 2 ;;
       --warp-mode)
         WARP_MODE="$2"; shift 2 ;;
+      --outbound-proxy-mode)
+        OUTBOUND_PROXY_MODE="$2"; shift 2 ;;
+      --outbound-proxy-host)
+        OUTBOUND_PROXY_HOST="$2"; shift 2 ;;
+      --outbound-proxy-port)
+        OUTBOUND_PROXY_PORT="$2"; shift 2 ;;
+      --outbound-proxy-user)
+        OUTBOUND_PROXY_USER="$2"; shift 2 ;;
+      --outbound-proxy-pass)
+        OUTBOUND_PROXY_PASS="$2"; shift 2 ;;
       *)
         die "Unknown install argument: $1" ;;
     esac
@@ -270,6 +285,20 @@ wizard() {
     WARP_MODE="off"
   fi
 
+  echo
+  echo "$(msg "出站代理用于让所有入站流量通过上游 socks/http/https 代理转发。" "Outbound proxy lets inbound traffic egress through upstream socks/http/https.")"
+  if prompt_yes_no "$(msg "保持默认直连出站（direct）吗？" "Keep default direct outbound mode?")" "Y"; then
+    OUTBOUND_PROXY_MODE="direct"
+  else
+    prompt_with_default "$(msg "选择出站代理模式 [direct/socks/http/https]" "Choose outbound proxy mode [direct/socks/http/https]")" "direct" OUTBOUND_PROXY_MODE
+    if [[ "$OUTBOUND_PROXY_MODE" != "direct" ]]; then
+      prompt_with_default "$(msg "输入上游代理主机" "Input upstream proxy host")" "" OUTBOUND_PROXY_HOST
+      prompt_with_default "$(msg "输入上游代理端口" "Input upstream proxy port")" "1080" OUTBOUND_PROXY_PORT
+      prompt_with_default "$(msg "输入上游代理用户名（可选）" "Input upstream proxy username (optional)")" "" OUTBOUND_PROXY_USER
+      prompt_with_default "$(msg "输入上游代理密码（可选）" "Input upstream proxy password (optional)")" "" OUTBOUND_PROXY_PASS
+    fi
+  fi
+
   validate_provider "$PROVIDER"
   validate_engine "$ENGINE"
   validate_profile_protocols "$PROFILE" "$PROTOCOLS"
@@ -298,7 +327,7 @@ run_install() {
   validate_engine "$engine"
   validate_profile_protocols "$profile" "$protocols_csv"
 
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS
 
   create_install_context "$provider" "$profile" "$engine" "$protocols_csv"
   auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE"
@@ -351,6 +380,11 @@ apply_config() {
   export ARGO_DOMAIN="${argo_domain:-${ARGO_DOMAIN:-}}"
   export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
   export WARP_MODE="${warp_mode:-${WARP_MODE:-off}}"
+  export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-${OUTBOUND_PROXY_MODE:-direct}}"
+  export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-${OUTBOUND_PROXY_HOST:-}}"
+  export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-${OUTBOUND_PROXY_PORT:-}}"
+  export OUTBOUND_PROXY_USER="${outbound_proxy_user:-${OUTBOUND_PROXY_USER:-}}"
+  export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-${OUTBOUND_PROXY_PASS:-}}"
 
   run_install "$provider" "$profile" "$engine" "$protocols" "false"
 }
