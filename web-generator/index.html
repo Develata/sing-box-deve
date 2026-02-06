@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sing-box-deve Command Generator</title>
+  <style>
+    :root {
+      --bg: #0e1726;
+      --card: #14213a;
+      --text: #e8eefc;
+      --muted: #a9b4cc;
+      --line: #2d3a5f;
+      --accent: #4db6ff;
+      --ok: #26c281;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      background: radial-gradient(circle at top right, #1d2f52, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0 0 10px; color: var(--muted); }
+    .row { display: grid; grid-template-columns: 220px 1fr; gap: 12px; margin: 10px 0; align-items: center; }
+    input, select, textarea {
+      width: 100%;
+      background: #0f1b33;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .checklist { display: flex; flex-wrap: wrap; gap: 8px; }
+    .checklist label {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .checklist input { width: auto; margin-right: 6px; }
+    button {
+      background: linear-gradient(90deg, var(--accent), #63d9ff);
+      color: #041224;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ok { color: var(--ok); }
+    @media (max-width: 700px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>sing-box-deve Generator</h1>
+      <p>Static page for generating deployment commands. This page does not run services on your VPS.</p>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <label for="provider">Provider</label>
+        <select id="provider">
+          <option value="vps">vps</option>
+          <option value="serv00">serv00</option>
+          <option value="sap">sap</option>
+          <option value="docker">docker</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="profile">Profile</label>
+        <select id="profile">
+          <option value="lite">lite</option>
+          <option value="full">full</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="engine">Engine</label>
+        <select id="engine">
+          <option value="sing-box">sing-box</option>
+          <option value="xray">xray</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label>Protocols</label>
+        <div class="checklist" id="protocols">
+          <label><input type="checkbox" value="vless-reality" checked>vless-reality</label>
+          <label><input type="checkbox" value="hysteria2">hysteria2</label>
+          <label><input type="checkbox" value="vmess-ws">vmess-ws</label>
+          <label><input type="checkbox" value="vless-xhttp">vless-xhttp</label>
+          <label><input type="checkbox" value="trojan">trojan</label>
+          <label><input type="checkbox" value="wireguard">wireguard</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <span></span>
+        <button id="build">Generate Command</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="ok">Generated command:</p>
+      <textarea id="output" rows="4" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    function selectedProtocols() {
+      const boxes = document.querySelectorAll('#protocols input[type="checkbox"]:checked');
+      return Array.from(boxes).map(x => x.value);
+    }
+
+    function buildCommand() {
+      const provider = document.getElementById('provider').value;
+      const profile = document.getElementById('profile').value;
+      const engine = document.getElementById('engine').value;
+      const protocols = selectedProtocols();
+
+      if (profile === 'lite' && protocols.length > 2) {
+        alert('Lite profile allows up to 2 protocols.');
+        return;
+      }
+      if (protocols.length === 0) {
+        alert('Select at least one protocol.');
+        return;
+      }
+
+      const cmd = `bash <(curl -Ls https://raw.githubusercontent.com/<your-username>/sing-box-deve/main/sing-box-deve.sh) install --provider ${provider} --profile ${profile} --engine ${engine} --protocols ${protocols.join(',')}`;
+      document.getElementById('output').value = cmd;
+    }
+
+    document.getElementById('build').addEventListener('click', buildCommand);
+  </script>
+</body>
+</html>

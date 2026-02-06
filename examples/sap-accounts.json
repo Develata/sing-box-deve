@@ -1,0 +1,13 @@
+[
+  {
+    "api": "https://api.cf.eu10.hana.ondemand.com",
+    "username": "user1@example.com",
+    "password": "example_password_1",
+    "org": "example_org",
+    "space": "example_space",
+    "app_name": "sbd-app-1",
+    "memory": "512M",
+    "image": "ygkkk/argosbx",
+    "uuid": "11111111-2222-3333-4444-555555555555"
+  }
+]

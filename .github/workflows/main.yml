@@ -1,0 +1,19 @@
+name: Keepalive URLs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping URLs
+        env:
+          KEEPALIVE_URLS: ${{ secrets.KEEPALIVE_URLS }}
+        run: |
+          IFS=$',， ' read -r -a urls <<< "$KEEPALIVE_URLS"
+          for u in "${urls[@]}"; do
+            [ -z "$u" ] && continue
+            code=$(curl -kLs -o /dev/null -w "%{http_code}" "$u" || true)
+            echo "$u -> $code"
+          done

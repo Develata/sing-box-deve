@@ -1,0 +1,13 @@
+[
+  {
+    "host": "s0.serv00.com",
+    "user": "example_user_1",
+    "pass": "example_pass_1",
+    "cmd": "bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/serv00.sh)"
+  },
+  {
+    "host": "s1.serv00.com",
+    "user": "example_user_2",
+    "pass": "example_pass_2"
+  }
+]
