@@ -143,6 +143,7 @@ settings_command() {
       show_settings
       ;;
     set)
+      ensure_root
       shift
       [[ $# -ge 1 ]] || die "Usage: settings set <key> <value> OR settings set key=value ..."
       if [[ $# -eq 2 ]] && [[ "$1" != *"="* ]]; then

@@ -1,69 +1,94 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sing-box-deve Command Generator</title>
+  <title>sing-box-deve 命令生成器</title>
   <style>
     :root {
-      --bg: #0e1726;
-      --card: #14213a;
-      --text: #e8eefc;
-      --muted: #a9b4cc;
-      --line: #2d3a5f;
-      --accent: #4db6ff;
-      --ok: #26c281;
+      --bg: #0b1220;
+      --card: #121d33;
+      --text: #e8eef9;
+      --muted: #b2bfd8;
+      --line: #2f3d61;
+      --accent: #35c6ff;
+      --warn: #ffcc66;
+      --ok: #44d18b;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Segoe UI", "Noto Sans", sans-serif;
-      background: radial-gradient(circle at top right, #1d2f52, var(--bg));
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 15% 0%, #1d3158, var(--bg));
       color: var(--text);
       min-height: 100vh;
-      padding: 24px;
+      padding: 20px;
     }
-    .wrap { max-width: 860px; margin: 0 auto; }
+    .wrap { max-width: 1100px; margin: 0 auto; }
     .card {
       background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
     }
-    h1 { margin: 0 0 8px; font-size: 28px; }
-    p { margin: 0 0 10px; color: var(--muted); }
-    .row { display: grid; grid-template-columns: 220px 1fr; gap: 12px; margin: 10px 0; align-items: center; }
+    h1 { margin: 0 0 10px; font-size: 30px; }
+    h2 { margin: 0 0 10px; font-size: 18px; color: #dbe8ff; }
+    p { margin: 0 0 8px; color: var(--muted); }
+    .row { display: grid; grid-template-columns: 220px 1fr; gap: 12px; align-items: center; margin: 8px 0; }
+    .row label { color: #dbe8ff; }
     input, select, textarea {
       width: 100%;
-      background: #0f1b33;
+      background: #0d172d;
       color: var(--text);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 10px;
       font-size: 14px;
     }
+    textarea { min-height: 120px; resize: vertical; }
     .checklist { display: flex; flex-wrap: wrap; gap: 8px; }
-    .checklist label {
+    .pill {
       border: 1px solid var(--line);
       border-radius: 999px;
       padding: 6px 10px;
-      font-size: 13px;
       color: var(--muted);
+      font-size: 13px;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
-    .checklist input { width: auto; margin-right: 6px; }
+    .pill input { width: auto; margin: 0; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
     button {
-      background: linear-gradient(90deg, var(--accent), #63d9ff);
-      color: #041224;
+      background: linear-gradient(90deg, var(--accent), #67deff);
       border: none;
       border-radius: 8px;
-      padding: 10px 14px;
+      color: #021224;
       font-weight: 700;
+      padding: 10px 14px;
       cursor: pointer;
     }
+    .ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .warn { color: var(--warn); }
     .ok { color: var(--ok); }
-    @media (max-width: 700px) {
+    .hint {
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #0e1b32;
+      border: 1px dashed #3b4f7d;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .hidden { display: none; }
+    @media (max-width: 860px) {
       .row { grid-template-columns: 1fr; }
     }
   </style>
@@ -71,11 +96,13 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>sing-box-deve Generator</h1>
-      <p>Static page for generating deployment commands. This page does not run services on your VPS.</p>
+      <h1>sing-box-deve 命令生成器</h1>
+      <p>用于生成部署命令与环境变量模板。该页面是静态页面，不会在 VPS 上运行服务。</p>
+      <p class="warn">提示：Lite 模式最多 2 个协议，建议默认保留 `vless-reality`。</p>
     </div>
 
     <div class="card">
+      <h2>基础参数</h2>
       <div class="row">
         <label for="provider">Provider</label>
         <select id="provider">
@@ -85,7 +112,6 @@
           <option value="docker">docker</option>
         </select>
       </div>
-
       <div class="row">
         <label for="profile">Profile</label>
         <select id="profile">
@@ -93,7 +119,6 @@
           <option value="full">full</option>
         </select>
       </div>
-
       <div class="row">
         <label for="engine">Engine</label>
         <select id="engine">
@@ -101,57 +126,267 @@
           <option value="xray">xray</option>
         </select>
       </div>
-
       <div class="row">
-        <label>Protocols</label>
-        <div class="checklist" id="protocols">
-          <label><input type="checkbox" value="vless-reality" checked>vless-reality</label>
-          <label><input type="checkbox" value="hysteria2">hysteria2</label>
-          <label><input type="checkbox" value="vmess-ws">vmess-ws</label>
-          <label><input type="checkbox" value="vless-xhttp">vless-xhttp</label>
-          <label><input type="checkbox" value="trojan">trojan</label>
-          <label><input type="checkbox" value="wireguard">wireguard</label>
+        <label>协议选择</label>
+        <div class="checklist" id="protocols"></div>
+      </div>
+      <div id="protocolHint" class="hint"></div>
+    </div>
+
+    <div class="card">
+      <h2>高级参数</h2>
+      <div class="row">
+        <label for="argoMode">Argo 模式</label>
+        <select id="argoMode">
+          <option value="off">off</option>
+          <option value="temp">temp</option>
+          <option value="fixed">fixed</option>
+        </select>
+      </div>
+      <div id="argoFixed" class="hidden">
+        <div class="row">
+          <label for="argoDomain">Argo 固定域名</label>
+          <input id="argoDomain" type="text" placeholder="例如: tunnel.example.com">
+        </div>
+        <div class="row">
+          <label for="argoToken">Argo Token</label>
+          <input id="argoToken" type="text" placeholder="cloudflared token">
         </div>
       </div>
 
       <div class="row">
-        <span></span>
-        <button id="build">Generate Command</button>
+        <label for="warpMode">WARP 模式</label>
+        <select id="warpMode">
+          <option value="off">off</option>
+          <option value="global">global</option>
+        </select>
+      </div>
+      <div id="warpKeys" class="hidden">
+        <div class="row">
+          <label for="warpPrivateKey">WARP_PRIVATE_KEY</label>
+          <input id="warpPrivateKey" type="text" placeholder="WireGuard private key">
+        </div>
+        <div class="row">
+          <label for="warpPeerPublicKey">WARP_PEER_PUBLIC_KEY</label>
+          <input id="warpPeerPublicKey" type="text" placeholder="Cloudflare peer public key">
+        </div>
+      </div>
+
+      <div id="serv00Fields" class="hidden">
+        <div class="row">
+          <label for="serv00Host">SERV00_HOST</label>
+          <input id="serv00Host" type="text" placeholder="s0.serv00.com">
+        </div>
+        <div class="row">
+          <label for="serv00User">SERV00_USER</label>
+          <input id="serv00User" type="text" placeholder="用户名">
+        </div>
+      </div>
+
+      <div id="sapFields" class="hidden">
+        <div class="row">
+          <label for="sapApi">SAP_CF_API</label>
+          <input id="sapApi" type="text" placeholder="https://api.cf...">
+        </div>
+        <div class="row">
+          <label for="sapOrg">SAP_CF_ORG</label>
+          <input id="sapOrg" type="text" placeholder="org">
+        </div>
+        <div class="row">
+          <label for="sapSpace">SAP_CF_SPACE</label>
+          <input id="sapSpace" type="text" placeholder="space">
+        </div>
       </div>
     </div>
 
     <div class="card">
-      <p class="ok">Generated command:</p>
-      <textarea id="output" rows="4" readonly></textarea>
+      <div class="actions">
+        <button id="buildCmd">生成命令</button>
+        <button id="buildEnv" class="ghost">生成 env 模板</button>
+      </div>
+      <p id="resultHint" class="ok" style="margin-top:10px">输出结果：</p>
+      <textarea id="output" readonly></textarea>
     </div>
   </div>
 
   <script>
+    const protocolMeta = {
+      "vless-reality": "风险: 低 | 资源: 低 | 默认推荐",
+      "vmess-ws": "风险: 中 | 资源: 低 | CDN 兼容好",
+      "vless-xhttp": "风险: 中 | 资源: 中 | 需 xray",
+      "vless-ws": "风险: 中 | 资源: 低 | 结构简单",
+      "shadowsocks-2022": "风险: 低 | 资源: 低 | 需安全保管密码",
+      "socks5": "风险: 高 | 资源: 低 | 不建议公网直暴露",
+      "hysteria2": "风险: 中 | 资源: 中 | 高吞吐下 UDP 开销较高",
+      "tuic": "风险: 中 | 资源: 中 | UDP + TLS",
+      "anytls": "风险: 中 | 资源: 中 | 客户端生态较少",
+      "any-reality": "风险: 中 | 资源: 中 | 需管理 Reality 密钥",
+      "argo": "风险: 中 | 资源: 低 | 依赖 cloudflared",
+      "warp": "风险: 中 | 资源: 低 | 需有效 WG key",
+      "trojan": "风险: 低 | 资源: 低 | 证书管理要规范",
+      "wireguard": "风险: 中 | 资源: 低 | 对端配置要正确"
+    };
+
+    const protocolsAll = Object.keys(protocolMeta);
+    const protocolBox = document.getElementById("protocols");
+    const output = document.getElementById("output");
+    const hint = document.getElementById("protocolHint");
+
+    function initProtocolList() {
+      protocolsAll.forEach((p) => {
+        const label = document.createElement("label");
+        label.className = "pill";
+        label.innerHTML = `<input type="checkbox" value="${p}" ${p === "vless-reality" ? "checked" : ""}>${p}`;
+        protocolBox.appendChild(label);
+      });
+      refreshProtocolHint();
+    }
+
     function selectedProtocols() {
       const boxes = document.querySelectorAll('#protocols input[type="checkbox"]:checked');
-      return Array.from(boxes).map(x => x.value);
+      return Array.from(boxes).map((x) => x.value);
+    }
+
+    function refreshProtocolHint() {
+      const selected = selectedProtocols();
+      if (!selected.length) {
+        hint.textContent = "未选择协议。";
+        return;
+      }
+      hint.innerHTML = selected.map((p) => `${p}: ${protocolMeta[p]}`).join("<br>");
+    }
+
+    function toggleAdvancedFields() {
+      const provider = document.getElementById("provider").value;
+      const argoMode = document.getElementById("argoMode").value;
+      const warpMode = document.getElementById("warpMode").value;
+
+      document.getElementById("argoFixed").classList.toggle("hidden", argoMode !== "fixed");
+      document.getElementById("warpKeys").classList.toggle("hidden", warpMode !== "global");
+      document.getElementById("serv00Fields").classList.toggle("hidden", provider !== "serv00");
+      document.getElementById("sapFields").classList.toggle("hidden", provider !== "sap");
+    }
+
+    function validateForm() {
+      const provider = document.getElementById("provider").value;
+      const profile = document.getElementById("profile").value;
+      const engine = document.getElementById("engine").value;
+      const protocols = selectedProtocols();
+      const argoMode = document.getElementById("argoMode").value;
+      const argoToken = document.getElementById("argoToken").value.trim();
+      const warpMode = document.getElementById("warpMode").value;
+      const warpPrivateKey = document.getElementById("warpPrivateKey").value.trim();
+      const warpPeerPublicKey = document.getElementById("warpPeerPublicKey").value.trim();
+
+      if (!protocols.length) return "至少选择一个协议";
+      if (profile === "lite" && protocols.length > 2) return "Lite 模式最多 2 个协议";
+      if (engine === "xray" && protocols.includes("anytls")) return "xray 暂不支持 anytls";
+      if (engine === "xray" && protocols.includes("any-reality")) return "xray 暂不支持 any-reality";
+      if (protocols.includes("argo") && argoMode === "off") return "启用 argo 协议时，Argo 模式不能为 off";
+      if (argoMode === "fixed" && !argoToken) return "Argo fixed 模式必须填写 token";
+      if (protocols.includes("warp") && warpMode !== "global") return "启用 warp 协议时，WARP 模式建议使用 global";
+      if (warpMode === "global" && (!warpPrivateKey || !warpPeerPublicKey)) return "WARP global 模式必须填写两项 key";
+      if (provider === "serv00") {
+        const host = document.getElementById("serv00Host").value.trim();
+        const user = document.getElementById("serv00User").value.trim();
+        if (!host || !user) return "serv00 场景建议填写 SERV00_HOST 和 SERV00_USER";
+      }
+      if (provider === "sap") {
+        const api = document.getElementById("sapApi").value.trim();
+        const org = document.getElementById("sapOrg").value.trim();
+        const space = document.getElementById("sapSpace").value.trim();
+        if (!api || !org || !space) return "sap 场景建议填写 API/ORG/SPACE";
+      }
+      return "";
     }
 
     function buildCommand() {
-      const provider = document.getElementById('provider').value;
-      const profile = document.getElementById('profile').value;
-      const engine = document.getElementById('engine').value;
+      const provider = document.getElementById("provider").value;
+      const profile = document.getElementById("profile").value;
+      const engine = document.getElementById("engine").value;
       const protocols = selectedProtocols();
-
-      if (profile === 'lite' && protocols.length > 2) {
-        alert('Lite profile allows up to 2 protocols.');
+      const argoMode = document.getElementById("argoMode").value;
+      const argoDomain = document.getElementById("argoDomain").value.trim();
+      const argoToken = document.getElementById("argoToken").value.trim();
+      const warpMode = document.getElementById("warpMode").value;
+      const err = validateForm();
+      if (err) {
+        alert(err);
         return;
       }
-      if (protocols.length === 0) {
-        alert('Select at least one protocol.');
-        return;
-      }
 
-      const cmd = `bash <(curl -Ls https://raw.githubusercontent.com/<your-username>/sing-box-deve/main/sing-box-deve.sh) install --provider ${provider} --profile ${profile} --engine ${engine} --protocols ${protocols.join(',')}`;
-      document.getElementById('output').value = cmd;
+      const args = [
+        "install",
+        `--provider ${provider}`,
+        `--profile ${profile}`,
+        `--engine ${engine}`,
+        `--protocols ${protocols.join(",")}`,
+        `--argo ${argoMode}`,
+        `--warp-mode ${warpMode}`
+      ];
+      if (argoDomain) args.push(`--argo-domain ${argoDomain}`);
+      if (argoToken) args.push(`--argo-token ${argoToken}`);
+
+      const cmd = `bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) ${args.join(" ")}`;
+      document.getElementById("resultHint").textContent = "生成命令：";
+      output.value = cmd;
     }
 
-    document.getElementById('build').addEventListener('click', buildCommand);
+    function buildEnvTemplate() {
+      const provider = document.getElementById("provider").value;
+      const profile = document.getElementById("profile").value;
+      const engine = document.getElementById("engine").value;
+      const protocols = selectedProtocols();
+      const argoMode = document.getElementById("argoMode").value;
+      const argoDomain = document.getElementById("argoDomain").value.trim();
+      const argoToken = document.getElementById("argoToken").value.trim();
+      const warpMode = document.getElementById("warpMode").value;
+      const warpPrivateKey = document.getElementById("warpPrivateKey").value.trim();
+      const warpPeerPublicKey = document.getElementById("warpPeerPublicKey").value.trim();
+
+      const err = validateForm();
+      if (err) {
+        alert(err);
+        return;
+      }
+
+      const lines = [
+        `provider=${provider}`,
+        `profile=${profile}`,
+        `engine=${engine}`,
+        `protocols=${protocols.join(",")}`,
+        `argo_mode=${argoMode}`,
+        `argo_domain=${argoDomain}`,
+        `argo_token=${argoToken}`,
+        `warp_mode=${warpMode}`,
+        `WARP_PRIVATE_KEY=${warpPrivateKey}`,
+        `WARP_PEER_PUBLIC_KEY=${warpPeerPublicKey}`,
+      ];
+
+      if (provider === "serv00") {
+        lines.push(`SERV00_HOST=${document.getElementById("serv00Host").value.trim()}`);
+        lines.push(`SERV00_USER=${document.getElementById("serv00User").value.trim()}`);
+      }
+      if (provider === "sap") {
+        lines.push(`SAP_CF_API=${document.getElementById("sapApi").value.trim()}`);
+        lines.push(`SAP_CF_ORG=${document.getElementById("sapOrg").value.trim()}`);
+        lines.push(`SAP_CF_SPACE=${document.getElementById("sapSpace").value.trim()}`);
+      }
+
+      document.getElementById("resultHint").textContent = "生成 env 模板：";
+      output.value = lines.join("\n") + "\n";
+    }
+
+    document.getElementById("buildCmd").addEventListener("click", buildCommand);
+    document.getElementById("buildEnv").addEventListener("click", buildEnvTemplate);
+    document.getElementById("profile").addEventListener("change", refreshProtocolHint);
+    document.getElementById("provider").addEventListener("change", toggleAdvancedFields);
+    document.getElementById("argoMode").addEventListener("change", toggleAdvancedFields);
+    document.getElementById("warpMode").addEventListener("change", toggleAdvancedFields);
+    document.getElementById("protocols").addEventListener("change", refreshProtocolHint);
+
+    initProtocolList();
+    toggleAdvancedFields();
   </script>
 </body>
 </html>

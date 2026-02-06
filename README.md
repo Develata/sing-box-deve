@@ -97,6 +97,20 @@ VPS 已支持协议：
 - `sap`：支持单账号和批量 JSON 部署（CF CLI）
 - `docker`：生成并可执行 `docker-compose` 部署
 
+详细文档：
+
+- `docs/README.md`（文档总索引）
+- `docs/Serv00.md`
+- `docs/SAP.md`
+- `docs/Docker.md`
+
+自动化与保活模板：
+
+- `.github/workflows/main.yml`（手动保活）
+- `.github/workflows/mainh.yml`（定时仅保活）
+- `workers/_worker.js`（反代模板）
+- `workers/workers_keep.js`（Workers 定时保活模板）
+
 ## 安全承诺
 
 - 不执行 `ufw disable`

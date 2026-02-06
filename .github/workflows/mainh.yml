@@ -1,0 +1,25 @@
+name: Keepalive Only
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keepalive URLs
+        env:
+          KEEPALIVE_URLS: ${{ secrets.KEEPALIVE_URLS }}
+        run: |
+          IFS=$',， ' read -r -a urls <<< "$KEEPALIVE_URLS"
+          if [ ${#urls[@]} -eq 0 ]; then
+            echo "No KEEPALIVE_URLS configured"
+            exit 1
+          fi
+          for u in "${urls[@]}"; do
+            [ -z "$u" ] && continue
+            code=$(curl -kLs -o /dev/null -w "%{http_code}" "$u" || true)
+            echo "$u -> $code"
+          done
