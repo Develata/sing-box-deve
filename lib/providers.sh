@@ -275,6 +275,23 @@ build_upstream_outbound_xray() {
 EOF
 }
 
+validate_generated_config() {
+  local engine="$1"
+  case "$engine" in
+    sing-box)
+      [[ -x "${SBD_BIN_DIR}/sing-box" ]] || die "sing-box binary not found"
+      "${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/config.json" >/dev/null 2>&1 || die "sing-box config validation failed"
+      ;;
+    xray)
+      [[ -x "${SBD_BIN_DIR}/xray" ]] || die "xray binary not found"
+      "${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray-config.json" >/dev/null 2>&1 || die "xray config validation failed"
+      ;;
+    *)
+      die "Unsupported engine for config validation: $engine"
+      ;;
+  esac
+}
+
 assert_engine_protocol_compatibility() {
   local engine="$1"
   local protocols_csv="$2"
@@ -923,6 +940,8 @@ provider_vps_install() {
     xray) build_xray_config "$protocols_csv" ;;
   esac
 
+  validate_generated_config "$engine"
+
   write_systemd_service "$engine"
   configure_argo_tunnel "$protocols_csv"
   write_nodes_output "$engine" "$protocols_csv"
@@ -1013,7 +1032,9 @@ EOF
       die "jq is required for SERV00_ACCOUNTS_JSON"
     fi
     validate_serv00_accounts_json "$SERV00_ACCOUNTS_JSON"
-    local count=0
+    local count=0 success=0 failed=0 skipped=0
+    local retries="${SERV00_RETRY_COUNT:-1}"
+    [[ "$retries" =~ ^[0-9]+$ ]] || retries=1
     while IFS= read -r item; do
       [[ -z "$item" ]] && continue
       local host user pass cmd
@@ -1026,12 +1047,27 @@ EOF
       log_info "Executing remote Serv00 bootstrap for account #${count} (${user}@${host})"
       if ! prompt_yes_no "$(msg "确认为 ${user}@${host} 执行远程 Serv00 引导吗？" "Confirm remote bootstrap for ${user}@${host}?")" "Y"; then
         log_warn "$(msg "用户已跳过 ${user}@${host}" "Skipped ${user}@${host} by user choice")"
+        skipped=$((skipped + 1))
         continue
       fi
-      sshpass -p "$pass" ssh -o StrictHostKeyChecking=no "${user}@${host}" "$cmd" || \
-        die "Remote Serv00 bootstrap failed for ${user}@${host}"
+      local attempt=0 ok=false
+      while (( attempt <= retries )); do
+        attempt=$((attempt + 1))
+        if sshpass -p "$pass" ssh -o StrictHostKeyChecking=no "${user}@${host}" "$cmd"; then
+          ok=true
+          break
+        fi
+        log_warn "Serv00 bootstrap retry ${attempt}/${retries} failed for ${user}@${host}"
+      done
+      if [[ "$ok" == "true" ]]; then
+        success=$((success + 1))
+      else
+        failed=$((failed + 1))
+      fi
     done < <(echo "$SERV00_ACCOUNTS_JSON" | jq -c '.[]')
-    log_success "Serv00 remote bootstrap completed for ${count} account(s)"
+    log_info "Serv00 batch summary: total=${count} success=${success} failed=${failed} skipped=${skipped}"
+    (( failed == 0 )) || die "Serv00 batch finished with failures"
+    log_success "Serv00 remote bootstrap completed for ${success} account(s)"
   elif [[ -n "${SERV00_HOST:-}" && -n "${SERV00_USER:-}" && -n "${SERV00_PASS:-}" ]]; then
     log_info "Executing remote Serv00 bootstrap on ${SERV00_HOST}"
     if ! prompt_yes_no "$(msg "确认为 ${SERV00_USER}@${SERV00_HOST} 执行远程 Serv00 引导吗？" "Confirm remote bootstrap for ${SERV00_USER}@${SERV00_HOST}?")" "Y"; then
@@ -1116,7 +1152,9 @@ EOF
       die "jq is required for SAP_ACCOUNTS_JSON"
     fi
     validate_sap_accounts_json "$SAP_ACCOUNTS_JSON"
-    local idx=0
+    local idx=0 success=0 failed=0 skipped=0
+    local retries="${SAP_RETRY_COUNT:-1}"
+    [[ "$retries" =~ ^[0-9]+$ ]] || retries=1
     while IFS= read -r item; do
       [[ -z "$item" ]] && continue
       local api username password org space app memory image uuid agn agk
@@ -1135,11 +1173,27 @@ EOF
       log_info "Deploying SAP account #${idx}: app=${app}"
       if ! prompt_yes_no "$(msg "确认部署 SAP 应用 '${app}'（账号 #${idx}）吗？" "Confirm SAP deploy for app '${app}' (account #${idx})?")" "Y"; then
         log_warn "$(msg "用户已跳过 SAP 应用 ${app}" "Skipped SAP app ${app} by user choice")"
+        skipped=$((skipped + 1))
         continue
       fi
-      deploy_single_sap "$api" "$username" "$password" "$org" "$space" "$app" "$memory" "$image" "$uuid" "$agn" "$agk"
+      local attempt=0 ok=false
+      while (( attempt <= retries )); do
+        attempt=$((attempt + 1))
+        if deploy_single_sap "$api" "$username" "$password" "$org" "$space" "$app" "$memory" "$image" "$uuid" "$agn" "$agk"; then
+          ok=true
+          break
+        fi
+        log_warn "SAP deploy retry ${attempt}/${retries} failed for app=${app}"
+      done
+      if [[ "$ok" == "true" ]]; then
+        success=$((success + 1))
+      else
+        failed=$((failed + 1))
+      fi
     done < <(echo "$SAP_ACCOUNTS_JSON" | jq -c '.[]')
-    log_success "SAP deployment completed for ${idx} account(s)"
+    log_info "SAP batch summary: total=${idx} success=${success} failed=${failed} skipped=${skipped}"
+    (( failed == 0 )) || die "SAP batch finished with failures"
+    log_success "SAP deployment completed for ${success} account(s)"
   elif [[ -n "${SAP_CF_API:-}" && -n "${SAP_CF_USERNAME:-}" && -n "${SAP_CF_PASSWORD:-}" && -n "${SAP_CF_ORG:-}" && -n "${SAP_CF_SPACE:-}" && -n "${SAP_APP_NAME:-}" ]]; then
     ensure_cf_cli
     log_info "Deploying single SAP app: ${SAP_APP_NAME}"
@@ -1389,7 +1443,7 @@ provider_doctor() {
         if [[ -n "${WARP_PRIVATE_KEY:-}" && -n "${WARP_PEER_PUBLIC_KEY:-}" ]]; then
           log_success "WARP diagnostic: keys found in current environment"
         elif [[ -f "${SBD_CONFIG_DIR}/config.json" ]] && grep -q '"tag": "warp-out"' "${SBD_CONFIG_DIR}/config.json"; then
-          log_success "WARP diagnostic: warp-out configured in sing-box.json"
+          log_success "WARP diagnostic: warp-out configured in config.json"
         else
           log_warn "WARP diagnostic: warp keys not found in env and warp-out not detected"
         fi

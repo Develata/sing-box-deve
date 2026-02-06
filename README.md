@@ -36,6 +36,7 @@ chmod +x ./sing-box-deve.sh
 - 已实现 Argo sidecar（临时/固定隧道）
 - 已实现 WARP 出站（global 模式）
 - 已实现脚本版本显示与更新（脚本自身 + 核心）
+- 已实现校验清单驱动的脚本安全更新（`checksums.txt`）
 
 VPS 已支持协议：
 
@@ -53,6 +54,8 @@ VPS 已支持协议：
   --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 \
   --outbound-proxy-user demo --outbound-proxy-pass demo
 ```
+
+说明：该模式不会额外开放本地 socks/http 入站端口，仅改变服务器出站路径。
 
 ## 交互原则
 
@@ -103,6 +106,11 @@ VPS 已支持协议：
 - `examples/serv00-accounts.json`
 - `examples/sap-accounts.json`
 
+验收矩阵脚本：
+
+- `scripts/acceptance-matrix.sh`
+- 运行：`bash scripts/acceptance-matrix.sh`
+
 ## Provider 说明
 
 - `serv00`：支持单账号和批量 JSON 远程引导
@@ -116,11 +124,13 @@ VPS 已支持协议：
 - `docs/SAP.md`
 - `docs/Docker.md`
 - `docs/CONVENTIONS.md`（命名与目录规范）
+- `docs/ACCEPTANCE-MATRIX.md`（验收矩阵）
 
 自动化与保活模板：
 
 - `.github/workflows/main.yml`（手动保活）
 - `.github/workflows/mainh.yml`（定时仅保活）
+- `.github/workflows/ci.yml`（语法、shellcheck、示例校验、checksums 校验）
 - `workers/_worker.js`（反代模板）
 - `workers/workers_keep.js`（Workers 定时保活模板）
 
@@ -136,6 +146,10 @@ VPS 已支持协议：
 - 持续增强 Serv00/SAP/Docker 的回滚与校验细节
 - 增加更多协议专项诊断与压测辅助
 - 完善 CI 与示例覆盖
+
+## 版本记录
+
+- 变更记录见 `CHANGELOG.md`
 
 ## 致谢
 

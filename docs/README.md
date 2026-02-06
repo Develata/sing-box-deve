@@ -12,6 +12,7 @@
 
 - `docs/V1-SPEC.md`：V1 功能范围、安全策略、实现进度
 - `docs/CONVENTIONS.md`：命名规则与目录约定（对齐官方风格）
+- `docs/ACCEPTANCE-MATRIX.md`：验收矩阵与实机验证命令
 
 ## 推荐阅读顺序
 

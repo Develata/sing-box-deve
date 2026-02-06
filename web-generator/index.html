@@ -231,6 +231,7 @@
       <div class="actions">
         <button id="buildCmd">生成命令</button>
         <button id="buildEnv" class="ghost">生成 env 模板</button>
+        <button id="copyOut" class="ghost">复制输出</button>
       </div>
       <p id="resultHint" class="ok" style="margin-top:10px">输出结果：</p>
       <textarea id="output" readonly></textarea>
@@ -432,8 +433,23 @@
       output.value = lines.join("\n") + "\n";
     }
 
+    async function copyOutput() {
+      const text = output.value;
+      if (!text) {
+        alert("当前没有可复制内容");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById("resultHint").textContent = "已复制到剪贴板";
+      } catch (e) {
+        alert("复制失败，请手动复制");
+      }
+    }
+
     document.getElementById("buildCmd").addEventListener("click", buildCommand);
     document.getElementById("buildEnv").addEventListener("click", buildEnvTemplate);
+    document.getElementById("copyOut").addEventListener("click", copyOutput);
     document.getElementById("profile").addEventListener("change", refreshProtocolHint);
     document.getElementById("provider").addEventListener("change", toggleAdvancedFields);
     document.getElementById("argoMode").addEventListener("change", toggleAdvancedFields);

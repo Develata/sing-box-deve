@@ -217,24 +217,54 @@ perform_script_self_update() {
     "sing-box-deve.sh"
     "version"
     "README.md"
+    "CHANGELOG.md"
+    "CONTRIBUTING.md"
+    "LICENSE"
     "config.env.example"
     "lib/common.sh"
     "lib/protocols.sh"
     "lib/security.sh"
     "lib/providers.sh"
     "lib/output.sh"
+    "docs/README.md"
     "docs/V1-SPEC.md"
+    "docs/CONVENTIONS.md"
+    "docs/ACCEPTANCE-MATRIX.md"
+    "docs/Serv00.md"
+    "docs/SAP.md"
+    "docs/Docker.md"
+    "examples/vps-lite.env"
+    "examples/vps-full-argo.env"
+    "examples/docker.env"
+    "examples/settings.conf"
+    "examples/serv00-accounts.json"
+    "examples/sap-accounts.json"
     "web-generator/index.html"
+    "scripts/acceptance-matrix.sh"
+    "scripts/update-checksums.sh"
     ".github/workflows/main.yml"
+    ".github/workflows/mainh.yml"
+    ".github/workflows/ci.yml"
     "workers/_worker.js"
+    "workers/workers_keep.js"
   )
 
   local tmp_dir
   tmp_dir="$(mktemp -d)"
+  local checksums_file="${tmp_dir}/checksums.txt"
+  if ! download_file "${base_url}/checksums.txt" "$checksums_file"; then
+    die "Secure update requires checksums.txt at update source"
+  fi
+
   local rel
   for rel in "${files[@]}"; do
     mkdir -p "${tmp_dir}/$(dirname "$rel")"
     download_file "${base_url}/${rel}" "${tmp_dir}/${rel}"
+    local expected actual
+    expected="$(grep -E "[[:space:]]${rel}$" "$checksums_file" | awk '{print $1}' | head -n1)"
+    [[ -n "$expected" ]] || die "Missing checksum entry for ${rel}"
+    actual="$(sha256sum "${tmp_dir}/${rel}" | awk '{print $1}')"
+    [[ "$expected" == "$actual" ]] || die "Checksum mismatch for ${rel}"
   done
 
   for rel in "${files[@]}"; do
@@ -427,6 +457,20 @@ doctor_system() {
     log_info "Detected memory: ${mem_mb}MB"
     if (( mem_mb <= 600 )); then
       log_info "Small-memory host detected; Lite profile is recommended"
+    fi
+  fi
+
+  if curl -fsS --max-time 5 https://1.1.1.1 >/dev/null 2>&1; then
+    log_success "Outbound HTTPS reachability: ok"
+  else
+    log_warn "Outbound HTTPS reachability: failed"
+  fi
+
+  if command -v getent >/dev/null 2>&1; then
+    if getent hosts github.com >/dev/null 2>&1; then
+      log_success "DNS resolution check: ok"
+    else
+      log_warn "DNS resolution check: failed"
     fi
   fi
 }

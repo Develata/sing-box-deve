@@ -1,0 +1,18 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local runtime/state (generated on target hosts)
+/run/
+/var/
+/tmp/
+
+# Project-generated artifacts
+*.log
+*.tmp
+
+# Optional local env overrides
+.env
+.env.local

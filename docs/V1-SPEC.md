@@ -43,3 +43,5 @@
 - WARP outbound implemented for sing-box (`off`/`global`, key-driven)
 - Artifact checksum verification implemented for `sing-box`, `xray`, and `cloudflared`
 - Serv00/SAP/Docker providers support environment-driven executable deployment flows and generated templates
+- Outbound upstream proxy implemented (`direct/socks/http/https`) for egress forwarding
+- CI checks added (syntax, shellcheck, examples JSON, checksum manifest consistency)
