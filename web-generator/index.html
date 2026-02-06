@@ -313,11 +313,13 @@
 
       if (!protocols.length) return "至少选择一个协议";
       if (profile === "lite" && protocols.length > 2) return "Lite 模式最多 2 个协议";
+      if (engine === "sing-box" && protocols.includes("vless-xhttp")) return "sing-box 模式暂不支持 vless-xhttp";
       if (engine === "xray" && protocols.includes("anytls")) return "xray 暂不支持 anytls";
       if (engine === "xray" && protocols.includes("any-reality")) return "xray 暂不支持 any-reality";
       if (protocols.includes("argo") && argoMode === "off") return "启用 argo 协议时，Argo 模式不能为 off";
       if (argoMode === "fixed" && !argoToken) return "Argo fixed 模式必须填写 token";
       if (protocols.includes("warp") && warpMode !== "global") return "启用 warp 协议时，WARP 模式建议使用 global";
+      if (warpMode === "global" && outboundProxyMode !== "direct") return "WARP global 与上游出站代理不能同时启用";
       if (warpMode === "global" && (!warpPrivateKey || !warpPeerPublicKey)) return "WARP global 模式必须填写两项 key";
       if (outboundProxyMode !== "direct" && (!outboundProxyHost || !outboundProxyPort)) return "出站代理启用时必须填写 host 和 port";
       if (provider === "serv00") {

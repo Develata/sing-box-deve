@@ -31,6 +31,8 @@ for provider in "${providers[@]}"; do
     if [[ "$provider" == "vps" ]]; then
       if [[ "$profile" == "full" ]]; then
         warp="global"
+        outbound="direct"
+        notes="full preset (warp-priority)"
       fi
     fi
 
