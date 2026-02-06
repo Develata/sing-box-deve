@@ -232,9 +232,14 @@ build_upstream_outbound_singbox() {
     {"type": "socks", "tag": "proxy-out", "server": "${host}", "server_port": ${port}${auth}}
 EOF
       ;;
-    http|https)
+    http)
       cat <<EOF
     {"type": "http", "tag": "proxy-out", "server": "${host}", "server_port": ${port}${auth}}
+EOF
+      ;;
+    https)
+      cat <<EOF
+    {"type": "http", "tag": "proxy-out", "server": "${host}", "server_port": ${port}${auth}, "tls": {"enabled": true, "server_name": "${host}"}}
 EOF
       ;;
   esac
@@ -1380,6 +1385,67 @@ provider_update() {
     systemctl restart sing-box-deve-argo.service
   fi
   log_success "Engine updated and service restarted"
+  provider_panel
+}
+
+provider_panel() {
+  log_info "========== sing-box-deve panel =========="
+
+  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+    # shellcheck disable=SC1091
+    source /etc/sing-box-deve/runtime.env
+    log_info "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}"
+    log_info "Protocols: ${protocols:-none}"
+    log_info "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Egress: ${outbound_proxy_mode:-direct}"
+  else
+    log_warn "Runtime state not found (/etc/sing-box-deve/runtime.env)"
+  fi
+
+  if [[ -f "$SBD_SERVICE_FILE" ]]; then
+    if systemctl is-active --quiet sing-box-deve.service; then
+      log_success "Core service: running"
+    else
+      log_warn "Core service: not running"
+    fi
+  fi
+
+  if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
+    local sbver
+    sbver="$(${SBD_BIN_DIR}/sing-box version 2>/dev/null | awk '/version/{print $NF}' | head -n1)"
+    [[ -n "$sbver" ]] && log_info "sing-box core version: ${sbver}"
+  fi
+
+  if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
+    local xver
+    xver="$(${SBD_BIN_DIR}/xray version 2>/dev/null | awk '/^Xray/{print $2}' | head -n1)"
+    [[ -n "$xver" ]] && log_info "xray core version: ${xver}"
+  fi
+
+  if [[ -x "${SBD_BIN_DIR}/cloudflared" ]]; then
+    local cver
+    cver="$(${SBD_BIN_DIR}/cloudflared --version 2>/dev/null | awk '{print $3}' | head -n1)"
+    [[ -n "$cver" ]] && log_info "cloudflared version: ${cver}"
+    if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
+      if systemctl is-active --quiet sing-box-deve-argo.service; then
+        log_success "Argo sidecar: running"
+      else
+        log_warn "Argo sidecar: not running"
+      fi
+    fi
+  fi
+
+  log_info "Script version: $(current_script_version)"
+  local remote_ver
+  remote_ver="$(fetch_remote_script_version 2>/dev/null || true)"
+  if [[ -n "$remote_ver" ]]; then
+    log_info "Remote script version: ${remote_ver}"
+  fi
+
+  if [[ -f "$SBD_NODES_FILE" ]]; then
+    log_info "Nodes file: $SBD_NODES_FILE"
+  fi
+
+  log_info "========================================="
 }
 
 provider_doctor() {

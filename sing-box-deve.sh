@@ -17,6 +17,7 @@ Usage:
   sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh list
+  sing-box-deve.sh panel
   sing-box-deve.sh restart
   sing-box-deve.sh update [--script|--core|--all] [--yes]
   sing-box-deve.sh version
@@ -422,6 +423,10 @@ main() {
     list)
       shift
       provider_list
+      ;;
+    panel|status)
+      shift
+      provider_panel
       ;;
     restart)
       shift

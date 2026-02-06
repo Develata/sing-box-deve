@@ -271,6 +271,8 @@ perform_script_self_update() {
     install -D -m 0644 "${tmp_dir}/${rel}" "${PROJECT_ROOT}/${rel}"
   done
 
+  install -D -m 0644 "$checksums_file" "${PROJECT_ROOT}/checksums.txt"
+
   chmod +x "${PROJECT_ROOT}/sing-box-deve.sh" \
     "${PROJECT_ROOT}/lib/common.sh" "${PROJECT_ROOT}/lib/protocols.sh" "${PROJECT_ROOT}/lib/security.sh" "${PROJECT_ROOT}/lib/providers.sh" "${PROJECT_ROOT}/lib/output.sh" \
     "${PROJECT_ROOT}/scripts/acceptance-matrix.sh" "${PROJECT_ROOT}/scripts/update-checksums.sh" || true
