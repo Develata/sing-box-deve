@@ -21,6 +21,8 @@ files=(
   "docs/V1-SPEC.md"
   "docs/CONVENTIONS.md"
   "docs/ACCEPTANCE-MATRIX.md"
+  "docs/PANEL-TEMPLATE.md"
+  "docs/REAL-WORLD-VALIDATION.md"
   "docs/Serv00.md"
   "docs/SAP.md"
   "docs/Docker.md"

@@ -1,9 +1,7 @@
-name: Keepalive Only
+name: Keepalive Only (Optional Template)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '*/15 * * * *'
 
 jobs:
   keepalive:

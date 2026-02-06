@@ -1,4 +1,4 @@
-name: Keepalive URLs
+name: Keepalive URLs (Optional Template)
 
 on:
   workflow_dispatch:

@@ -83,6 +83,8 @@ VPS 已支持协议：
 
 ## 常用命令
 
+默认情况下无需启用任何 keepalive workflow（`main.yml` / `mainh.yml`）。
+
 ```bash
 ./sing-box-deve.sh wizard
 ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality
@@ -126,9 +128,12 @@ VPS 已支持协议：
 - `docs/Docker.md`
 - `docs/CONVENTIONS.md`（命名与目录规范）
 - `docs/ACCEPTANCE-MATRIX.md`（验收矩阵）
+- `docs/PANEL-TEMPLATE.md`（面板输出中英文模板）
+- `docs/REAL-WORLD-VALIDATION.md`（实机验收执行单）
 
 自动化与保活模板：
 
+- 说明：以下均为**可选模板**，默认部署不依赖它们
 - `.github/workflows/main.yml`（手动保活）
 - `.github/workflows/mainh.yml`（定时仅保活）
 - `.github/workflows/ci.yml`（语法、shellcheck、示例校验、checksums 校验）
