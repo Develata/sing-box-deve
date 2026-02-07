@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+wizard() {
+  ensure_root
+  detect_os
+  init_runtime_layout
+
+  log_info "$(msg "欢迎使用 ${PROJECT_NAME} 交互向导" "Welcome to ${PROJECT_NAME} interactive wizard")"
+  echo
+
+  echo "$(msg "部署场景决定脚本运行位置：" "Provider decides where deployment runs:")"
+  echo "- vps: $(msg "本机服务器直接运行" "local server runtime")"
+  echo "- serv00: $(msg "远程 Serv00 引导部署" "remote Serv00 bootstrap")"
+  echo "- sap: $(msg "SAP Cloud Foundry 部署" "SAP Cloud Foundry deployment")"
+  echo "- docker: $(msg "容器化部署" "containerized deployment")"
+  if prompt_yes_no "$(msg "使用推荐场景 'vps' 吗？" "Use recommended provider 'vps'?")" "Y"; then
+    PROVIDER="vps"
+  else
+    prompt_with_default "$(msg "选择场景 [vps/serv00/sap/docker]" "Choose provider [vps/serv00/sap/docker]")" "vps" PROVIDER
+  fi
+
+  echo
+  echo "$(msg "资源档位决定内存开销：" "Profile controls resource usage:")"
+  echo "- lite: $(msg "适合 512MB，最多 2 个协议" "optimized for 512MB, up to 2 protocols")"
+  echo "- full: $(msg "开放全部协议选择" "all enabled choices")"
+  if prompt_yes_no "$(msg "使用推荐档位 'lite' 吗？" "Use recommended profile 'lite'?")" "Y"; then
+    PROFILE="lite"
+  else
+    prompt_with_default "$(msg "选择档位 [lite/full]" "Choose profile [lite/full]")" "lite" PROFILE
+  fi
+
+  echo
+  echo "$(msg "内核选择决定运行核心：" "Engine controls runtime core:")"
+  echo "- sing-box: $(msg "默认且支持协议更广" "default and broader protocol support")"
+  echo "- xray: $(msg "可选核心" "optional core")"
+  if prompt_yes_no "$(msg "使用推荐内核 'sing-box' 吗？" "Use recommended engine 'sing-box'?")" "Y"; then
+    ENGINE="sing-box"
+  else
+    prompt_with_default "$(msg "选择内核 [sing-box/xray]" "Choose engine [sing-box/xray]")" "sing-box" ENGINE
+  fi
+
+  echo
+  echo "$(msg "协议选择" "Protocol selection")"
+  PROTOCOLS="vless-reality"
+  if prompt_yes_no "$(msg "保留默认协议 'vless-reality' 吗？" "Keep default protocol 'vless-reality'?")" "Y"; then
+    PROTOCOLS="vless-reality"
+  else
+    PROTOCOLS=""
+    local p
+    for p in "${ALL_PROTOCOLS[@]}"; do
+      if [[ "$PROFILE" == "lite" ]]; then
+        local count
+        count="$(echo "$PROTOCOLS" | tr ',' '\n' | grep -c . || true)"
+        if (( count >= 2 )); then
+          break
+        fi
+      fi
+      local hint risk resource note
+      hint="$(protocol_hint "$p")"
+      risk="$(echo "$hint" | awk -F';' '{print $1}' | cut -d= -f2)"
+      resource="$(echo "$hint" | awk -F';' '{print $2}' | cut -d= -f2)"
+      note="$(echo "$hint" | awk -F';' '{print $3}' | cut -d= -f2-)"
+      log_info "$(msg "协议提示" "Protocol hint") ${p}: risk=${risk}, resource=${resource}, ${note}"
+      if prompt_yes_no "$(msg "启用协议 '${p}' 吗？" "Enable protocol '${p}'?")" "N"; then
+        if [[ -z "$PROTOCOLS" ]]; then
+          PROTOCOLS="$p"
+        else
+          PROTOCOLS+=" ,$p"
+        fi
+      fi
+    done
+    PROTOCOLS="$(echo "$PROTOCOLS" | tr -d ' ')"
+    [[ -n "$PROTOCOLS" ]] || PROTOCOLS="vless-reality"
+  fi
+
+  if [[ "$PROFILE" == "lite" ]] && prompt_yes_no "$(msg "Lite 模式：启用推荐第二协议 'hysteria2' 吗？" "Lite mode: enable recommended second protocol 'hysteria2'?")" "N"; then
+    if [[ "$PROTOCOLS" == "vless-reality" ]]; then
+      PROTOCOLS="vless-reality,hysteria2"
+    fi
+  fi
+
+  echo
+  echo "$(msg "Argo 可通过 Cloudflare 隧道暴露 WS 协议。" "Argo can expose WS protocols through Cloudflare tunnel.")"
+  if prompt_yes_no "$(msg "启用 Argo 隧道功能吗？" "Enable Argo tunnel feature?")" "N"; then
+    if prompt_yes_no "$(msg "使用临时 Argo 隧道（无需 token）吗？" "Use temporary Argo tunnel (no token needed)?")" "Y"; then
+      ARGO_MODE="temp"
+    else
+      ARGO_MODE="fixed"
+      prompt_with_default "$(msg "输入 Argo 固定隧道 token" "Input Argo fixed token")" "" ARGO_TOKEN
+      prompt_with_default "$(msg "输入 Argo 固定域名（可选）" "Input Argo fixed domain (optional)")" "" ARGO_DOMAIN
+    fi
+  else
+    ARGO_MODE="off"
+  fi
+
+  echo
+  echo "$(msg "WARP 用于控制 sing-box 出站路径。" "WARP controls outbound path for sing-box.")"
+  if prompt_yes_no "$(msg "启用 WARP 全局出站模式吗？" "Enable WARP global outbound mode?")" "N"; then
+    WARP_MODE="global"
+    log_info "$(msg "安装前请设置 WARP_PRIVATE_KEY 和 WARP_PEER_PUBLIC_KEY" "Remember to set WARP_PRIVATE_KEY and WARP_PEER_PUBLIC_KEY before install")"
+  else
+    WARP_MODE="off"
+  fi
+
+  echo
+  echo "$(msg "出站代理用于让所有入站流量通过上游 socks/http/https 代理转发。" "Outbound proxy lets inbound traffic egress through upstream socks/http/https.")"
+  if prompt_yes_no "$(msg "保持默认直连出站（direct）吗？" "Keep default direct outbound mode?")" "Y"; then
+    OUTBOUND_PROXY_MODE="direct"
+  else
+    prompt_with_default "$(msg "选择出站代理模式 [direct/socks/http/https]" "Choose outbound proxy mode [direct/socks/http/https]")" "direct" OUTBOUND_PROXY_MODE
+    if [[ "$OUTBOUND_PROXY_MODE" != "direct" ]]; then
+      prompt_with_default "$(msg "输入上游代理主机" "Input upstream proxy host")" "" OUTBOUND_PROXY_HOST
+      prompt_with_default "$(msg "输入上游代理端口" "Input upstream proxy port")" "1080" OUTBOUND_PROXY_PORT
+      prompt_with_default "$(msg "输入上游代理用户名（可选）" "Input upstream proxy username (optional)")" "" OUTBOUND_PROXY_USER
+      prompt_with_default "$(msg "输入上游代理密码（可选）" "Input upstream proxy password (optional)")" "" OUTBOUND_PROXY_PASS
+    fi
+  fi
+
+  validate_provider "$PROVIDER"
+  validate_engine "$ENGINE"
+  validate_profile_protocols "$PROFILE" "$PROTOCOLS"
+
+  print_plan_summary "$PROVIDER" "$PROFILE" "$ENGINE" "$PROTOCOLS"
+  if ! prompt_yes_no "$(msg "现在开始安装吗？" "Proceed with installation now?")" "Y"; then
+    log_warn "Installation aborted by user"
+    exit 0
+  fi
+
+  run_install "$PROVIDER" "$PROFILE" "$ENGINE" "$PROTOCOLS" "false"
+}
