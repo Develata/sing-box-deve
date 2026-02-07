@@ -47,6 +47,7 @@ menu_egress() {
     menu_title "$(msg "[出站策略管理]" "[Egress Management]")"
     echo "1) set-egress direct"
     echo "2) set-egress socks/http/https"
+    echo "3) set-route direct/global-proxy/cn-direct/cn-proxy"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -61,6 +62,11 @@ menu_egress() {
         read -r -p "user(optional): " u
         read -r -p "pass(optional): " pw
         provider_set_egress "$m" "$h" "$p" "$u" "$pw"
+        menu_pause
+        ;;
+      3)
+        read -r -p "route mode[direct/global-proxy/cn-direct/cn-proxy]: " rm
+        provider_set_route "$rm"
         menu_pause
         ;;
       0) return 0 ;;

@@ -119,7 +119,7 @@ install_apt_dependencies() {
 
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y >/dev/null
-  apt-get install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools >/dev/null
+  apt-get install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null
 }
 
 download_file() {

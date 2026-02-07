@@ -3,6 +3,7 @@
 source "${PROJECT_ROOT}/lib/providers_base.sh"
 source "${PROJECT_ROOT}/lib/providers_release.sh"
 source "${PROJECT_ROOT}/lib/providers_outbound.sh"
+source "${PROJECT_ROOT}/lib/providers_routing.sh"
 source "${PROJECT_ROOT}/lib/providers_argo.sh"
 source "${PROJECT_ROOT}/lib/providers_config_singbox.sh"
 source "${PROJECT_ROOT}/lib/providers_config_xray.sh"

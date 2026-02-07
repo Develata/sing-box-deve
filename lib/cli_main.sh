@@ -5,7 +5,7 @@ usage() {
 Usage:
   sing-box-deve.sh wizard
   sing-box-deve.sh menu
-  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
+  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
@@ -15,6 +15,7 @@ Usage:
   sing-box-deve.sh set-port --list
   sing-box-deve.sh set-port --protocol <name> --port <1-65535>
   sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS]
+  sing-box-deve.sh set-route <direct|global-proxy|cn-direct|cn-proxy>
   sing-box-deve.sh regen-nodes
   sing-box-deve.sh update [--script|--core|--all] [--yes]
   sing-box-deve.sh version
@@ -34,6 +35,11 @@ EOF
 
 main() {
   local cmd="${1:-help}"
+  if [[ "$cmd" == "help" ]] && declare -F legacy_env_detected >/dev/null 2>&1 && legacy_env_detected; then
+    parse_install_args
+    run_install "$PROVIDER" "$PROFILE" "$ENGINE" "$PROTOCOLS" "$DRY_RUN"
+    return 0
+  fi
   case "$cmd" in
     wizard)
       shift
@@ -91,6 +97,11 @@ main() {
       shift
       parse_set_egress_args "$@"
       provider_set_egress "$SET_EGRESS_MODE" "$SET_EGRESS_HOST" "$SET_EGRESS_PORT" "$SET_EGRESS_USER" "$SET_EGRESS_PASS"
+      ;;
+    set-route)
+      shift
+      parse_set_route_args "$@"
+      provider_set_route "$SET_ROUTE_MODE"
       ;;
     regen-nodes)
       shift

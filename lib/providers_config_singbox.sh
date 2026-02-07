@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 generate_reality_keys() {
   local private_key_file="${SBD_DATA_DIR}/reality_private.key"
   local public_key_file="${SBD_DATA_DIR}/reality_public.key"
@@ -230,6 +229,8 @@ build_sing_box_config() {
 
   inbounds="${inbounds//\\n/$'\n'}"
   outbounds="${outbounds//\\n/$'\n'}"
+  local route_json
+  route_json="$(build_singbox_route_json "$final_tag")"
 
   cat > "$config_file" <<EOF
 {
@@ -240,9 +241,7 @@ ${inbounds}
   "outbounds": [
 ${outbounds}
   ],
-  "route": {
-    "final": "${final_tag}"
-  }
+  "route": ${route_json}
 }
 EOF
 

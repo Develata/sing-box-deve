@@ -44,7 +44,7 @@ provider_vps_install() {
     fi
     mapping="$(protocol_port_map "$protocol")"
     proto="${mapping%%:*}"
-    port="${mapping##*:}"
+    port="$(get_protocol_port "$protocol")"
     fw_apply_rule "$proto" "$port"
   done
 
@@ -101,6 +101,7 @@ engine=${engine}
 protocols=${protocols_csv}
 argo_mode=${ARGO_MODE:-off}
 warp_mode=${WARP_MODE:-off}
+route_mode=${ROUTE_MODE:-direct}
 outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
 outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}

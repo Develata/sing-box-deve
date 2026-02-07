@@ -117,6 +117,17 @@ wizard() {
     fi
   fi
 
+  echo
+  printf '%s\n' "$(msg "VPN 分流模式用于控制哪些流量走直连或代理。" "VPN split routing controls which traffic goes direct or proxy.")"
+  if [[ "$OUTBOUND_PROXY_MODE" == "direct" && "${WARP_MODE:-off}" == "off" ]]; then
+    ROUTE_MODE="direct"
+    log_info "$(msg "当前无上游代理/WARP，分流模式固定为 direct" "No proxy/warp configured, route mode fixed to direct")"
+  elif prompt_yes_no "$(msg "使用推荐分流 'cn-direct'（中国流量直连，其他走代理）吗？" "Use recommended route mode 'cn-direct' (CN direct, others proxy)?")" "Y"; then
+    ROUTE_MODE="cn-direct"
+  else
+    prompt_with_default "$(msg "选择分流模式 [direct/global-proxy/cn-direct/cn-proxy]" "Choose route mode [direct/global-proxy/cn-direct/cn-proxy]")" "direct" ROUTE_MODE
+  fi
+
   validate_provider "$PROVIDER"
   validate_engine "$ENGINE"
   validate_profile_protocols "$PROFILE" "$PROTOCOLS"

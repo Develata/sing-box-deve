@@ -90,7 +90,7 @@ run_install() {
   validate_engine "$engine"
   validate_profile_protocols "$profile" "$protocols_csv"
 
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE ROUTE_MODE OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS
 
   create_install_context "$provider" "$profile" "$engine" "$protocols_csv"
   auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE"
@@ -141,6 +141,7 @@ apply_config() {
   export ARGO_DOMAIN="${argo_domain:-${ARGO_DOMAIN:-}}"
   export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
   export WARP_MODE="${warp_mode:-${WARP_MODE:-off}}"
+  export ROUTE_MODE="${route_mode:-${ROUTE_MODE:-direct}}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-${OUTBOUND_PROXY_MODE:-direct}}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-${OUTBOUND_PROXY_HOST:-}}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-${OUTBOUND_PROXY_PORT:-}}"
@@ -158,6 +159,7 @@ apply_runtime() {
   source /etc/sing-box-deve/runtime.env
   export ARGO_MODE="${argo_mode:-off}"
   export WARP_MODE="${warp_mode:-off}"
+  export ROUTE_MODE="${route_mode:-direct}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"

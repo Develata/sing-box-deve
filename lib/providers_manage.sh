@@ -19,13 +19,7 @@ provider_list() {
   fi
 
   if [[ "$mode" == "nodes" || "$mode" == "all" ]]; then
-    if [[ -f "$SBD_NODES_FILE" ]]; then
-      echo
-      log_info "Node links:"
-      cat "$SBD_NODES_FILE"
-    else
-      log_warn "Node file not found: $SBD_NODES_FILE"
-    fi
+    print_nodes_with_qr
   fi
 }
 

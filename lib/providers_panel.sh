@@ -24,7 +24,7 @@ provider_status_header() {
     source /etc/sing-box-deve/runtime.env
     log_info "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}"
     log_info "Protocols: ${protocols:-none}"
-    log_info "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Egress: ${outbound_proxy_mode:-direct}"
+    log_info "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}"
 
     local main_port="n/a"
     if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" ]]; then

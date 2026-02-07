@@ -13,7 +13,7 @@ provider_set_port_info() {
       cfg="${SBD_CONFIG_DIR}/config.json"
       ;;
     xray)
-      whitelist="vless-reality,vmess-ws,vless-ws,vless-xhttp,trojan"
+      whitelist="vless-reality,vmess-ws,vless-ws,vless-xhttp,trojan,socks5"
       cfg="${SBD_CONFIG_DIR}/xray-config.json"
       ;;
     *)
@@ -37,7 +37,7 @@ provider_set_port_info() {
   else
     jq -r '.inbounds[] | [.tag, (.port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan)
+        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|socks5)
           log_info "- ${tag}: ${port}"
           ;;
       esac
@@ -128,6 +128,7 @@ provider_set_egress() {
   export OUTBOUND_PROXY_PASS="$pass"
   export ARGO_MODE="${argo_mode:-off}"
   export WARP_MODE="${warp_mode:-off}"
+  export ROUTE_MODE="${route_mode:-direct}"
   export ARGO_DOMAIN="${argo_domain:-${ARGO_DOMAIN:-}}"
   export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
 
@@ -139,4 +140,38 @@ provider_set_egress() {
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
   log_success "Egress mode updated: ${mode}"
+}
+
+provider_set_route() {
+  ensure_root
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  local mode="$1"
+  case "$mode" in
+    direct|global-proxy|cn-direct|cn-proxy) ;;
+    *) die "Unsupported route mode: $mode" ;;
+  esac
+
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  local runtime_provider="${provider:-vps}"
+  local runtime_profile="${profile:-lite}"
+  local runtime_engine="${engine:-sing-box}"
+  local runtime_protocols="${protocols:-vless-reality}"
+  export ARGO_MODE="${argo_mode:-off}"
+  export WARP_MODE="${warp_mode:-off}"
+  export ROUTE_MODE="$mode"
+  export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
+  export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
+  export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
+  export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
+  export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+
+  validate_feature_modes
+  case "$runtime_engine" in
+    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" ;;
+    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" ;;
+  esac
+  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
+  provider_restart core
+  log_success "Route mode updated: ${mode}"
 }

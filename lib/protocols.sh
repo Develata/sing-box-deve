@@ -14,6 +14,7 @@ ALL_PROTOCOLS=(
   warp
   trojan
   wireguard
+  socks5
 )
 
 validate_provider() {
@@ -157,6 +158,9 @@ protocol_hint() {
       ;;
     wireguard)
       echo "risk=medium;resource=low;note=needs peer config management"
+      ;;
+    socks5)
+      echo "risk=medium;resource=low;note=for app proxy integration, not public node sharing"
       ;;
     *)
       echo "risk=unknown;resource=unknown;note=n/a"

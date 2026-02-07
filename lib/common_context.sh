@@ -9,6 +9,7 @@ create_install_context() {
   local argo_domain="${ARGO_DOMAIN:-}"
   local argo_token="${ARGO_TOKEN:-}"
   local warp_mode="${WARP_MODE:-off}"
+  local route_mode="${ROUTE_MODE:-direct}"
   local outbound_proxy_mode="${OUTBOUND_PROXY_MODE:-direct}"
   local outbound_proxy_host="${OUTBOUND_PROXY_HOST:-}"
   local outbound_proxy_port="${OUTBOUND_PROXY_PORT:-}"
@@ -31,6 +32,7 @@ argo_mode=${argo_mode}
 argo_domain=${argo_domain}
 argo_token_set=$([[ -n "${argo_token}" ]] && echo true || echo false)
 warp_mode=${warp_mode}
+route_mode=${route_mode}
 outbound_proxy_mode=${outbound_proxy_mode}
 outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
@@ -69,6 +71,7 @@ features:
   argo_domain: ${argo_domain:-""}
   argo_token_set: ${argo_token_set:-false}
   warp_mode: ${warp_mode:-off}
+  route_mode: ${route_mode:-direct}
   outbound_proxy_mode: ${outbound_proxy_mode:-direct}
   outbound_proxy_host: ${outbound_proxy_host:-""}
   outbound_proxy_port: ${outbound_proxy_port:-""}

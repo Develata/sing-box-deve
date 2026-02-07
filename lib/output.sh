@@ -16,6 +16,7 @@ Engine   : ${engine}
 Protocols: ${protocols_csv}
 Argo     : ${ARGO_MODE:-off}
 WARP     : ${WARP_MODE:-off}
+Route    : ${ROUTE_MODE:-direct}
 Egress   : ${OUTBOUND_PROXY_MODE:-direct}
 
 $(if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then echo "Outbound Proxy: ${OUTBOUND_PROXY_MODE}://${OUTBOUND_PROXY_HOST:-}:${OUTBOUND_PROXY_PORT:-}"; fi)
@@ -45,6 +46,7 @@ Engine   : ${engine}
 Protocols: ${protocols_csv}
 Argo     : ${ARGO_MODE:-off}
 WARP     : ${WARP_MODE:-off}
+Route    : ${ROUTE_MODE:-direct}
 Egress   : ${OUTBOUND_PROXY_MODE:-direct}
 
 Generated Files
@@ -60,4 +62,38 @@ Next Commands
 - ./sing-box-deve.sh fw status
 
 EOF
+
+  print_nodes_with_qr
+}
+
+print_nodes_with_qr() {
+  if [[ ! -f "$SBD_NODES_FILE" ]]; then
+    log_warn "Nodes file not found: $SBD_NODES_FILE"
+    return 0
+  fi
+
+  echo
+  echo "Node Links"
+  echo "----------"
+  cat "$SBD_NODES_FILE"
+
+  if ! command -v qrencode >/dev/null 2>&1; then
+    log_warn "qrencode not installed; skipping QR output"
+    return 0
+  fi
+
+  echo
+  echo "QR Codes"
+  echo "--------"
+  local line
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    case "$line" in
+      vless://*|vmess://*|hysteria2://*|trojan://*|anytls://*|wireguard://*)
+        printf '%s\n' "$line"
+        qrencode -o - -t ANSIUTF8 "$line"
+        echo
+        ;;
+    esac
+  done < "$SBD_NODES_FILE"
 }

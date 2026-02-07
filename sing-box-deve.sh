@@ -41,6 +41,7 @@ if [[ ! -f "${PROJECT_ROOT}/lib/common.sh" ]]; then
 fi
 
 source "${PROJECT_ROOT}/lib/common.sh"
+source "${PROJECT_ROOT}/lib/legacy_compat.sh"
 source "${PROJECT_ROOT}/lib/protocols.sh"
 source "${PROJECT_ROOT}/lib/security.sh"
 source "${PROJECT_ROOT}/lib/providers.sh"

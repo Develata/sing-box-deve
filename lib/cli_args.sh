@@ -12,11 +12,16 @@ parse_install_args() {
   ARGO_DOMAIN="${ARGO_DOMAIN:-}"
   ARGO_TOKEN="${ARGO_TOKEN:-}"
   WARP_MODE="${WARP_MODE:-off}"
+  ROUTE_MODE="${ROUTE_MODE:-direct}"
   OUTBOUND_PROXY_MODE="${OUTBOUND_PROXY_MODE:-direct}"
   OUTBOUND_PROXY_HOST="${OUTBOUND_PROXY_HOST:-}"
   OUTBOUND_PROXY_PORT="${OUTBOUND_PROXY_PORT:-}"
   OUTBOUND_PROXY_USER="${OUTBOUND_PROXY_USER:-}"
   OUTBOUND_PROXY_PASS="${OUTBOUND_PROXY_PASS:-}"
+
+  if declare -F legacy_apply_install_defaults >/dev/null 2>&1; then
+    legacy_apply_install_defaults
+  fi
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -30,6 +35,7 @@ parse_install_args() {
       --argo-domain) ARGO_DOMAIN="$2"; shift 2 ;;
       --argo-token) ARGO_TOKEN="$2"; shift 2 ;;
       --warp-mode) WARP_MODE="$2"; shift 2 ;;
+      --route-mode) ROUTE_MODE="$2"; shift 2 ;;
       --outbound-proxy-mode) OUTBOUND_PROXY_MODE="$2"; shift 2 ;;
       --outbound-proxy-host) OUTBOUND_PROXY_HOST="$2"; shift 2 ;;
       --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2"; shift 2 ;;
@@ -38,6 +44,11 @@ parse_install_args() {
       *) die "Unknown install argument: $1" ;;
     esac
   done
+}
+
+parse_set_route_args() {
+  SET_ROUTE_MODE="${1:-}"
+  [[ -n "$SET_ROUTE_MODE" ]] || die "Usage: set-route <direct|global-proxy|cn-direct|cn-proxy>"
 }
 
 parse_update_args() {

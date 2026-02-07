@@ -5,7 +5,14 @@ build_xray_config() {
   local config_file="${SBD_CONFIG_DIR}/xray-config.json"
   local uuid
   uuid="$(ensure_uuid)"
-  local private_key public_key short_id
+
+  local port_vless_reality port_vmess_ws port_vless_ws port_vless_xhttp port_trojan port_socks5
+  port_vless_reality="$(get_protocol_port "vless-reality")"
+  port_vmess_ws="$(get_protocol_port "vmess-ws")"
+  port_vless_ws="$(get_protocol_port "vless-ws")"
+  port_vless_xhttp="$(get_protocol_port "vless-xhttp")"
+  port_trojan="$(get_protocol_port "trojan")"
+  port_socks5="$(get_protocol_port "socks5")"
 
   if [[ ! -f "${SBD_DATA_DIR}/xray_private.key" ]]; then
     local out
@@ -15,6 +22,7 @@ build_xray_config() {
     openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id"
   fi
 
+  local private_key public_key short_id
   private_key="$(<"${SBD_DATA_DIR}/xray_private.key")"
   public_key="$(<"${SBD_DATA_DIR}/xray_public.key")"
   short_id="$(<"${SBD_DATA_DIR}/xray_short_id")"
@@ -23,24 +31,10 @@ build_xray_config() {
   inbounds+=$'    {\n'
   inbounds+=$'      "tag": "vless-reality",\n'
   inbounds+=$'      "listen": "::",\n'
-  inbounds+=$'      "port": 443,\n'
+  inbounds+="      \"port\": ${port_vless_reality},\n"
   inbounds+=$'      "protocol": "vless",\n'
-  inbounds+=$'      "settings": {\n'
-  inbounds+=$'        "clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}],\n'
-  inbounds+=$'        "decryption": "none"\n'
-  inbounds+=$'      },\n'
-  inbounds+=$'      "streamSettings": {\n'
-  inbounds+=$'        "network": "tcp",\n'
-  inbounds+=$'        "security": "reality",\n'
-  inbounds+=$'        "realitySettings": {\n'
-  inbounds+=$'          "show": false,\n'
-  inbounds+=$'          "dest": "apple.com:443",\n'
-  inbounds+=$'          "xver": 0,\n'
-  inbounds+=$'          "serverNames": ["apple.com"],\n'
-  inbounds+=$'          "privateKey": "'"${private_key}"'",\n'
-  inbounds+=$'          "shortIds": ["'"${short_id}"'"]\n'
-  inbounds+=$'        }\n'
-  inbounds+=$'      }\n'
+  inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
+  inbounds+=$'      "streamSettings": {"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "apple.com:443", "xver": 0, "serverNames": ["apple.com"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}}\n'
   inbounds+=$'    }'
 
   local protocols=()
@@ -51,7 +45,7 @@ build_xray_config() {
     inbounds+=$'    {\n'
     inbounds+=$'      "tag": "vmess-ws",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "port": 8443,\n'
+    inbounds+="      \"port\": ${port_vmess_ws},\n"
     inbounds+=$'      "protocol": "vmess",\n'
     inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}]},\n'
     inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "/vmess"}}\n'
@@ -63,10 +57,26 @@ build_xray_config() {
     inbounds+=$'    {\n'
     inbounds+=$'      "tag": "vless-ws",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "port": 8444,\n'
+    inbounds+="      \"port\": ${port_vless_ws},\n"
     inbounds+=$'      "protocol": "vless",\n'
     inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}], "decryption": "none"},\n'
     inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "/vless"}}\n'
+    inbounds+=$'    }'
+  fi
+
+  if protocol_enabled "vless-xhttp" "${protocols[@]}"; then
+    inbounds+=$',\n'
+    inbounds+=$'    {\n'
+    inbounds+=$'      "tag": "vless-xhttp",\n'
+    inbounds+=$'      "listen": "::",\n'
+    inbounds+="      \"port\": ${port_vless_xhttp},\n"
+    inbounds+=$'      "protocol": "vless",\n'
+    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
+    if [[ "${SBD_XHTTP_REALITY_ENC:-false}" == "true" ]]; then
+      inbounds+=$'      "streamSettings": {"network": "xhttp", "security": "reality", "realitySettings": {"show": false, "dest": "apple.com:443", "xver": 0, "serverNames": ["apple.com"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}, "xhttpSettings": {"path": "/'"${uuid}"'-xh", "mode": "auto"}}\n'
+    else
+      inbounds+=$'      "streamSettings": {"network": "xhttp", "xhttpSettings": {"path": "/'"${uuid}"'-xh", "mode": "auto"}}\n'
+    fi
     inbounds+=$'    }'
   fi
 
@@ -76,13 +86,21 @@ build_xray_config() {
     inbounds+=$'    {\n'
     inbounds+=$'      "tag": "trojan",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "port": 4433,\n'
+    inbounds+="      \"port\": ${port_trojan},\n"
     inbounds+=$'      "protocol": "trojan",\n'
     inbounds+=$'      "settings": {"clients": [{"password": "'"${uuid}"'"}]},\n'
-    inbounds+=$'      "streamSettings": {\n'
-    inbounds+=$'        "security": "tls",\n'
-    inbounds+=$'        "tlsSettings": {"certificates": [{"certificateFile": "'"${SBD_DATA_DIR}/cert.pem"'", "keyFile": "'"${SBD_DATA_DIR}/private.key"'"}]}\n'
-    inbounds+=$'      }\n'
+    inbounds+=$'      "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": "'"${SBD_DATA_DIR}/cert.pem"'", "keyFile": "'"${SBD_DATA_DIR}/private.key"'"}]}}\n'
+    inbounds+=$'    }'
+  fi
+
+  if protocol_enabled "socks5" "${protocols[@]}"; then
+    inbounds+=$',\n'
+    inbounds+=$'    {\n'
+    inbounds+=$'      "tag": "socks5",\n'
+    inbounds+=$'      "listen": "::",\n'
+    inbounds+="      \"port\": ${port_socks5},\n"
+    inbounds+=$'      "protocol": "socks",\n'
+    inbounds+=$'      "settings": {"auth": "password", "accounts": [{"user": "'"${uuid}"'", "pass": "'"${uuid}"'"}], "udp": true}\n'
     inbounds+=$'    }'
   fi
 
@@ -90,11 +108,12 @@ build_xray_config() {
   xray_outbounds=$'    {"protocol": "freedom", "tag": "direct"},\n'
   xray_outbounds+=$'    {"protocol": "blackhole", "tag": "block"}'
   xray_routing=""
-
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     xray_outbounds+=$',\n'
     xray_outbounds+="$(build_upstream_outbound_xray)"
-    xray_routing=$',\n  "routing": {"domainStrategy": "AsIs", "rules": [{"type": "field", "network": "tcp,udp", "outboundTag": "proxy-out"}]}'
+    xray_routing="$(build_xray_routing_fragment "proxy-out")"
+  else
+    xray_routing="$(build_xray_routing_fragment "")"
   fi
 
   inbounds="${inbounds//\\n/$'\n'}"
@@ -121,7 +140,6 @@ write_systemd_service() {
   local config_path
   local binary_path
   local exec_args
-
   case "$engine" in
     sing-box)
       config_path="${SBD_CONFIG_DIR}/config.json"

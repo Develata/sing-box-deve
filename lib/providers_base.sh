@@ -16,8 +16,24 @@ protocol_port_map() {
     warp) echo "udp:51820" ;;
     trojan) echo "tcp:4433" ;;
     wireguard) echo "udp:51820" ;;
+    socks5) echo "tcp:10808" ;;
     *) die "No port map for protocol: $proto" ;;
   esac
+}
+
+get_protocol_port() {
+  local proto="$1"
+  local mapping default_port key
+  mapping="$(protocol_port_map "$proto")"
+  default_port="${mapping##*:}"
+  key="SBD_PORT_$(echo "$proto" | tr '[:lower:]-' '[:upper:]_')"
+  if [[ -n "${!key:-}" ]]; then
+    [[ "${!key}" =~ ^[0-9]+$ ]] || die "${key} must be numeric"
+    (( ${!key} >= 1 && ${!key} <= 65535 )) || die "${key} must be within 1..65535"
+    echo "${!key}"
+    return 0
+  fi
+  echo "$default_port"
 }
 
 protocol_needs_local_listener() {
@@ -43,6 +59,8 @@ validate_feature_modes() {
     direct|socks|http|https) ;;
     *) die "Invalid OUTBOUND_PROXY_MODE: ${OUTBOUND_PROXY_MODE}" ;;
   esac
+
+  validate_route_mode
 
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     [[ -n "${OUTBOUND_PROXY_HOST:-}" ]] || die "OUTBOUND_PROXY_HOST is required when outbound proxy mode is not direct"
@@ -98,7 +116,7 @@ engine_supports_protocol() {
       ;;
     xray)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|argo) return 0 ;;
+        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|argo|socks5) return 0 ;;
         *) return 1 ;;
       esac
       ;;

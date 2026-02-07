@@ -114,6 +114,7 @@ sudo sb doctor
 ./sing-box-deve.sh set-port --list
 ./sing-box-deve.sh set-port --protocol vless-reality --port 443
 ./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
+./sing-box-deve.sh set-route cn-direct
 ./sing-box-deve.sh regen-nodes
 ```
 
@@ -183,6 +184,25 @@ VPS 已支持协议：
 ```
 
 说明：该模式不会额外开放本地 socks/http 入站端口，仅改变服务器出站路径。
+
+VPN 分流模式（新增）：
+
+- `direct`：全部直连
+- `global-proxy`：全部走上游代理/WARP
+- `cn-direct`：中国流量直连，其他走上游代理/WARP
+- `cn-proxy`：中国流量走上游代理/WARP，其他直连
+
+设置示例：
+
+```bash
+./sing-box-deve.sh set-route cn-direct
+```
+
+兼容上游变量模式（对齐 `sing-box-yg/argosbx` 常用写法）：
+
+```bash
+vmpt=8443 argo=vmpt bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh)
+```
 
 ## Provider 说明
 
