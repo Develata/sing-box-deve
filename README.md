@@ -13,6 +13,8 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
 ```
 
+说明：远程一键模式会自动拉取完整项目再执行，不再依赖 `/dev/fd` 临时路径下存在 `lib/` 目录。
+
 或者本地克隆后运行：
 
 ```bash
