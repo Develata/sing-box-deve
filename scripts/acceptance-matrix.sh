@@ -6,7 +6,6 @@ SCRIPT="${ROOT_DIR}/sing-box-deve.sh"
 
 providers=(vps serv00 sap docker)
 profiles=(lite full)
-features=(argo warp outbound_proxy)
 
 echo "# Acceptance Matrix"
 echo
@@ -20,9 +19,7 @@ for provider in "${providers[@]}"; do
     outbound="direct"
     notes=""
 
-    protocols="vless-reality"
     if [[ "$profile" == "full" ]]; then
-      protocols="vless-reality,vmess-ws"
       argo="temp"
       outbound="socks"
       notes="full preset"

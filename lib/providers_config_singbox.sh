@@ -10,7 +10,7 @@ generate_reality_keys() {
   fi
 
   local out
-  out="$(${SBD_BIN_DIR}/sing-box generate reality-keypair)"
+  out="$("${SBD_BIN_DIR}/sing-box" generate reality-keypair)"
   echo "$out" | awk -F': ' '/PrivateKey/{print $2}' > "$private_key_file"
   echo "$out" | awk -F': ' '/PublicKey/{print $2}' > "$public_key_file"
   openssl rand -hex 4 > "$short_id_file"

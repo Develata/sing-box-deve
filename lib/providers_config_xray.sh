@@ -9,7 +9,7 @@ build_xray_config() {
 
   if [[ ! -f "${SBD_DATA_DIR}/xray_private.key" ]]; then
     local out
-    out="$(${SBD_BIN_DIR}/xray x25519)"
+    out="$("${SBD_BIN_DIR}/xray" x25519)"
     echo "$out" | awk '/Private key/{print $3}' > "${SBD_DATA_DIR}/xray_private.key"
     echo "$out" | awk '/Public key/{print $3}' > "${SBD_DATA_DIR}/xray_public.key"
     openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id"

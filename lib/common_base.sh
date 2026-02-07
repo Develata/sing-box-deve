@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 SBD_STATE_DIR="/var/lib/sing-box-deve"
 SBD_CONFIG_DIR="/etc/sing-box-deve"

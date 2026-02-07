@@ -59,7 +59,7 @@ provider: ${provider}
 profile: ${profile}
 engine: ${engine}
 protocols:
-$(echo "$protocols" | tr ',' '\n' | sed 's/^/  - /')
+$(echo "${protocols:-}" | tr ',' '\n' | sed 's/^/  - /')
 security:
   firewall_managed: true
   firewall_mode: incremental_with_rollback

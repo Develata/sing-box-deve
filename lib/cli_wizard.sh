@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 wizard() {
   ensure_root
@@ -8,7 +9,7 @@ wizard() {
   log_info "$(msg "欢迎使用 ${PROJECT_NAME} 交互向导" "Welcome to ${PROJECT_NAME} interactive wizard")"
   echo
 
-  echo "$(msg "部署场景决定脚本运行位置：" "Provider decides where deployment runs:")"
+  printf '%s\n' "$(msg "部署场景决定脚本运行位置：" "Provider decides where deployment runs:")"
   echo "- vps: $(msg "本机服务器直接运行" "local server runtime")"
   echo "- serv00: $(msg "远程 Serv00 引导部署" "remote Serv00 bootstrap")"
   echo "- sap: $(msg "SAP Cloud Foundry 部署" "SAP Cloud Foundry deployment")"
@@ -20,7 +21,7 @@ wizard() {
   fi
 
   echo
-  echo "$(msg "资源档位决定内存开销：" "Profile controls resource usage:")"
+  printf '%s\n' "$(msg "资源档位决定内存开销：" "Profile controls resource usage:")"
   echo "- lite: $(msg "适合 512MB，最多 2 个协议" "optimized for 512MB, up to 2 protocols")"
   echo "- full: $(msg "开放全部协议选择" "all enabled choices")"
   if prompt_yes_no "$(msg "使用推荐档位 'lite' 吗？" "Use recommended profile 'lite'?")" "Y"; then
@@ -30,7 +31,7 @@ wizard() {
   fi
 
   echo
-  echo "$(msg "内核选择决定运行核心：" "Engine controls runtime core:")"
+  printf '%s\n' "$(msg "内核选择决定运行核心：" "Engine controls runtime core:")"
   echo "- sing-box: $(msg "默认且支持协议更广" "default and broader protocol support")"
   echo "- xray: $(msg "可选核心" "optional core")"
   if prompt_yes_no "$(msg "使用推荐内核 'sing-box' 吗？" "Use recommended engine 'sing-box'?")" "Y"; then
@@ -40,7 +41,7 @@ wizard() {
   fi
 
   echo
-  echo "$(msg "协议选择" "Protocol selection")"
+  printf '%s\n' "$(msg "协议选择" "Protocol selection")"
   PROTOCOLS="vless-reality"
   if prompt_yes_no "$(msg "保留默认协议 'vless-reality' 吗？" "Keep default protocol 'vless-reality'?")" "Y"; then
     PROTOCOLS="vless-reality"
@@ -80,7 +81,7 @@ wizard() {
   fi
 
   echo
-  echo "$(msg "Argo 可通过 Cloudflare 隧道暴露 WS 协议。" "Argo can expose WS protocols through Cloudflare tunnel.")"
+  printf '%s\n' "$(msg "Argo 可通过 Cloudflare 隧道暴露 WS 协议。" "Argo can expose WS protocols through Cloudflare tunnel.")"
   if prompt_yes_no "$(msg "启用 Argo 隧道功能吗？" "Enable Argo tunnel feature?")" "N"; then
     if prompt_yes_no "$(msg "使用临时 Argo 隧道（无需 token）吗？" "Use temporary Argo tunnel (no token needed)?")" "Y"; then
       ARGO_MODE="temp"
@@ -94,7 +95,7 @@ wizard() {
   fi
 
   echo
-  echo "$(msg "WARP 用于控制 sing-box 出站路径。" "WARP controls outbound path for sing-box.")"
+  printf '%s\n' "$(msg "WARP 用于控制 sing-box 出站路径。" "WARP controls outbound path for sing-box.")"
   if prompt_yes_no "$(msg "启用 WARP 全局出站模式吗？" "Enable WARP global outbound mode?")" "N"; then
     WARP_MODE="global"
     log_info "$(msg "安装前请设置 WARP_PRIVATE_KEY 和 WARP_PEER_PUBLIC_KEY" "Remember to set WARP_PRIVATE_KEY and WARP_PEER_PUBLIC_KEY before install")"
@@ -103,7 +104,7 @@ wizard() {
   fi
 
   echo
-  echo "$(msg "出站代理用于让所有入站流量通过上游 socks/http/https 代理转发。" "Outbound proxy lets inbound traffic egress through upstream socks/http/https.")"
+  printf '%s\n' "$(msg "出站代理用于让所有入站流量通过上游 socks/http/https 代理转发。" "Outbound proxy lets inbound traffic egress through upstream socks/http/https.")"
   if prompt_yes_no "$(msg "保持默认直连出站（direct）吗？" "Keep default direct outbound mode?")" "Y"; then
     OUTBOUND_PROXY_MODE="direct"
   else

@@ -61,7 +61,7 @@ provider_status_header() {
 
   if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
     local sbver
-    sbver="$(${SBD_BIN_DIR}/sing-box version 2>/dev/null | awk '/version/{print $NF}' | head -n1)"
+    sbver="$("${SBD_BIN_DIR}/sing-box" version 2>/dev/null | awk '/version/{print $NF}' | head -n1)"
     if [[ -n "$sbver" ]]; then
       local sb_remote sb_upgrade sb_local_norm sb_remote_norm
       sb_remote="$(fetch_latest_release_tag "SagerNet/sing-box" 2>/dev/null || true)"
@@ -80,7 +80,7 @@ provider_status_header() {
 
   if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
     local xver
-    xver="$(${SBD_BIN_DIR}/xray version 2>/dev/null | awk '/^Xray/{print $2}' | head -n1)"
+    xver="$("${SBD_BIN_DIR}/xray" version 2>/dev/null | awk '/^Xray/{print $2}' | head -n1)"
     if [[ -n "$xver" ]]; then
       local x_remote x_upgrade x_local_norm x_remote_norm
       x_remote="$(fetch_latest_release_tag "XTLS/Xray-core" 2>/dev/null || true)"
@@ -99,7 +99,7 @@ provider_status_header() {
 
   if [[ -x "${SBD_BIN_DIR}/cloudflared" ]]; then
     local cver
-    cver="$(${SBD_BIN_DIR}/cloudflared --version 2>/dev/null | awk '{print $3}' | head -n1)"
+    cver="$("${SBD_BIN_DIR}/cloudflared" --version 2>/dev/null | awk '{print $3}' | head -n1)"
     [[ -n "$cver" ]] && log_info "cloudflared version: ${cver}"
     if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
       if systemctl is-active --quiet sing-box-deve-argo.service; then
@@ -123,7 +123,11 @@ provider_panel() {
   if [[ "$mode" == "full" ]]; then
     echo
     log_info "----- Runtime Details -----"
-    [[ -f /etc/sing-box-deve/runtime.env ]] && cat /etc/sing-box-deve/runtime.env || log_warn "runtime.env missing"
+    if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+      cat /etc/sing-box-deve/runtime.env
+    else
+      log_warn "runtime.env missing"
+    fi
     log_info "----- Settings -----"
     show_settings
     log_info "----- Managed Firewall Rules -----"

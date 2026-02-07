@@ -27,7 +27,7 @@ fw_tag() {
   local proto="$2"
   local port="$3"
   load_install_context || die "Install context missing for firewall tagging"
-  echo "MYBOX:${install_id}:${service}:${proto}:${port}"
+  echo "MYBOX:${install_id:-unknown}:${service}:${proto}:${port}"
 }
 
 fw_record_rule() {
@@ -98,7 +98,9 @@ fw_remove_rule_by_record() {
         while read -r num; do
           local ufw_num
           ufw_num="$(ufw status numbered | sed -n "${num}p" | sed -E 's/^\[ *([0-9]+)\].*/\1/')"
-          [[ -n "$ufw_num" ]] && ufw --force delete "$ufw_num" >/dev/null || true
+          if [[ -n "$ufw_num" ]]; then
+            ufw --force delete "$ufw_num" >/dev/null || true
+          fi
         done <<< "$rule_numbers"
       fi
       ;;
@@ -108,7 +110,9 @@ fw_remove_rule_by_record() {
       if [[ -n "$handles" ]]; then
         local h
         while read -r h; do
-          [[ -n "$h" ]] && nft delete rule inet sing_box_deve input handle "$h" >/dev/null 2>&1 || true
+          if [[ -n "$h" ]]; then
+            nft delete rule inet sing_box_deve input handle "$h" >/dev/null 2>&1 || true
+          fi
         done <<< "$handles"
       fi
       ;;
@@ -132,7 +136,7 @@ fw_clear_managed_rules() {
     return 0
   fi
 
-  local line backend proto port tag _created
+  local backend proto port tag _created
   while IFS='|' read -r backend proto port tag _created; do
     [[ -z "$backend" ]] && continue
     fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag"
@@ -150,7 +154,7 @@ fw_rollback() {
   fw_clear_managed_rules
 
   if [[ -s "$SBD_FW_SNAPSHOT_FILE" ]]; then
-    local line backend proto port tag _created
+    local backend proto port tag _created
     while IFS='|' read -r backend proto port tag _created; do
       [[ -z "$backend" ]] && continue
       FW_BACKEND="$backend"

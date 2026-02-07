@@ -100,7 +100,10 @@ protocols_to_array() {
     [[ -n "$protocol" ]] && cleaned+=("$protocol")
   done
 
-  eval "$_out_var=(\"${cleaned[@]}\")"
+  # shellcheck disable=SC2034
+  local -n out_ref="$_out_var"
+  # shellcheck disable=SC2034
+  out_ref=("${cleaned[@]}")
 }
 
 protocol_enabled() {

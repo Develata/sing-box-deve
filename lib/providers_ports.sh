@@ -52,9 +52,11 @@ provider_set_port() {
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
   # shellcheck disable=SC1091
   source /etc/sing-box-deve/runtime.env
-  validate_provider "${provider:-vps}"
-  validate_engine "${engine:-sing-box}"
-  [[ "${provider}" == "vps" ]] || die "set-port currently supports provider=vps only"
+  local runtime_provider="${provider:-vps}"
+  local runtime_engine="${engine:-sing-box}"
+  validate_provider "$runtime_provider"
+  validate_engine "$runtime_engine"
+  [[ "$runtime_provider" == "vps" ]] || die "set-port currently supports provider=vps only"
   [[ "$2" =~ ^[0-9]+$ ]] || die "Port must be numeric"
   (( $2 >= 1 && $2 <= 65535 )) || die "Port must be between 1 and 65535"
 
@@ -67,7 +69,7 @@ provider_set_port() {
   fw_proto="${fw_proto%%:*}"
 
   local cfg tmp_cfg old_port
-  if [[ "${engine}" == "sing-box" ]]; then
+  if [[ "$runtime_engine" == "sing-box" ]]; then
     cfg="${SBD_CONFIG_DIR}/config.json"
     [[ -f "$cfg" ]] || die "Config file missing: $cfg"
     old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.listen_port // .port)' "$cfg" | head -n1)"
@@ -115,6 +117,10 @@ provider_set_egress() {
 
   # shellcheck disable=SC1091
   source /etc/sing-box-deve/runtime.env
+  local runtime_provider="${provider:-vps}"
+  local runtime_profile="${profile:-lite}"
+  local runtime_engine="${engine:-sing-box}"
+  local runtime_protocols="${protocols:-vless-reality}"
   export OUTBOUND_PROXY_MODE="$mode"
   export OUTBOUND_PROXY_HOST="$host"
   export OUTBOUND_PROXY_PORT="$port"
@@ -126,11 +132,11 @@ provider_set_egress() {
   export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
 
   validate_feature_modes
-  case "${engine}" in
-    sing-box) build_sing_box_config "${protocols}" && validate_generated_config "sing-box" ;;
-    xray) build_xray_config "${protocols}" && validate_generated_config "xray" ;;
+  case "$runtime_engine" in
+    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" ;;
+    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" ;;
   esac
-  persist_runtime_state "$provider" "$profile" "$engine" "$protocols"
+  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
   log_success "Egress mode updated: ${mode}"
 }

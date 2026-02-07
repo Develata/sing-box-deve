@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 parse_install_args() {
   PROVIDER="vps"

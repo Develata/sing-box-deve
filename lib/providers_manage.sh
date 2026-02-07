@@ -78,7 +78,9 @@ provider_regen_nodes() {
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
   # shellcheck disable=SC1091
   source /etc/sing-box-deve/runtime.env
-  write_nodes_output "$engine" "$protocols"
+  local runtime_engine="${engine:-sing-box}"
+  local runtime_protocols="${protocols:-vless-reality}"
+  write_nodes_output "$runtime_engine" "$runtime_protocols"
   log_success "Nodes regenerated: $SBD_NODES_FILE"
 }
 

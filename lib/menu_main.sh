@@ -20,7 +20,7 @@ menu_main() {
     echo "10) $(msg "卸载管理" "Uninstall")"
     echo "0) $(msg "退出" "Exit")"
     echo
-    echo "$(msg "快捷提示: 直接输入 sb panel --full / sb list --nodes 也可执行命令模式" "Tip: You can also run command mode like sb panel --full / sb list --nodes")"
+    printf '%s\n' "$(msg "快捷提示: 直接输入 sb panel --full / sb list --nodes 也可执行命令模式" "Tip: You can also run command mode like sb panel --full / sb list --nodes")"
     read -r -p "$(msg "请选择" "Select"): " choice
     case "${choice:-0}" in
       1) menu_install ;;
