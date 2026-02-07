@@ -93,3 +93,103 @@ provider_update() {
   log_success "Engine updated and service restarted"
   provider_panel
 }
+
+provider_kernel_show() {
+  local sb_local xr_local sb_remote xr_remote
+  if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
+    sb_local="$("${SBD_BIN_DIR}/sing-box" version 2>/dev/null | awk '/version/{print $NF}' | head -n1)"
+  else
+    sb_local=""
+  fi
+  if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
+    xr_local="$("${SBD_BIN_DIR}/xray" version 2>/dev/null | awk '/^Xray/{print $2}' | head -n1)"
+  else
+    xr_local=""
+  fi
+  sb_remote="$(fetch_latest_release_tag "SagerNet/sing-box" 2>/dev/null || true)"
+  xr_remote="$(fetch_latest_release_tag "XTLS/Xray-core" 2>/dev/null || true)"
+  log_info "sing-box local=${sb_local:-n/a} remote=${sb_remote:-n/a}"
+  log_info "xray local=${xr_local:-n/a} remote=${xr_remote:-n/a}"
+}
+
+provider_kernel_set() {
+  ensure_root
+  local target_engine="$1" target_tag="${2:-latest}"
+  validate_engine "$target_engine"
+
+  local has_runtime="false"
+  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+    has_runtime="true"
+    # shellcheck disable=SC1091
+    source /etc/sing-box-deve/runtime.env
+  fi
+
+  install_engine_binary "$target_engine" "$target_tag"
+
+  if [[ "$has_runtime" == "true" ]]; then
+    export ARGO_MODE="${argo_mode:-off}"
+    export ARGO_DOMAIN="${argo_domain:-}"
+    export ARGO_TOKEN="${argo_token:-}"
+    export WARP_MODE="${warp_mode:-off}"
+    export ROUTE_MODE="${route_mode:-direct}"
+    export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
+    export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
+    export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
+    export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
+    export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+    export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
+    export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
+    export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
+    export IP_PREFERENCE="${ip_preference:-auto}"
+    export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
+    export TLS_MODE="${tls_mode:-self-signed}"
+    export ACME_CERT_PATH="${acme_cert_path:-}"
+    export ACME_KEY_PATH="${acme_key_path:-}"
+
+    assert_engine_protocol_compatibility "$target_engine" "${protocols:-vless-reality}"
+    case "$target_engine" in
+      sing-box) build_sing_box_config "${protocols:-vless-reality}" ;;
+      xray) build_xray_config "${protocols:-vless-reality}" ;;
+    esac
+    validate_generated_config "$target_engine"
+    write_systemd_service "$target_engine"
+    write_nodes_output "$target_engine" "${protocols:-vless-reality}"
+    persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "${protocols:-vless-reality}"
+  fi
+
+  log_success "Kernel set: engine=${target_engine} tag=${target_tag}"
+}
+
+provider_warp_status() {
+  local w4 w6
+  w4="$(curl -s4m5 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^warp=/{print $2}' | head -n1)"
+  w6="$(curl -s6m5 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^warp=/{print $2}' | head -n1)"
+  log_info "warp status ipv4=${w4:-unknown} ipv6=${w6:-unknown}"
+}
+
+provider_warp_register() {
+  ensure_root
+  local keypair private_key public_key response reserved_str reserved_hex reserved_dec
+  keypair="$(openssl genpkey -algorithm X25519 | openssl pkey -text -noout)"
+  private_key="$(echo "$keypair" | awk '/priv:/{flag=1;next}/pub:/{flag=0}flag' | tr -d '[:space:]' | xxd -r -p | base64)"
+  public_key="$(echo "$keypair" | awk '/pub:/{flag=1}flag' | tr -d '[:space:]' | xxd -r -p | base64)"
+  response="$(curl -fsSL --tlsv1.3 -X POST 'https://api.cloudflareclient.com/v0a2158/reg' -H 'CF-Client-Version: a-7.21-0721' -H 'Content-Type: application/json' -d '{"key":"'"$public_key"'","tos":"'"$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"'"}')"
+  reserved_str="$(echo "$response" | jq -r '.config.client_id // empty')"
+  reserved_hex="$(echo "$reserved_str" | base64 -d 2>/dev/null | xxd -p -c 256 || true)"
+  reserved_dec="$(python3 - <<PY
+h='${reserved_hex}'
+try:
+    vals=[int(h[i:i+2],16) for i in range(0,6,2)]
+    print(f'[{vals[0]},{vals[1]},{vals[2]}]')
+except Exception:
+    print('[0,0,0]')
+PY
+)"
+  mkdir -p "$SBD_DATA_DIR"
+  cat > "${SBD_DATA_DIR}/warp-account.env" <<EOF
+WARP_PRIVATE_KEY=${private_key}
+WARP_PEER_PUBLIC_KEY=bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
+WARP_RESERVED=${reserved_dec:-[0,0,0]}
+EOF
+  log_success "WARP account generated: ${SBD_DATA_DIR}/warp-account.env"
+}

@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+
+provider_cfg_load_runtime_exports() {
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  export ARGO_MODE="${argo_mode:-off}"
+  export ARGO_DOMAIN="${argo_domain:-}"
+  export ARGO_TOKEN="${argo_token:-}"
+  export WARP_MODE="${warp_mode:-off}"
+  export ROUTE_MODE="${route_mode:-direct}"
+  export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
+  export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
+  export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
+  export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
+  export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
+  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
+  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
+  export IP_PREFERENCE="${ip_preference:-auto}"
+  export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
+  export TLS_MODE="${tls_mode:-self-signed}"
+  export ACME_CERT_PATH="${acme_cert_path:-}"
+  export ACME_KEY_PATH="${acme_key_path:-}"
+  export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
+  export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
+  export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+}
+
+provider_cfg_rebuild_runtime() {
+  ensure_root
+  provider_cfg_load_runtime_exports
+  validate_feature_modes
+  case "${engine:-sing-box}" in
+    sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" ;;
+    xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" ;;
+    *) die "Unsupported engine in runtime: ${engine:-unknown}" ;;
+  esac
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  provider_restart core
+}
+
+provider_cfg_rotate_identity() {
+  ensure_root
+  provider_cfg_load_runtime_exports
+  uuidgen > "${SBD_DATA_DIR}/uuid"
+  openssl rand -hex 4 > "${SBD_DATA_DIR}/reality_short_id" 2>/dev/null || true
+  openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id" 2>/dev/null || true
+  provider_cfg_rebuild_runtime
+  log_success "Identity rotated (UUID/short-id)"
+}
+
+provider_cfg_set_argo() {
+  ensure_root
+  local mode="$1" token="${2:-}" domain="${3:-}"
+  case "$mode" in off|temp|fixed) ;;
+    *) die "Usage: cfg argo <off|temp|fixed> [token] [domain]" ;;
+  esac
+  provider_cfg_load_runtime_exports
+  ARGO_MODE="$mode"; ARGO_TOKEN="$token"; ARGO_DOMAIN="$domain"
+  if [[ "$mode" == "off" ]]; then
+    systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
+    rm -f "$SBD_ARGO_SERVICE_FILE"
+    systemctl daemon-reload
+  else
+    configure_argo_tunnel "${protocols:-vless-reality}"
+  fi
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  log_success "Argo mode updated: ${mode}"
+}
+
+provider_cfg_set_ip_preference() {
+  ensure_root
+  local pref="$1"
+  case "$pref" in auto|v4|v6) ;;
+    *) die "Usage: cfg ip-pref <auto|v4|v6>" ;;
+  esac
+  provider_cfg_load_runtime_exports
+  IP_PREFERENCE="$pref"
+  provider_cfg_rebuild_runtime
+  log_success "IP preference updated: ${pref}"
+}
+
+provider_cfg_set_cdn_host() {
+  ensure_root
+  local host="$1"
+  [[ -n "$host" ]] || die "Usage: cfg cdn-host <domain>"
+  provider_cfg_load_runtime_exports
+  CDN_TEMPLATE_HOST="$host"
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  log_success "CDN host template updated: ${host}"
+}
+
+provider_cfg_set_domain_split() {
+  ensure_root
+  local direct="$1" proxy="$2" block="$3"
+  provider_cfg_load_runtime_exports
+  DOMAIN_SPLIT_DIRECT="$direct"
+  DOMAIN_SPLIT_PROXY="$proxy"
+  DOMAIN_SPLIT_BLOCK="$block"
+  provider_cfg_rebuild_runtime
+  log_success "Domain split updated"
+}
+
+provider_cfg_set_tls() {
+  ensure_root
+  local mode="$1" cert="${2:-}" key="${3:-}"
+  case "$mode" in self-signed|acme) ;;
+    *) die "Usage: cfg tls <self-signed|acme> [cert_path] [key_path]" ;;
+  esac
+  provider_cfg_load_runtime_exports
+  TLS_MODE="$mode"
+  if [[ "$mode" == "acme" ]]; then
+    ACME_CERT_PATH="$cert"
+    ACME_KEY_PATH="$key"
+  else
+    ACME_CERT_PATH=""
+    ACME_KEY_PATH=""
+  fi
+  provider_cfg_rebuild_runtime
+  log_success "TLS mode updated: ${mode}"
+}
+
+provider_cfg_command() {
+  local action="${1:-}"
+  shift || true
+  case "$action" in
+    rotate-id) provider_cfg_rotate_identity ;;
+    argo) provider_cfg_set_argo "$@" ;;
+    ip-pref) provider_cfg_set_ip_preference "$@" ;;
+    cdn-host) provider_cfg_set_cdn_host "$@" ;;
+    domain-split) provider_cfg_set_domain_split "${1:-}" "${2:-}" "${3:-}" ;;
+    tls) provider_cfg_set_tls "$@" ;;
+    rebuild) provider_cfg_rebuild_runtime ;;
+    *) die "Usage: cfg [rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme> [cert] [key]|rebuild]" ;;
+  esac
+}

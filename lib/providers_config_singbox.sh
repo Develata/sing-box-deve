@@ -14,13 +14,14 @@ generate_reality_keys() {
   echo "$out" | awk -F': ' '/PublicKey/{print $2}' > "$public_key_file"
   openssl rand -hex 4 > "$short_id_file"
 }
-
 build_sing_box_config() {
   local protocols_csv="$1"
   local config_file="${SBD_CONFIG_DIR}/config.json"
   local uuid
   uuid="$(ensure_uuid)"
-  ensure_self_signed_cert
+  local cert_file key_file
+  cert_file="$(get_tls_cert_path)"
+  key_file="$(get_tls_key_path)"
   generate_reality_keys
 
   local private_key public_key short_id
@@ -106,8 +107,8 @@ build_sing_box_config() {
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
     inbounds+=$'        "server_name": "www.bing.com",\n'
-    inbounds+=$'        "certificate_path": "'"${SBD_DATA_DIR}/cert.pem"'",\n'
-    inbounds+=$'        "key_path": "'"${SBD_DATA_DIR}/private.key"'"\n'
+    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
+    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
     inbounds+=$'    }'
   fi
@@ -124,8 +125,8 @@ build_sing_box_config() {
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
     inbounds+=$'        "server_name": "www.bing.com",\n'
-    inbounds+=$'        "certificate_path": "'"${SBD_DATA_DIR}/cert.pem"'",\n'
-    inbounds+=$'        "key_path": "'"${SBD_DATA_DIR}/private.key"'"\n'
+    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
+    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
     inbounds+=$'    }'
   fi
@@ -141,8 +142,8 @@ build_sing_box_config() {
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
     inbounds+=$'        "server_name": "www.bing.com",\n'
-    inbounds+=$'        "certificate_path": "'"${SBD_DATA_DIR}/cert.pem"'",\n'
-    inbounds+=$'        "key_path": "'"${SBD_DATA_DIR}/private.key"'"\n'
+    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
+    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
     inbounds+=$'    }'
   fi
@@ -158,8 +159,8 @@ build_sing_box_config() {
     inbounds+=$'      "padding_scheme": [],\n'
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "certificate_path": "'"${SBD_DATA_DIR}/cert.pem"'",\n'
-    inbounds+=$'        "key_path": "'"${SBD_DATA_DIR}/private.key"'"\n'
+    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
+    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
     inbounds+=$'    }'
   fi

@@ -120,6 +120,32 @@ sudo sb doctor
 ./sing-box-deve.sh regen-nodes
 ```
 
+订阅与客户端产物：
+
+```bash
+./sing-box-deve.sh sub refresh
+./sing-box-deve.sh sub show
+./sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
+./sing-box-deve.sh sub gitlab-push
+./sing-box-deve.sh sub tg-set <bot_token> <chat_id>
+./sing-box-deve.sh sub tg-push
+```
+
+面板已内置“订阅与分享”菜单，可直接完成刷新、GitLab 推送、TG 推送等操作。
+
+配置变更中心与系统工具（面板同样可操作）：
+
+```bash
+./sing-box-deve.sh cfg rotate-id
+./sing-box-deve.sh cfg argo off|temp|fixed [token] [domain]
+./sing-box-deve.sh cfg ip-pref auto|v4|v6
+./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
+./sing-box-deve.sh kernel show
+./sing-box-deve.sh kernel set sing-box v1.12.20
+./sing-box-deve.sh warp status
+./sing-box-deve.sh sys bbr-enable
+```
+
 服务器验证建议：优先使用 `sb` 面板完成安装、分流、端口和节点刷新操作；命令模式仅用于自动化。
 
 版本与更新：

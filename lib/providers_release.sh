@@ -58,10 +58,16 @@ verify_sha256_expected() {
 }
 
 install_sing_box_binary() {
+  local input_tag="${1:-latest}"
   local arch
   arch="$(get_arch)"
   local tag
-  tag="$(fetch_latest_release_tag "SagerNet/sing-box")"
+  if [[ "$input_tag" == "latest" ]]; then
+    tag="$(fetch_latest_release_tag "SagerNet/sing-box")"
+  else
+    tag="$input_tag"
+    [[ "$tag" == v* ]] || tag="v${tag}"
+  fi
   [[ -n "$tag" && "$tag" != "null" ]] || die "Unable to fetch latest sing-box release"
 
   local version="${tag#v}"
@@ -93,13 +99,19 @@ install_sing_box_binary() {
 }
 
 install_xray_binary() {
+  local input_tag="${1:-latest}"
   local arch
   arch="$(get_arch)"
   local x_arch="64"
   [[ "$arch" == "arm64" ]] && x_arch="arm64-v8a"
 
   local tag
-  tag="$(fetch_latest_release_tag "XTLS/Xray-core")"
+  if [[ "$input_tag" == "latest" ]]; then
+    tag="$(fetch_latest_release_tag "XTLS/Xray-core")"
+  else
+    tag="$input_tag"
+    [[ "$tag" == v* ]] || tag="v${tag}"
+  fi
   [[ -n "$tag" && "$tag" != "null" ]] || die "Unable to fetch latest xray release"
 
   local filename="Xray-linux-${x_arch}.zip"
@@ -122,9 +134,10 @@ install_xray_binary() {
 
 install_engine_binary() {
   local engine="$1"
+  local tag="${2:-latest}"
   case "$engine" in
-    sing-box) install_sing_box_binary ;;
-    xray) install_xray_binary ;;
+    sing-box) install_sing_box_binary "$tag" ;;
+    xray) install_xray_binary "$tag" ;;
     *) die "Unsupported engine: $engine" ;;
   esac
 }

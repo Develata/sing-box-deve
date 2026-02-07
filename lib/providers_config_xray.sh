@@ -23,6 +23,9 @@ build_xray_config() {
   fi
 
   local private_key public_key short_id
+  local cert_file key_file
+  cert_file="$(get_tls_cert_path)"
+  key_file="$(get_tls_key_path)"
   private_key="$(<"${SBD_DATA_DIR}/xray_private.key")"
   public_key="$(<"${SBD_DATA_DIR}/xray_public.key")"
   short_id="$(<"${SBD_DATA_DIR}/xray_short_id")"
@@ -89,7 +92,6 @@ build_xray_config() {
   fi
 
   if protocol_enabled "trojan" "${protocols[@]}"; then
-    ensure_self_signed_cert
     inbounds+=$',\n'
     inbounds+=$'    {\n'
     inbounds+=$'      "tag": "trojan",\n'
@@ -97,7 +99,7 @@ build_xray_config() {
     inbounds+="      \"port\": ${port_trojan},\n"
     inbounds+=$'      "protocol": "trojan",\n'
     inbounds+=$'      "settings": {"clients": [{"password": "'"${uuid}"'"}]},\n'
-    inbounds+=$'      "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": "'"${SBD_DATA_DIR}/cert.pem"'", "keyFile": "'"${SBD_DATA_DIR}/private.key"'"}]}}\n'
+    inbounds+=$'      "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": "'"${cert_file}"'", "keyFile": "'"${key_file}"'"}]}}\n'
     inbounds+=$'    }'
   fi
 

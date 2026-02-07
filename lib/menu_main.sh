@@ -18,6 +18,9 @@ menu_main() {
     echo "8) $(msg "设置管理" "Settings")"
     echo "9) $(msg "日志查看" "Logs")"
     echo "10) $(msg "卸载管理" "Uninstall")"
+    echo "11) $(msg "订阅与分享" "Subscriptions")"
+    echo "12) $(msg "配置变更中心" "Config Center")"
+    echo "13) $(msg "内核与WARP" "Kernel & WARP")"
     echo "0) $(msg "退出" "Exit")"
     echo
     printf '%s\n' "$(msg "快捷提示: 直接输入 sb panel --full / sb list --nodes 也可执行命令模式" "Tip: You can also run command mode like sb panel --full / sb list --nodes")"
@@ -33,6 +36,9 @@ menu_main() {
       8) menu_settings ;;
       9) menu_logs ;;
       10) menu_uninstall ;;
+      11) menu_subscriptions ;;
+      12) menu_config_center ;;
+      13) menu_ops ;;
       0) break ;;
       *) menu_invalid; menu_pause ;;
     esac

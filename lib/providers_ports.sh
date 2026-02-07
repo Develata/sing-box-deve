@@ -129,6 +129,14 @@ provider_set_egress() {
   export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
   export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
   export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
+  export IP_PREFERENCE="${ip_preference:-auto}"
+  export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
+  export TLS_MODE="${tls_mode:-self-signed}"
+  export ACME_CERT_PATH="${acme_cert_path:-}"
+  export ACME_KEY_PATH="${acme_key_path:-}"
+  export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
+  export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
+  export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
   export ARGO_MODE="${argo_mode:-off}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
@@ -171,6 +179,14 @@ provider_set_route() {
   export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
   export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
   export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
+  export IP_PREFERENCE="${ip_preference:-auto}"
+  export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
+  export TLS_MODE="${tls_mode:-self-signed}"
+  export ACME_CERT_PATH="${acme_cert_path:-}"
+  export ACME_KEY_PATH="${acme_key_path:-}"
+  export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
+  export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
+  export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
 
   validate_feature_modes
   case "$runtime_engine" in
@@ -206,6 +222,14 @@ provider_set_share_endpoints() {
   export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
   export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
   export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
+  export IP_PREFERENCE="${ip_preference:-auto}"
+  export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
+  export TLS_MODE="${tls_mode:-self-signed}"
+  export ACME_CERT_PATH="${acme_cert_path:-}"
+  export ACME_KEY_PATH="${acme_key_path:-}"
+  export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
+  export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
+  export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
 
   case "$kind" in
     direct) DIRECT_SHARE_ENDPOINTS="$endpoints" ;;

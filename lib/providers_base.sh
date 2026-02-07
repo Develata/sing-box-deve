@@ -59,6 +59,16 @@ validate_feature_modes() {
 
   validate_route_mode
 
+  case "${IP_PREFERENCE:-auto}" in
+    auto|v4|v6) ;;
+    *) die "Invalid IP_PREFERENCE: ${IP_PREFERENCE}" ;;
+  esac
+
+  case "${TLS_MODE:-self-signed}" in
+    self-signed|acme) ;;
+    *) die "Invalid TLS_MODE: ${TLS_MODE}" ;;
+  esac
+
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     [[ -n "${OUTBOUND_PROXY_HOST:-}" ]] || die "OUTBOUND_PROXY_HOST is required when outbound proxy mode is not direct"
     [[ -n "${OUTBOUND_PROXY_PORT:-}" ]] || die "OUTBOUND_PROXY_PORT is required when outbound proxy mode is not direct"
@@ -68,6 +78,26 @@ validate_feature_modes() {
 
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" && "${WARP_MODE:-off}" == "global" ]]; then
     die "WARP_MODE=global conflicts with OUTBOUND_PROXY_MODE!=direct; choose one outbound strategy"
+  fi
+}
+
+get_tls_cert_path() {
+  if [[ "${TLS_MODE:-self-signed}" == "acme" ]]; then
+    [[ -n "${ACME_CERT_PATH:-}" && -f "${ACME_CERT_PATH}" ]] || die "ACME_CERT_PATH missing or not found"
+    echo "${ACME_CERT_PATH}"
+  else
+    ensure_self_signed_cert
+    echo "${SBD_DATA_DIR}/cert.pem"
+  fi
+}
+
+get_tls_key_path() {
+  if [[ "${TLS_MODE:-self-signed}" == "acme" ]]; then
+    [[ -n "${ACME_KEY_PATH:-}" && -f "${ACME_KEY_PATH}" ]] || die "ACME_KEY_PATH missing or not found"
+    echo "${ACME_KEY_PATH}"
+  else
+    ensure_self_signed_cert
+    echo "${SBD_DATA_DIR}/private.key"
   fi
 }
 

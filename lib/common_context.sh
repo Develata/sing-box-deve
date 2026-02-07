@@ -10,6 +10,14 @@ create_install_context() {
   local argo_token="${ARGO_TOKEN:-}"
   local warp_mode="${WARP_MODE:-off}"
   local route_mode="${ROUTE_MODE:-direct}"
+  local ip_preference="${IP_PREFERENCE:-auto}"
+  local cdn_template_host="${CDN_TEMPLATE_HOST:-}"
+  local tls_mode="${TLS_MODE:-self-signed}"
+  local acme_cert_path="${ACME_CERT_PATH:-}"
+  local acme_key_path="${ACME_KEY_PATH:-}"
+  local domain_split_direct="${DOMAIN_SPLIT_DIRECT:-}"
+  local domain_split_proxy="${DOMAIN_SPLIT_PROXY:-}"
+  local domain_split_block="${DOMAIN_SPLIT_BLOCK:-}"
   local outbound_proxy_mode="${OUTBOUND_PROXY_MODE:-direct}"
   local outbound_proxy_host="${OUTBOUND_PROXY_HOST:-}"
   local outbound_proxy_port="${OUTBOUND_PROXY_PORT:-}"
@@ -36,6 +44,14 @@ argo_domain=${argo_domain}
 argo_token_set=$([[ -n "${argo_token}" ]] && echo true || echo false)
 warp_mode=${warp_mode}
 route_mode=${route_mode}
+ip_preference=${ip_preference}
+cdn_template_host=${cdn_template_host}
+tls_mode=${tls_mode}
+acme_cert_path=${acme_cert_path}
+acme_key_path=${acme_key_path}
+domain_split_direct=${domain_split_direct}
+domain_split_proxy=${domain_split_proxy}
+domain_split_block=${domain_split_block}
 outbound_proxy_mode=${outbound_proxy_mode}
 outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
@@ -78,6 +94,14 @@ features:
   argo_token_set: ${argo_token_set:-false}
   warp_mode: ${warp_mode:-off}
   route_mode: ${route_mode:-direct}
+  ip_preference: ${ip_preference:-auto}
+  cdn_template_host: ${cdn_template_host:-""}
+  tls_mode: ${tls_mode:-self-signed}
+  acme_cert_path: ${acme_cert_path:-""}
+  acme_key_path: ${acme_key_path:-""}
+  domain_split_direct: ${domain_split_direct:-""}
+  domain_split_proxy: ${domain_split_proxy:-""}
+  domain_split_block: ${domain_split_block:-""}
   outbound_proxy_mode: ${outbound_proxy_mode:-direct}
   outbound_proxy_host: ${outbound_proxy_host:-""}
   outbound_proxy_port: ${outbound_proxy_port:-""}

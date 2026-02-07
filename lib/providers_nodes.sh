@@ -11,17 +11,23 @@ runtime_port_for_tag() {
 
 append_argo_cdn_templates() {
   local file="$1" uuid="$2" domain="$3" vm="$4" vl="$5"
+  local template_host
+  template_host="${CDN_TEMPLATE_HOST:-$domain}"
   local ep host port tls
-  for ep in "yg1.ygkkk.dpdns.org:443:tls" "yg2.ygkkk.dpdns.org:8443:tls" "yg3.ygkkk.dpdns.org:2053:tls" "yg4.ygkkk.dpdns.org:2083:tls" "yg5.ygkkk.dpdns.org:2087:tls" "[2606:4700::0]:2096:tls" "yg6.ygkkk.dpdns.org:80:none" "yg7.ygkkk.dpdns.org:8080:none" "yg8.ygkkk.dpdns.org:8880:none" "yg9.ygkkk.dpdns.org:2052:none"; do
-    host="${ep%%:*}"; port="${ep#*:}"; port="${port%%:*}"; tls="${ep##*:}"
+  for ep in "deve1.devekkk.dpdns.org:443:tls" "deve2.devekkk.dpdns.org:8443:tls" "deve3.devekkk.dpdns.org:2053:tls" "deve4.devekkk.dpdns.org:2083:tls" "deve5.devekkk.dpdns.org:2087:tls" "[2606:4700::0]:2096:tls" "deve6.devekkk.dpdns.org:80:none" "deve7.devekkk.dpdns.org:8080:none" "deve8.devekkk.dpdns.org:8880:none" "deve9.devekkk.dpdns.org:2052:none"; do
+    if [[ "$ep" =~ ^(\[[^]]+\]|[^:]+):([0-9]+):(tls|none)$ ]]; then
+      host="${BASH_REMATCH[1]}"; port="${BASH_REMATCH[2]}"; tls="${BASH_REMATCH[3]}"
+    else
+      continue
+    fi
     if [[ "$vm" == "true" ]]; then
-      echo "vmess://$(printf '{"v":"2","ps":"sbd-vmess-argo-cdn-%s","add":"%s","port":"%s","id":"%s","aid":"0","net":"ws","type":"none","host":"%s","path":"/vmess","tls":"%s","sni":"%s"}' "$port" "$host" "$port" "$uuid" "$domain" "$([[ "$tls" == tls ]] && echo tls || echo '')" "$domain" | base64 -w 0)" >> "$file"
+      echo "vmess://$(printf '{"v":"2","ps":"sbd-vmess-argo-cdn-%s","add":"%s","port":"%s","id":"%s","aid":"0","net":"ws","type":"none","host":"%s","path":"/vmess","tls":"%s","sni":"%s"}' "$port" "$host" "$port" "$uuid" "$template_host" "$([[ "$tls" == tls ]] && echo tls || echo '')" "$template_host" | base64 -w 0)" >> "$file"
     fi
     if [[ "$vl" == "true" ]]; then
       if [[ "$tls" == "tls" ]]; then
-        echo "vless://$uuid@$host:$port?encryption=none&security=tls&sni=$domain&type=ws&host=$domain&path=%2Fvless#sbd-vless-argo-cdn-$port" >> "$file"
+        echo "vless://$uuid@$host:$port?encryption=none&security=tls&sni=$template_host&type=ws&host=$template_host&path=%2Fvless#sbd-vless-argo-cdn-$port" >> "$file"
       else
-        echo "vless://$uuid@$host:$port?encryption=none&security=none&type=ws&host=$domain&path=%2Fvless#sbd-vless-argo-cdn-$port" >> "$file"
+        echo "vless://$uuid@$host:$port?encryption=none&security=none&type=ws&host=$template_host&path=%2Fvless#sbd-vless-argo-cdn-$port" >> "$file"
       fi
     fi
   done
@@ -29,8 +35,11 @@ append_argo_cdn_templates() {
 
 rewrite_link_with_endpoint() {
   local link="$1" endpoint="$2" label="$3" host port payload json out
-  host="${endpoint%%:*}"; port="${endpoint##*:}"
-  if [[ ! "$port" =~ ^[0-9]+$ ]]; then return 1; fi
+  if [[ "$endpoint" =~ ^(\[[^]]+\]|[^:]+):([0-9]+)$ ]]; then
+    host="${BASH_REMATCH[1]}"; port="${BASH_REMATCH[2]}"
+  else
+    return 1
+  fi
 
   case "$link" in
     vmess://*)

@@ -90,7 +90,7 @@ run_install() {
   validate_engine "$engine"
   validate_profile_protocols "$profile" "$protocols_csv"
 
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE ROUTE_MODE OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS DIRECT_SHARE_ENDPOINTS PROXY_SHARE_ENDPOINTS WARP_SHARE_ENDPOINTS
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS DIRECT_SHARE_ENDPOINTS PROXY_SHARE_ENDPOINTS WARP_SHARE_ENDPOINTS
 
   create_install_context "$provider" "$profile" "$engine" "$protocols_csv"
   auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE"
@@ -142,6 +142,14 @@ apply_config() {
   export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
   export WARP_MODE="${warp_mode:-${WARP_MODE:-off}}"
   export ROUTE_MODE="${route_mode:-${ROUTE_MODE:-direct}}"
+  export IP_PREFERENCE="${ip_preference:-${IP_PREFERENCE:-auto}}"
+  export CDN_TEMPLATE_HOST="${cdn_template_host:-${CDN_TEMPLATE_HOST:-}}"
+  export TLS_MODE="${tls_mode:-${TLS_MODE:-self-signed}}"
+  export ACME_CERT_PATH="${acme_cert_path:-${ACME_CERT_PATH:-}}"
+  export ACME_KEY_PATH="${acme_key_path:-${ACME_KEY_PATH:-}}"
+  export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-${DOMAIN_SPLIT_DIRECT:-}}"
+  export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-${DOMAIN_SPLIT_PROXY:-}}"
+  export DOMAIN_SPLIT_BLOCK="${domain_split_block:-${DOMAIN_SPLIT_BLOCK:-}}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-${OUTBOUND_PROXY_MODE:-direct}}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-${OUTBOUND_PROXY_HOST:-}}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-${OUTBOUND_PROXY_PORT:-}}"
@@ -163,6 +171,14 @@ apply_runtime() {
   export ARGO_MODE="${argo_mode:-off}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
+  export IP_PREFERENCE="${ip_preference:-auto}"
+  export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
+  export TLS_MODE="${tls_mode:-self-signed}"
+  export ACME_CERT_PATH="${acme_cert_path:-}"
+  export ACME_KEY_PATH="${acme_key_path:-}"
+  export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
+  export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
+  export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"

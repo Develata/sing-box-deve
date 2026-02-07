@@ -17,6 +17,28 @@ Usage:
   sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS]
   sing-box-deve.sh set-route <direct|global-proxy|cn-direct|cn-proxy>
   sing-box-deve.sh set-share <direct|proxy|warp> <host:port[,host:port...]>
+  sing-box-deve.sh sub refresh
+  sing-box-deve.sh sub show
+  sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
+  sing-box-deve.sh sub gitlab-push
+  sing-box-deve.sh sub tg-set <bot_token> <chat_id>
+  sing-box-deve.sh sub tg-push
+  sing-box-deve.sh cfg rotate-id
+  sing-box-deve.sh cfg argo <off|temp|fixed> [token] [domain]
+  sing-box-deve.sh cfg ip-pref <auto|v4|v6>
+  sing-box-deve.sh cfg cdn-host <domain>
+  sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
+  sing-box-deve.sh cfg tls <self-signed|acme> [cert_path] [key_path]
+  sing-box-deve.sh cfg rebuild
+  sing-box-deve.sh kernel show
+  sing-box-deve.sh kernel set <sing-box|xray> [tag|latest]
+  sing-box-deve.sh warp status
+  sing-box-deve.sh warp register
+  sing-box-deve.sh sys bbr-status
+  sing-box-deve.sh sys bbr-enable
+  sing-box-deve.sh sys acme-install
+  sing-box-deve.sh sys acme-issue <domain> <email>
+  sing-box-deve.sh sys acme-apply <cert_path> <key_path>
   sing-box-deve.sh regen-nodes
   sing-box-deve.sh update [--script|--core|--all] [--yes]
   sing-box-deve.sh version
@@ -108,6 +130,40 @@ main() {
       shift
       parse_set_share_args "$@"
       provider_set_share_endpoints "$SET_SHARE_KIND" "$SET_SHARE_ENDPOINTS"
+      ;;
+    sub)
+      shift
+      provider_sub_command "$@"
+      ;;
+    cfg)
+      shift
+      provider_cfg_command "$@"
+      ;;
+    kernel)
+      shift
+      case "${1:-show}" in
+        show)
+          provider_kernel_show
+          ;;
+        set)
+          provider_kernel_set "${2:-}" "${3:-latest}"
+          ;;
+        *)
+          die "Usage: kernel [show|set <sing-box|xray> [tag|latest]]"
+          ;;
+      esac
+      ;;
+    warp)
+      shift
+      case "${1:-status}" in
+        status) provider_warp_status ;;
+        register) provider_warp_register ;;
+        *) die "Usage: warp [status|register]" ;;
+      esac
+      ;;
+    sys)
+      shift
+      provider_sys_command "$@"
       ;;
     regen-nodes)
       shift
