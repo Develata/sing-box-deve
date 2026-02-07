@@ -89,9 +89,16 @@ VPS 已支持协议：
 ./sing-box-deve.sh wizard
 ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality
 ./sing-box-deve.sh apply -f ./config.env
-./sing-box-deve.sh list
-./sing-box-deve.sh panel
+./sing-box-deve.sh apply --runtime
+./sing-box-deve.sh list --all
+./sing-box-deve.sh list --settings
+./sing-box-deve.sh panel --full
 ./sing-box-deve.sh status
+./sing-box-deve.sh restart --all
+./sing-box-deve.sh restart --core
+./sing-box-deve.sh restart --argo
+./sing-box-deve.sh apply --runtime
+./sing-box-deve.sh uninstall --keep-settings
 ./sing-box-deve.sh doctor
 ./sing-box-deve.sh version
 ./sing-box-deve.sh update

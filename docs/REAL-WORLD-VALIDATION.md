@@ -14,6 +14,7 @@
 ```bash
 sudo ./sing-box-deve.sh version
 sudo ./sing-box-deve.sh doctor
+sudo ./sing-box-deve.sh panel --full
 ```
 
 PASS 判定：
@@ -32,8 +33,9 @@ FAIL 判定：
 
 ```bash
 sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
-sudo ./sing-box-deve.sh panel
-sudo ./sing-box-deve.sh list
+sudo ./sing-box-deve.sh panel --full
+sudo ./sing-box-deve.sh list --all
+sudo ./sing-box-deve.sh apply --runtime
 ```
 
 PASS：
@@ -53,7 +55,7 @@ FAIL：
 
 ```bash
 sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws,argo --argo temp --yes
-sudo ./sing-box-deve.sh panel
+sudo ./sing-box-deve.sh panel --full
 sudo ./sing-box-deve.sh doctor
 ```
 
@@ -75,7 +77,7 @@ FAIL：
 sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality \
   --outbound-proxy-mode socks --outbound-proxy-host <host> --outbound-proxy-port <port> \
   --outbound-proxy-user <user> --outbound-proxy-pass <pass> --yes
-sudo ./sing-box-deve.sh panel
+sudo ./sing-box-deve.sh panel --full
 sudo ./sing-box-deve.sh doctor
 ```
 
@@ -96,6 +98,7 @@ FAIL：
 ```bash
 sudo WARP_PRIVATE_KEY=<key> WARP_PEER_PUBLIC_KEY=<peer> \
 ./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,warp --warp-mode global --yes
+sudo ./sing-box-deve.sh restart --all
 ```
 
 PASS：
@@ -179,6 +182,7 @@ FAIL：
 ```bash
 sudo ./sing-box-deve.sh install --provider docker --profile lite --engine sing-box --protocols vless-reality
 sudo /etc/sing-box-deve/docker-healthcheck.sh
+sudo ./sing-box-deve.sh list --runtime
 ```
 
 PASS：
@@ -198,6 +202,7 @@ FAIL：
 ```bash
 sudo ./sing-box-deve.sh update --core --yes
 sudo ./sing-box-deve.sh fw status
+sudo ./sing-box-deve.sh panel --full
 ```
 
 PASS：
@@ -221,3 +226,22 @@ FAIL：
 安全检查：防火墙增量[PASS] 回滚[PASS] 更新校验[PASS]
 结论：<可发布/需修复后发布>
 ```
+
+## 10) 持久化管理专项复验
+
+```bash
+sudo ./sing-box-deve.sh settings show
+sudo ./sing-box-deve.sh list --settings
+sudo ./sing-box-deve.sh uninstall --keep-settings
+sudo ./sing-box-deve.sh settings show
+```
+
+PASS：
+
+- 卸载后 `settings.conf` 仍保留并可读取
+- 重新安装后 settings 生效
+
+FAIL：
+
+- `--keep-settings` 后设置丢失
+- `list --settings` 无法读取持久化配置

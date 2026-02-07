@@ -35,6 +35,12 @@ sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box 
 
 # Run diagnostics
 sudo ./sing-box-deve.sh doctor
+
+# Persistent management checks
+sudo ./sing-box-deve.sh list --all
+sudo ./sing-box-deve.sh panel --full
+sudo ./sing-box-deve.sh restart --all
+sudo ./sing-box-deve.sh apply --runtime
 ```
 
 ## 4) 自动化辅助

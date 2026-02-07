@@ -1338,38 +1338,53 @@ EOF
 }
 
 provider_list() {
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    log_info "Current runtime state:"
-    cat /etc/sing-box-deve/runtime.env
-  else
-    log_warn "No runtime state found"
+  local mode="${1:-all}"
+
+  if [[ "$mode" == "runtime" || "$mode" == "all" ]]; then
+    if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+      log_info "Current runtime state:"
+      cat /etc/sing-box-deve/runtime.env
+    else
+      log_warn "No runtime state found"
+    fi
   fi
 
-  if [[ -f "$SBD_NODES_FILE" ]]; then
+  if [[ "$mode" == "settings" || "$mode" == "all" ]]; then
     echo
-    log_info "Node links:"
-    cat "$SBD_NODES_FILE"
+    log_info "Persistent settings:"
+    show_settings
+  fi
+
+  if [[ "$mode" == "nodes" || "$mode" == "all" ]]; then
+    if [[ -f "$SBD_NODES_FILE" ]]; then
+      echo
+      log_info "Node links:"
+      cat "$SBD_NODES_FILE"
+    else
+      log_warn "Node file not found: $SBD_NODES_FILE"
+    fi
   fi
 }
 
 provider_restart() {
-  if [[ -f "$SBD_SERVICE_FILE" ]]; then
-    safe_service_restart
-    log_success "sing-box-deve service restarted"
-  else
-    log_warn "Service not installed"
-  fi
+  local target="${1:-all}"
 
-  if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-    if systemctl is-active --quiet sing-box-deve-argo.service; then
-      log_success "Argo service status: active"
+  if [[ "$target" == "core" || "$target" == "all" ]]; then
+    if [[ -f "$SBD_SERVICE_FILE" ]]; then
+      safe_service_restart
+      log_success "sing-box-deve service restarted"
     else
-      log_warn "Argo service status: inactive"
+      log_warn "Service not installed"
     fi
   fi
-  if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-    systemctl restart sing-box-deve-argo.service
-    log_success "sing-box-deve argo service restarted"
+
+  if [[ "$target" == "argo" || "$target" == "all" ]]; then
+    if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
+      systemctl restart sing-box-deve-argo.service
+      log_success "sing-box-deve argo service restarted"
+    else
+      log_warn "Argo service file not found"
+    fi
   fi
 }
 
@@ -1390,6 +1405,7 @@ provider_update() {
 }
 
 provider_panel() {
+  local mode="${1:-compact}"
   log_info "========== sing-box-deve panel =========="
 
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
@@ -1444,6 +1460,16 @@ provider_panel() {
 
   if [[ -f "$SBD_NODES_FILE" ]]; then
     log_info "Nodes file: $SBD_NODES_FILE"
+  fi
+
+  if [[ "$mode" == "full" ]]; then
+    echo
+    log_info "----- Runtime Details -----"
+    [[ -f /etc/sing-box-deve/runtime.env ]] && cat /etc/sing-box-deve/runtime.env || log_warn "runtime.env missing"
+    log_info "----- Settings -----"
+    show_settings
+    log_info "----- Managed Firewall Rules -----"
+    fw_status
   fi
 
   log_info "========================================="
@@ -1564,6 +1590,7 @@ provider_doctor() {
 }
 
 provider_uninstall() {
+  local keep_settings="${1:-false}"
   ensure_root
   log_warn "Uninstall requested; removing only managed firewall rules and sing-box-deve state"
   if systemctl list-unit-files | grep -q '^sing-box-deve.service'; then
@@ -1577,6 +1604,12 @@ provider_uninstall() {
   systemctl daemon-reload
   fw_detect_backend
   fw_clear_managed_rules
-  rm -rf /etc/sing-box-deve "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
+  if [[ "$keep_settings" == "true" ]]; then
+    rm -f /etc/sing-box-deve/runtime.env /etc/sing-box-deve/config.yaml /etc/sing-box-deve/config.json /etc/sing-box-deve/xray-config.json
+    rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
+    log_info "Kept persistent settings file: /etc/sing-box-deve/settings.conf"
+  else
+    rm -rf /etc/sing-box-deve "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
+  fi
   log_success "Uninstall complete"
 }

@@ -16,15 +16,16 @@ Usage:
   sing-box-deve.sh wizard
   sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
   sing-box-deve.sh apply -f config.env
-  sing-box-deve.sh list
-  sing-box-deve.sh panel
-  sing-box-deve.sh restart
+  sing-box-deve.sh apply --runtime
+  sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
+  sing-box-deve.sh panel [--compact|--full]
+  sing-box-deve.sh restart [--core|--argo|--all]
   sing-box-deve.sh update [--script|--core|--all] [--yes]
   sing-box-deve.sh version
   sing-box-deve.sh settings show
   sing-box-deve.sh settings set <key> <value>
   sing-box-deve.sh settings set key1=value1 key2=value2 ...
-  sing-box-deve.sh uninstall
+  sing-box-deve.sh uninstall [--keep-settings]
   sing-box-deve.sh doctor
   sing-box-deve.sh fw status
   sing-box-deve.sh fw rollback
@@ -108,6 +109,52 @@ parse_update_args() {
     UPDATE_SCRIPT="true"
     UPDATE_CORE="true"
   fi
+}
+
+parse_list_args() {
+  LIST_MODE="all"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --runtime) LIST_MODE="runtime"; shift ;;
+      --nodes) LIST_MODE="nodes"; shift ;;
+      --settings) LIST_MODE="settings"; shift ;;
+      --all) LIST_MODE="all"; shift ;;
+      *) die "Unknown list argument: $1" ;;
+    esac
+  done
+}
+
+parse_panel_args() {
+  PANEL_MODE="compact"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --compact) PANEL_MODE="compact"; shift ;;
+      --full) PANEL_MODE="full"; shift ;;
+      *) die "Unknown panel argument: $1" ;;
+    esac
+  done
+}
+
+parse_restart_args() {
+  RESTART_TARGET="all"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --core) RESTART_TARGET="core"; shift ;;
+      --argo) RESTART_TARGET="argo"; shift ;;
+      --all) RESTART_TARGET="all"; shift ;;
+      *) die "Unknown restart argument: $1" ;;
+    esac
+  done
+}
+
+parse_uninstall_args() {
+  KEEP_SETTINGS="false"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --keep-settings) KEEP_SETTINGS="true"; shift ;;
+      *) die "Unknown uninstall argument: $1" ;;
+    esac
+  done
 }
 
 show_version() {
@@ -390,6 +437,25 @@ apply_config() {
   run_install "$provider" "$profile" "$engine" "$protocols" "false"
 }
 
+apply_runtime() {
+  ensure_root
+  if [[ ! -f /etc/sing-box-deve/runtime.env ]]; then
+    die "No runtime state found at /etc/sing-box-deve/runtime.env"
+  fi
+
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  export ARGO_MODE="${argo_mode:-off}"
+  export WARP_MODE="${warp_mode:-off}"
+  export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
+  export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
+  export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
+  export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
+  export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+
+  run_install "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}" "false"
+}
+
 doctor() {
   ensure_root
   detect_os
@@ -415,22 +481,28 @@ main() {
       ;;
     apply)
       shift
-      if [[ "${1:-}" != "-f" ]] || [[ -z "${2:-}" ]]; then
-        die "Usage: apply -f config.env"
+      if [[ "${1:-}" == "--runtime" ]]; then
+        apply_runtime
+      elif [[ "${1:-}" == "-f" ]] && [[ -n "${2:-}" ]]; then
+        apply_config "$2"
+      else
+        die "Usage: apply -f config.env | apply --runtime"
       fi
-      apply_config "$2"
       ;;
     list)
       shift
-      provider_list
+      parse_list_args "$@"
+      provider_list "$LIST_MODE"
       ;;
     panel|status)
       shift
-      provider_panel
+      parse_panel_args "$@"
+      provider_panel "$PANEL_MODE"
       ;;
     restart)
       shift
-      provider_restart
+      parse_restart_args "$@"
+      provider_restart "$RESTART_TARGET"
       ;;
     update)
       shift
@@ -446,7 +518,8 @@ main() {
       ;;
     uninstall)
       shift
-      provider_uninstall
+      parse_uninstall_args "$@"
+      provider_uninstall "$KEEP_SETTINGS"
       ;;
     doctor)
       shift

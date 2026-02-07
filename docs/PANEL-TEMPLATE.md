@@ -2,6 +2,9 @@
 
 本文提供 `./sing-box-deve.sh panel` 的标准输出模板，便于你后续统一风格。
 
+- `./sing-box-deve.sh panel --compact`：简版（默认）
+- `./sing-box-deve.sh panel --full`：完整信息（含 runtime/settings/firewall）
+
 ## 中文模板（推荐）
 
 ```text
@@ -18,6 +21,17 @@
 [INFO] Remote script version: <remote_script_version>
 [INFO] Nodes file: /opt/sing-box-deve/data/nodes.txt
 [INFO] =========================================
+```
+
+## Full 模板附加区块（`--full`）
+
+```text
+[INFO] ----- Runtime Details -----
+<runtime.env 内容>
+[INFO] ----- Settings -----
+lang=<...>;auto_yes=<...>;update_channel=<...>
+[INFO] ----- Managed Firewall Rules -----
+<fw status 输出>
 ```
 
 ## English Template
