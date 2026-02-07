@@ -36,40 +36,21 @@ sb list --nodes
 sudo sb doctor
 ```
 
-## 核心特性
+## 先看这里（90% 用户）
 
-- 多场景支持：VPS、Serv00/Hostuno、SAP、Docker、Workers、GitHub Actions
-- 双模式：交互向导 + 配置文件/环境变量自动化
-- 安全默认：仅增量防火墙规则，支持回滚
-- 小内存友好：默认 Lite 档位，面向 512MB 服务器
-- 首启可选中文/English，后续持久化保存
+- 推荐直接用 `wizard` 安装，默认选 `vps + lite + sing-box + vless-reality`
+- 安装后常用就是 4 个命令：`panel`、`doctor`、`list --nodes`、`restart --core`
+- 需要交互控制台时直接输入 `sb`
+- 如果只想稳定使用，可先跳过 Serv00/SAP/Docker/Workers 等进阶章节
 
-## 当前实现状态
-
-- 已实现 VPS 运行时安装：`sing-box` / `xray` 内核、配置生成、systemd 管理、节点输出
-- 已实现 Argo sidecar（临时/固定隧道）
-- 已实现 WARP 出站（global 模式）
-- 已实现脚本版本显示与更新（脚本自身 + 核心）
-- 已实现校验清单驱动的脚本安全更新（`checksums.txt`）
-
-VPS 已支持协议：
-
-- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`argo`、`anytls`、`any-reality`、`warp`
-- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`trojan`、`argo`
-
-补充能力：
-
-- 支持“上游出站代理”模式（`direct/socks/http/https`），用于让 `vless+reality` 等入站流量通过上游代理转发出去（不是额外暴露本地 socks/http 入口）
-
-示例（通过上游 socks 转发出站）：
+最常用命令：
 
 ```bash
-./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality \
-  --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 \
-  --outbound-proxy-user demo --outbound-proxy-pass demo
+./sing-box-deve.sh wizard
+./sing-box-deve.sh panel --full
+./sing-box-deve.sh doctor
+./sing-box-deve.sh list --nodes
 ```
-
-说明：该模式不会额外开放本地 socks/http 入站端口，仅改变服务器出站路径。
 
 ## 交互原则
 
@@ -134,6 +115,18 @@ VPS 已支持协议：
 ./sing-box-deve.sh regen-nodes
 ```
 
+服务器最小回归验证（建议按顺序执行）：
+
+```bash
+sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --dry-run
+sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
+sudo ./sing-box-deve.sh panel --full
+sudo ./sing-box-deve.sh doctor
+sudo ./sing-box-deve.sh set-port --list
+sudo ./sing-box-deve.sh set-egress --mode direct
+sudo ./sing-box-deve.sh regen-nodes
+```
+
 版本与更新：
 
 ```bash
@@ -159,6 +152,35 @@ VPS 已支持协议：
 
 - `scripts/acceptance-matrix.sh`
 - 运行：`bash scripts/acceptance-matrix.sh`
+
+## 进阶与实现细节（可后看）
+
+- 已实现 VPS 运行时安装：`sing-box` / `xray` 内核、配置生成、systemd 管理、节点输出
+- 已实现 Argo sidecar（临时/固定隧道）
+- 已实现 WARP 出站（global 模式）
+- 已实现脚本版本显示与更新（脚本自身 + 核心）
+- 已实现校验清单驱动的脚本安全更新（`checksums.txt`）
+- 已完成脚本模块化重构：`lib/common.sh`、`lib/providers.sh`、`lib/menu.sh`、`sing-box-deve.sh` 均为聚合入口
+- 项目约束：所有 `.sh` 单文件不超过 250 行，并在 CI 中强制校验
+
+VPS 已支持协议：
+
+- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`argo`、`anytls`、`any-reality`、`warp`
+- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`trojan`、`argo`
+
+补充能力：
+
+- 支持“上游出站代理”模式（`direct/socks/http/https`），用于让 `vless+reality` 等入站流量通过上游代理转发出去（不是额外暴露本地 socks/http 入口）
+
+示例（通过上游 socks 转发出站）：
+
+```bash
+./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality \
+  --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 \
+  --outbound-proxy-user demo --outbound-proxy-pass demo
+```
+
+说明：该模式不会额外开放本地 socks/http 入站端口，仅改变服务器出站路径。
 
 ## Provider 说明
 
