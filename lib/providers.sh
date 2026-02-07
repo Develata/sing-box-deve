@@ -48,6 +48,7 @@ validate_feature_modes() {
     [[ -n "${OUTBOUND_PROXY_HOST:-}" ]] || die "OUTBOUND_PROXY_HOST is required when outbound proxy mode is not direct"
     [[ -n "${OUTBOUND_PROXY_PORT:-}" ]] || die "OUTBOUND_PROXY_PORT is required when outbound proxy mode is not direct"
     [[ "${OUTBOUND_PROXY_PORT}" =~ ^[0-9]+$ ]] || die "OUTBOUND_PROXY_PORT must be numeric"
+    (( OUTBOUND_PROXY_PORT >= 1 && OUTBOUND_PROXY_PORT <= 65535 )) || die "OUTBOUND_PROXY_PORT must be between 1 and 65535"
   fi
 
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" && "${WARP_MODE:-off}" == "global" ]]; then

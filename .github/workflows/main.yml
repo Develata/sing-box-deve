@@ -14,6 +14,6 @@ jobs:
           IFS=$',， ' read -r -a urls <<< "$KEEPALIVE_URLS"
           for u in "${urls[@]}"; do
             [ -z "$u" ] && continue
-            code=$(curl -kLs -o /dev/null -w "%{http_code}" "$u" || true)
+            code=$(curl -Ls -o /dev/null -w "%{http_code}" "$u" || true)
             echo "$u -> $code"
           done

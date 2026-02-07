@@ -5,7 +5,7 @@ FW_BACKEND=""
 fw_detect_backend() {
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     FW_BACKEND="ufw"
-  elif command -v nft >/dev/null 2>&1; then
+  elif command -v nft >/dev/null 2>&1 && nft list ruleset >/dev/null 2>&1; then
     FW_BACKEND="nftables"
   elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
     FW_BACKEND="firewalld"
