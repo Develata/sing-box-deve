@@ -77,6 +77,13 @@ print_nodes_with_qr() {
   echo "----------"
   cat "$SBD_NODES_FILE"
 
+  if [[ -f "$SBD_SUB_FILE" ]]; then
+    echo
+    echo "Aggregate Subscription (Base64)"
+    echo "-------------------------------"
+    cat "$SBD_SUB_FILE"
+  fi
+
   if ! command -v qrencode >/dev/null 2>&1; then
     log_warn "qrencode not installed; skipping QR output"
     return 0
@@ -96,4 +103,10 @@ print_nodes_with_qr() {
         ;;
     esac
   done < "$SBD_NODES_FILE"
+
+  if [[ -f "$SBD_SUB_FILE" ]]; then
+    echo "aggregate-base64://$(cat "$SBD_SUB_FILE")"
+    qrencode -o - -t ANSIUTF8 "aggregate-base64://$(cat "$SBD_SUB_FILE")"
+    echo
+  fi
 }

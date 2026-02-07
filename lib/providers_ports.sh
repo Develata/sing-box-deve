@@ -126,6 +126,9 @@ provider_set_egress() {
   export OUTBOUND_PROXY_PORT="$port"
   export OUTBOUND_PROXY_USER="$user"
   export OUTBOUND_PROXY_PASS="$pass"
+  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
+  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
+  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
   export ARGO_MODE="${argo_mode:-off}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
@@ -165,6 +168,9 @@ provider_set_route() {
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
   export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
+  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
+  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
 
   validate_feature_modes
   case "$runtime_engine" in
@@ -174,4 +180,41 @@ provider_set_route() {
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
   log_success "Route mode updated: ${mode}"
+}
+
+provider_set_share_endpoints() {
+  ensure_root
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  local kind="$1" endpoints="$2"
+  [[ "$endpoints" == *:* ]] || die "Endpoints must be host:port[,host:port...]"
+
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  local runtime_provider="${provider:-vps}"
+  local runtime_profile="${profile:-lite}"
+  local runtime_engine="${engine:-sing-box}"
+  local runtime_protocols="${protocols:-vless-reality}"
+
+  export ARGO_MODE="${argo_mode:-off}"
+  export WARP_MODE="${warp_mode:-off}"
+  export ROUTE_MODE="${route_mode:-direct}"
+  export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
+  export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
+  export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
+  export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
+  export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
+  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
+  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
+
+  case "$kind" in
+    direct) DIRECT_SHARE_ENDPOINTS="$endpoints" ;;
+    proxy) PROXY_SHARE_ENDPOINTS="$endpoints" ;;
+    warp) WARP_SHARE_ENDPOINTS="$endpoints" ;;
+    *) die "Unsupported share endpoint kind: $kind" ;;
+  esac
+
+  write_nodes_output "$runtime_engine" "$runtime_protocols"
+  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
+  log_success "Share endpoints updated for ${kind}"
 }

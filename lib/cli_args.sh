@@ -18,6 +18,9 @@ parse_install_args() {
   OUTBOUND_PROXY_PORT="${OUTBOUND_PROXY_PORT:-}"
   OUTBOUND_PROXY_USER="${OUTBOUND_PROXY_USER:-}"
   OUTBOUND_PROXY_PASS="${OUTBOUND_PROXY_PASS:-}"
+  DIRECT_SHARE_ENDPOINTS="${DIRECT_SHARE_ENDPOINTS:-}"
+  PROXY_SHARE_ENDPOINTS="${PROXY_SHARE_ENDPOINTS:-}"
+  WARP_SHARE_ENDPOINTS="${WARP_SHARE_ENDPOINTS:-}"
 
   if declare -F legacy_apply_install_defaults >/dev/null 2>&1; then
     legacy_apply_install_defaults
@@ -41,6 +44,9 @@ parse_install_args() {
       --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2"; shift 2 ;;
       --outbound-proxy-user) OUTBOUND_PROXY_USER="$2"; shift 2 ;;
       --outbound-proxy-pass) OUTBOUND_PROXY_PASS="$2"; shift 2 ;;
+      --direct-share-endpoints) DIRECT_SHARE_ENDPOINTS="$2"; shift 2 ;;
+      --proxy-share-endpoints) PROXY_SHARE_ENDPOINTS="$2"; shift 2 ;;
+      --warp-share-endpoints) WARP_SHARE_ENDPOINTS="$2"; shift 2 ;;
       *) die "Unknown install argument: $1" ;;
     esac
   done
@@ -49,6 +55,16 @@ parse_install_args() {
 parse_set_route_args() {
   SET_ROUTE_MODE="${1:-}"
   [[ -n "$SET_ROUTE_MODE" ]] || die "Usage: set-route <direct|global-proxy|cn-direct|cn-proxy>"
+}
+
+parse_set_share_args() {
+  SET_SHARE_KIND="${1:-}"
+  SET_SHARE_ENDPOINTS="${2:-}"
+  case "$SET_SHARE_KIND" in
+    direct|proxy|warp) ;;
+    *) die "Usage: set-share <direct|proxy|warp> <host:port[,host:port...]>" ;;
+  esac
+  [[ -n "$SET_SHARE_ENDPOINTS" ]] || die "Usage: set-share <direct|proxy|warp> <host:port[,host:port...]>"
 }
 
 parse_update_args() {

@@ -39,6 +39,14 @@ build_xray_config() {
 
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
+  local has_warp="false"
+  if protocol_enabled "warp" "${protocols[@]}"; then
+    if warp_mode_targets_xray "${WARP_MODE:-off}"; then
+      has_warp="true"
+    else
+      log_warn "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-xray path"
+    fi
+  fi
 
   if protocol_enabled "vmess-ws" "${protocols[@]}"; then
     inbounds+=$',\n'
@@ -104,17 +112,22 @@ build_xray_config() {
     inbounds+=$'    }'
   fi
 
-  local xray_outbounds xray_routing
+  local xray_outbounds xray_routing primary_tag
+  primary_tag="direct"
   xray_outbounds=$'    {"protocol": "freedom", "tag": "direct"},\n'
   xray_outbounds+=$'    {"protocol": "blackhole", "tag": "block"}'
   xray_routing=""
+  if [[ "$has_warp" == "true" ]]; then
+    xray_outbounds+=$',\n'
+    xray_outbounds+="$(build_warp_outbound_xray)"
+    primary_tag="warp-out"
+  fi
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     xray_outbounds+=$',\n'
     xray_outbounds+="$(build_upstream_outbound_xray)"
-    xray_routing="$(build_xray_routing_fragment "proxy-out")"
-  else
-    xray_routing="$(build_xray_routing_fragment "")"
+    primary_tag="proxy-out"
   fi
+  xray_routing="$(build_xray_routing_fragment "$primary_tag")"
 
   inbounds="${inbounds//\\n/$'\n'}"
   xray_outbounds="${xray_outbounds//\\n/$'\n'}"

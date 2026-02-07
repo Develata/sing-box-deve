@@ -25,6 +25,7 @@ provider_status_header() {
     log_info "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}"
     log_info "Protocols: ${protocols:-none}"
     log_info "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}"
+    log_info "Share endpoints: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'"
 
     local main_port="n/a"
     if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" ]]; then

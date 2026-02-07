@@ -52,10 +52,10 @@ build_sing_box_config() {
 
   local has_warp="false"
   if protocol_enabled "warp" "${protocols[@]}"; then
-    if [[ "${WARP_MODE:-off}" == "global" ]]; then
+    if warp_mode_targets_singbox "${WARP_MODE:-off}"; then
       has_warp="true"
     else
-      log_warn "Protocol 'warp' enabled but WARP_MODE is '${WARP_MODE:-off}', warp outbound disabled"
+      log_warn "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-sing-box path"
     fi
   fi
 
@@ -222,7 +222,7 @@ build_sing_box_config() {
   if [[ "$has_warp" == "true" ]]; then
     outbounds+=$',\n'
     outbounds+="$(build_warp_outbound_singbox)"
-    if [[ "${WARP_MODE:-off}" == "global" && "$upstream_mode" == "direct" ]]; then
+    if [[ "$upstream_mode" == "direct" ]]; then
       final_tag="warp-out"
     fi
   fi

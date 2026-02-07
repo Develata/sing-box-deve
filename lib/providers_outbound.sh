@@ -84,6 +84,21 @@ build_upstream_outbound_xray() {
 EOF
 }
 
+build_warp_outbound_xray() {
+  local private_key="${WARP_PRIVATE_KEY:-}"
+  local local_v6="${WARP_LOCAL_V6:-2606:4700:110:876d:4d3c:4206:c90c:6bd0}"
+  local reserved="${WARP_RESERVED:-[0,0,0]}"
+  local domain_strategy
+  domain_strategy="$(xray_domain_strategy_from_warp_mode)"
+
+  [[ -n "$private_key" ]] || die "WARP_PRIVATE_KEY is required when warp mode targets xray"
+
+  cat <<EOF
+    {"tag":"x-warp-out","protocol":"wireguard","settings":{"secretKey":"${private_key}","address":["172.16.0.2/32","${local_v6}/128"],"peers":[{"publicKey":"bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=","allowedIPs":["0.0.0.0/0","::/0"],"endpoint":"engage.cloudflareclient.com:2408"}],"reserved":${reserved}}},
+    {"tag":"warp-out","protocol":"freedom","settings":{"domainStrategy":"${domain_strategy}"},"proxySettings":{"tag":"x-warp-out"}}
+EOF
+}
+
 validate_generated_config() {
   local engine="$1"
   local output

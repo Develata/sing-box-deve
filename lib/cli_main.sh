@@ -5,7 +5,7 @@ usage() {
 Usage:
   sing-box-deve.sh wizard
   sing-box-deve.sh menu
-  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
+  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--direct-share-endpoints CSV] [--proxy-share-endpoints CSV] [--warp-share-endpoints CSV] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
@@ -16,6 +16,7 @@ Usage:
   sing-box-deve.sh set-port --protocol <name> --port <1-65535>
   sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS]
   sing-box-deve.sh set-route <direct|global-proxy|cn-direct|cn-proxy>
+  sing-box-deve.sh set-share <direct|proxy|warp> <host:port[,host:port...]>
   sing-box-deve.sh regen-nodes
   sing-box-deve.sh update [--script|--core|--all] [--yes]
   sing-box-deve.sh version
@@ -102,6 +103,11 @@ main() {
       shift
       parse_set_route_args "$@"
       provider_set_route "$SET_ROUTE_MODE"
+      ;;
+    set-share)
+      shift
+      parse_set_share_args "$@"
+      provider_set_share_endpoints "$SET_SHARE_KIND" "$SET_SHARE_ENDPOINTS"
       ;;
     regen-nodes)
       shift

@@ -50,10 +50,7 @@ validate_feature_modes() {
     *) die "Invalid ARGO_MODE: ${ARGO_MODE}" ;;
   esac
 
-  case "${WARP_MODE:-off}" in
-    off|global) ;;
-    *) die "Invalid WARP_MODE: ${WARP_MODE}" ;;
-  esac
+  validate_warp_mode_extended
 
   case "${OUTBOUND_PROXY_MODE:-direct}" in
     direct|socks|http|https) ;;
@@ -116,7 +113,7 @@ engine_supports_protocol() {
       ;;
     xray)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|argo|socks5) return 0 ;;
+        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|argo|socks5|warp) return 0 ;;
         *) return 1 ;;
       esac
       ;;

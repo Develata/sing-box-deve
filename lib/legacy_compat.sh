@@ -61,7 +61,14 @@ legacy_apply_install_defaults() {
 
   if [[ "${warp:-}" != "" ]]; then
     add_legacy_proto "warp"
-    WARP_MODE="global"
+    case "${warp}" in
+      sx|xs|s|s4|s6|x|x4|x6|s4x4|s4x6|s6x4|s6x6|sx4|sx6|xs4|xs6|x4s|x6s|s4x|s6x|x4s4|x6s4|x4s6|x6s6)
+        WARP_MODE="${warp}"
+        ;;
+      *)
+        WARP_MODE="global"
+        ;;
+    esac
   fi
 
   if [[ -n "${agn:-}" && -n "${agk:-}" ]]; then

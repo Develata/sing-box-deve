@@ -13,6 +13,8 @@ SBD_INSTALL_DIR="/opt/sing-box-deve"
 SBD_BIN_DIR="${SBD_INSTALL_DIR}/bin"
 SBD_DATA_DIR="${SBD_INSTALL_DIR}/data"
 SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
+SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
+SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
 SBD_SERVICE_FILE="/etc/systemd/system/sing-box-deve.service"
 SBD_ARGO_SERVICE_FILE="/etc/systemd/system/sing-box-deve-argo.service"
 

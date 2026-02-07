@@ -115,20 +115,12 @@ sudo sb doctor
 ./sing-box-deve.sh set-port --protocol vless-reality --port 443
 ./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
 ./sing-box-deve.sh set-route cn-direct
+./sing-box-deve.sh set-share direct 1.2.3.4:443,1.2.3.4:8443
+./sing-box-deve.sh set-share proxy 9.9.9.9:443,9.9.9.9:2053
 ./sing-box-deve.sh regen-nodes
 ```
 
-服务器最小回归验证（建议按顺序执行）：
-
-```bash
-sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --dry-run
-sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
-sudo ./sing-box-deve.sh panel --full
-sudo ./sing-box-deve.sh doctor
-sudo ./sing-box-deve.sh set-port --list
-sudo ./sing-box-deve.sh set-egress --mode direct
-sudo ./sing-box-deve.sh regen-nodes
-```
+服务器验证建议：优先使用 `sb` 面板完成安装、分流、端口和节点刷新操作；命令模式仅用于自动化。
 
 版本与更新：
 

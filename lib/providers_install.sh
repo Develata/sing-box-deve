@@ -105,6 +105,9 @@ route_mode=${ROUTE_MODE:-direct}
 outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
 outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
+direct_share_endpoints=${DIRECT_SHARE_ENDPOINTS:-}
+proxy_share_endpoints=${PROXY_SHARE_ENDPOINTS:-}
+warp_share_endpoints=${WARP_SHARE_ENDPOINTS:-}
 script_root=${PROJECT_ROOT}
 installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF

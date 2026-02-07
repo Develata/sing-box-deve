@@ -15,6 +15,9 @@ create_install_context() {
   local outbound_proxy_port="${OUTBOUND_PROXY_PORT:-}"
   local outbound_proxy_user="${OUTBOUND_PROXY_USER:-}"
   local outbound_proxy_pass="${OUTBOUND_PROXY_PASS:-}"
+  local direct_share_endpoints="${DIRECT_SHARE_ENDPOINTS:-}"
+  local proxy_share_endpoints="${PROXY_SHARE_ENDPOINTS:-}"
+  local warp_share_endpoints="${WARP_SHARE_ENDPOINTS:-}"
 
   local install_id
   install_id="$(rand_hex_8)"
@@ -38,6 +41,9 @@ outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
 outbound_proxy_user_set=$([[ -n "${outbound_proxy_user}" ]] && echo true || echo false)
 outbound_proxy_pass_set=$([[ -n "${outbound_proxy_pass}" ]] && echo true || echo false)
+direct_share_endpoints=${direct_share_endpoints}
+proxy_share_endpoints=${proxy_share_endpoints}
+warp_share_endpoints=${warp_share_endpoints}
 EOF
 }
 
@@ -77,6 +83,9 @@ features:
   outbound_proxy_port: ${outbound_proxy_port:-""}
   outbound_proxy_user_set: ${outbound_proxy_user_set:-false}
   outbound_proxy_pass_set: ${outbound_proxy_pass_set:-false}
+  direct_share_endpoints: ${direct_share_endpoints:-""}
+  proxy_share_endpoints: ${proxy_share_endpoints:-""}
+  warp_share_endpoints: ${warp_share_endpoints:-""}
 resources:
   default_profile: ${profile}
 EOF

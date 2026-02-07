@@ -90,7 +90,7 @@ run_install() {
   validate_engine "$engine"
   validate_profile_protocols "$profile" "$protocols_csv"
 
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE ROUTE_MODE OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN WARP_MODE ROUTE_MODE OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS DIRECT_SHARE_ENDPOINTS PROXY_SHARE_ENDPOINTS WARP_SHARE_ENDPOINTS
 
   create_install_context "$provider" "$profile" "$engine" "$protocols_csv"
   auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE"
@@ -147,6 +147,9 @@ apply_config() {
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-${OUTBOUND_PROXY_PORT:-}}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-${OUTBOUND_PROXY_USER:-}}"
   export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-${OUTBOUND_PROXY_PASS:-}}"
+  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-${DIRECT_SHARE_ENDPOINTS:-}}"
+  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-${PROXY_SHARE_ENDPOINTS:-}}"
+  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-${WARP_SHARE_ENDPOINTS:-}}"
 
   run_install "$provider" "$profile" "$engine" "$protocols" "false"
 }
@@ -165,6 +168,9 @@ apply_runtime() {
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
   export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
+  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
+  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
+  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
 
   run_install "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}" "false"
 }
