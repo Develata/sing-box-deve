@@ -4,9 +4,9 @@ menu_view() {
   while true; do
     menu_status_header
     menu_title "$(msg "[状态与节点查看]" "[Status & Nodes]")"
-    echo "1) panel --full"
-    echo "2) list --all"
-    echo "3) list --nodes"
+    echo "1) $(msg "查看完整状态面板（panel --full）" "Full status panel (panel --full)")"
+    echo "2) $(msg "查看全量运行信息（list --all）" "All runtime info (list --all)")"
+    echo "3) $(msg "仅查看节点链接（list --nodes）" "Nodes only (list --nodes)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -23,8 +23,8 @@ menu_port() {
   while true; do
     menu_status_header
     menu_title "$(msg "[端口管理]" "[Port Management]")"
-    echo "1) set-port --list"
-    echo "2) set-port --protocol ... --port ..."
+    echo "1) $(msg "查看协议端口映射（set-port --list）" "List protocol ports (set-port --list)")"
+    echo "2) $(msg "修改指定协议端口（set-port --protocol --port）" "Set protocol port (set-port --protocol --port)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -45,10 +45,10 @@ menu_egress() {
   while true; do
     menu_status_header
     menu_title "$(msg "[出站策略管理]" "[Egress Management]")"
-    echo "1) set-egress direct"
-    echo "2) set-egress socks/http/https"
-    echo "3) set-route direct/global-proxy/cn-direct/cn-proxy"
-    echo "4) set-share direct/proxy/warp endpoints"
+    echo "1) $(msg "切换为直连出站（set-egress direct）" "Set direct egress (set-egress direct)")"
+    echo "2) $(msg "配置上游代理出站（set-egress socks/http/https）" "Set upstream proxy egress (set-egress socks/http/https)")"
+    echo "3) $(msg "设置分流路由模式（set-route ...）" "Set route mode (set-route ...)")"
+    echo "4) $(msg "设置分享出口端点（set-share ...）" "Set share endpoints (set-share ...)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -86,12 +86,12 @@ menu_service() {
   while true; do
     menu_status_header
     menu_title "$(msg "[服务管理]" "[Service Management]")"
-    echo "1) restart --all"
-    echo "2) restart --core"
-    echo "3) restart --argo"
-    echo "4) regen-nodes"
-    echo "5) logs --core"
-    echo "6) logs --argo"
+    echo "1) $(msg "重启全部服务（restart --all）" "Restart all services (restart --all)")"
+    echo "2) $(msg "仅重启核心服务（restart --core）" "Restart core only (restart --core)")"
+    echo "3) $(msg "仅重启 Argo 边车（restart --argo）" "Restart Argo sidecar (restart --argo)")"
+    echo "4) $(msg "重建节点文件（regen-nodes）" "Regenerate nodes (regen-nodes)")"
+    echo "5) $(msg "查看核心日志（logs --core）" "Show core logs (logs --core)")"
+    echo "6) $(msg "查看 Argo 日志（logs --argo）" "Show Argo logs (logs --argo)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -111,9 +111,9 @@ menu_update() {
   while true; do
     menu_status_header
     menu_title "$(msg "[更新管理]" "[Update Management]")"
-    echo "1) update --core"
-    echo "2) update --script"
-    echo "3) update --all"
+    echo "1) $(msg "更新核心内核（update --core）" "Update core engine (update --core)")"
+    echo "2) $(msg "更新脚本与模块（update --script）" "Update script/modules (update --script)")"
+    echo "3) $(msg "同时更新内核与脚本（update --all）" "Update both core+script (update --all)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -130,8 +130,8 @@ menu_firewall() {
   while true; do
     menu_status_header
     menu_title "$(msg "[防火墙管理]" "[Firewall Management]")"
-    echo "1) fw status"
-    echo "2) fw rollback"
+    echo "1) $(msg "查看防火墙托管状态（fw status）" "Show firewall status (fw status)")"
+    echo "2) $(msg "回滚到上次防火墙快照（fw rollback）" "Rollback firewall snapshot (fw rollback)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -147,9 +147,9 @@ menu_settings() {
   while true; do
     menu_status_header
     menu_title "$(msg "[设置管理]" "[Settings]")"
-    echo "1) settings show"
-    echo "2) settings set lang"
-    echo "3) settings set auto_yes"
+    echo "1) $(msg "查看当前设置（settings show）" "Show settings (settings show)")"
+    echo "2) $(msg "设置界面语言（settings set lang）" "Set language (settings set lang)")"
+    echo "3) $(msg "设置自动确认（settings set auto_yes）" "Set auto-yes (settings set auto_yes)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -176,8 +176,8 @@ menu_logs() {
   while true; do
     menu_status_header
     menu_title "$(msg "[日志查看]" "[Logs]")"
-    echo "1) logs --core"
-    echo "2) logs --argo"
+    echo "1) $(msg "查看核心服务日志（logs --core）" "Show core logs (logs --core)")"
+    echo "2) $(msg "查看 Argo 边车日志（logs --argo）" "Show Argo logs (logs --argo)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -192,8 +192,8 @@ menu_logs() {
 menu_uninstall() {
   menu_status_header
   menu_title "$(msg "[卸载管理]" "[Uninstall]")"
-  echo "1) uninstall --keep-settings"
-  echo "2) uninstall"
+  echo "1) $(msg "卸载并保留设置（uninstall --keep-settings）" "Uninstall and keep settings (uninstall --keep-settings)")"
+  echo "2) $(msg "完全卸载（uninstall）" "Full uninstall (uninstall)")"
   echo "0) $(msg "返回上级" "Back")"
   read -r -p "$(msg "请选择" "Select"): " c
   case "${c:-0}" in

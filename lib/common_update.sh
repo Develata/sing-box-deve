@@ -10,6 +10,8 @@ current_script_version() {
 }
 
 resolve_update_base_url() {
+  local repo_ref="${SBD_REPO_REF:-main}"
+
   if [[ -n "${SBD_UPDATE_BASE_URL:-}" ]]; then
     echo "$SBD_UPDATE_BASE_URL"
     return 0
@@ -21,12 +23,18 @@ resolve_update_base_url() {
   fi
 
   if [[ "$origin" =~ ^git@github.com:([^/]+)/([^/.]+)(\.git)?$ ]]; then
-    echo "https://raw.githubusercontent.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/main"
+    echo "https://raw.githubusercontent.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/${repo_ref}"
     return 0
   fi
 
   if [[ "$origin" =~ ^https://github.com/([^/]+)/([^/.]+)(\.git)?$ ]]; then
-    echo "https://raw.githubusercontent.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/main"
+    echo "https://raw.githubusercontent.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/${repo_ref}"
+    return 0
+  fi
+
+  local repo_slug="${SBD_REPO_SLUG:-Develata/sing-box-deve}"
+  if [[ "$repo_slug" =~ ^[^/]+/[^/]+$ ]]; then
+    echo "https://raw.githubusercontent.com/${repo_slug}/${repo_ref}"
     return 0
   fi
 
@@ -43,7 +51,7 @@ fetch_remote_script_version() {
 perform_script_self_update() {
   local base_url
   base_url="$(resolve_update_base_url)"
-  [[ -n "$base_url" ]] || die "Cannot resolve update URL. Set SBD_UPDATE_BASE_URL first."
+  [[ -n "$base_url" ]] || die "$(msg "无法解析更新地址，请先设置 SBD_UPDATE_BASE_URL 或 SBD_REPO_SLUG/SBD_REPO_REF" "Cannot resolve update URL. Set SBD_UPDATE_BASE_URL or SBD_REPO_SLUG/SBD_REPO_REF first.")"
 
   local files=(
     "sing-box-deve.sh"
@@ -138,7 +146,7 @@ perform_script_self_update() {
   tmp_dir="$(mktemp -d)"
   local checksums_file="${tmp_dir}/checksums.txt"
   if ! download_file "${base_url}/checksums.txt" "$checksums_file"; then
-    die "Secure update requires checksums.txt at update source"
+    die "$(msg "安全更新失败：更新源缺少 checksums.txt" "Secure update requires checksums.txt at update source")"
   fi
 
   local rel

@@ -4,17 +4,17 @@ menu_ops() {
   while true; do
     menu_status_header
     menu_title "$(msg "[内核、WARP与系统工具]" "[Kernel, WARP & System]")"
-    echo "1) kernel show"
-    echo "2) kernel set sing-box latest"
-    echo "3) kernel set xray latest"
-    echo "4) kernel set custom tag"
-    echo "5) warp status"
-    echo "6) warp register"
-    echo "7) sys bbr-status"
-    echo "8) sys bbr-enable"
-    echo "9) sys acme-install"
-    echo "10) sys acme-issue"
-    echo "11) sys acme-apply"
+    echo "1) $(msg "查看内核版本状态（kernel show）" "Show kernel versions (kernel show)")"
+    echo "2) $(msg "切换到最新 sing-box（kernel set sing-box latest）" "Set sing-box latest (kernel set sing-box latest)")"
+    echo "3) $(msg "切换到最新 xray（kernel set xray latest）" "Set xray latest (kernel set xray latest)")"
+    echo "4) $(msg "指定内核版本标签（kernel set <engine> <tag>）" "Set custom kernel tag (kernel set <engine> <tag>)")"
+    echo "5) $(msg "查看 WARP 状态（warp status）" "Show WARP status (warp status)")"
+    echo "6) $(msg "注册 WARP 账户（warp register）" "Register WARP account (warp register)")"
+    echo "7) $(msg "查看 BBR 状态（sys bbr-status）" "Show BBR status (sys bbr-status)")"
+    echo "8) $(msg "启用 BBR（sys bbr-enable）" "Enable BBR (sys bbr-enable)")"
+    echo "9) $(msg "安装 acme.sh（sys acme-install）" "Install acme.sh (sys acme-install)")"
+    echo "10) $(msg "申请证书（sys acme-issue）" "Issue certificate (sys acme-issue)")"
+    echo "11) $(msg "应用证书到运行时（sys acme-apply）" "Apply cert to runtime (sys acme-apply)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in

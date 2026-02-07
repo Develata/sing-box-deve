@@ -4,12 +4,12 @@ menu_subscriptions() {
   while true; do
     menu_status_header
     menu_title "$(msg "[订阅与分享]" "[Subscriptions]")"
-    echo "1) sub refresh"
-    echo "2) sub show"
-    echo "3) sub gitlab-set"
-    echo "4) sub gitlab-push"
-    echo "5) sub tg-set"
-    echo "6) sub tg-push"
+    echo "1) $(msg "刷新订阅与分享产物（sub refresh）" "Refresh subscription artifacts (sub refresh)")"
+    echo "2) $(msg "查看链接与二维码（sub show）" "Show links and QR (sub show)")"
+    echo "3) $(msg "配置 GitLab 推送目标（sub gitlab-set）" "Configure GitLab target (sub gitlab-set)")"
+    echo "4) $(msg "推送订阅到 GitLab（sub gitlab-push）" "Push subs to GitLab (sub gitlab-push)")"
+    echo "5) $(msg "配置 Telegram 推送（sub tg-set）" "Configure Telegram target (sub tg-set)")"
+    echo "6) $(msg "推送订阅到 Telegram（sub tg-push）" "Push subs to Telegram (sub tg-push)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in

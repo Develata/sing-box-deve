@@ -60,14 +60,14 @@ menu_config_center() {
   while true; do
     menu_status_header
     menu_title "$(msg "[配置变更中心]" "[Config Center]")"
-    echo "1) cfg preview <action>"
-    echo "2) cfg apply <action>"
-    echo "3) cfg rollback [latest|snapshot-id]"
-    echo "4) cfg snapshots list"
-    echo "5) cfg snapshots prune [keep]"
-    echo "6) split3 show"
-    echo "7) split3 set"
-    echo "8) jump set/clear/replay"
+    echo "1) $(msg "预览配置变更（cfg preview <action>）" "Preview config change (cfg preview <action>)")"
+    echo "2) $(msg "应用配置变更并自动快照（cfg apply <action>）" "Apply change with snapshot (cfg apply <action>)")"
+    echo "3) $(msg "按快照回滚配置（cfg rollback ...）" "Rollback by snapshot (cfg rollback ...)")"
+    echo "4) $(msg "查看配置快照列表（cfg snapshots list）" "List config snapshots (cfg snapshots list)")"
+    echo "5) $(msg "清理旧快照（cfg snapshots prune）" "Prune old snapshots (cfg snapshots prune)")"
+    echo "6) $(msg "查看三通道分流规则（split3 show）" "Show split3 rules (split3 show)")"
+    echo "7) $(msg "设置三通道分流规则（split3 set）" "Set split3 rules (split3 set)")"
+    echo "8) $(msg "多端口跳跃复用管理（jump set/clear/replay）" "Jump-port management (jump set/clear/replay)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
