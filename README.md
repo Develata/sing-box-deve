@@ -135,13 +135,27 @@ sudo sb doctor
 
 面板已内置“订阅与分享”菜单，可直接完成刷新、GitLab 推送、TG 推送等操作。
 
+订阅刷新后会额外生成：
+
+- 四合一聚合原始链接：`/opt/sing-box-deve/data/jhdy.txt`
+- 四合一聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
+- 客户端分组链接：`/opt/sing-box-deve/data/share-groups/*.txt`（v2rayn/nekobox/shadowrocket/singbox/clash-meta）
+
 配置变更中心与系统工具（面板同样可操作）：
 
 ```bash
+./sing-box-deve.sh cfg preview <action> ...
+./sing-box-deve.sh cfg apply <action> ...
+./sing-box-deve.sh cfg rollback [snapshot_id|latest]
+./sing-box-deve.sh cfg snapshots list
+./sing-box-deve.sh cfg snapshots prune [keep_count]
 ./sing-box-deve.sh cfg rotate-id
 ./sing-box-deve.sh cfg argo off|temp|fixed [token] [domain]
 ./sing-box-deve.sh cfg ip-pref auto|v4|v6
+./sing-box-deve.sh cfg cdn-host <domain>
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
+./sing-box-deve.sh cfg tls self-signed|acme [cert_path] [key_path]
+./sing-box-deve.sh cfg rebuild
 ./sing-box-deve.sh kernel show
 ./sing-box-deve.sh kernel set sing-box v1.12.20
 ./sing-box-deve.sh warp status

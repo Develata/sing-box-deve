@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 
+provider_cfg_runtime_file() {
+  echo "/etc/sing-box-deve/runtime.env"
+}
+
 provider_cfg_load_runtime_exports() {
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  local runtime_file
+  runtime_file="$(provider_cfg_runtime_file)"
+  [[ -f "$runtime_file" ]] || die "No runtime state found"
+  # shellcheck disable=SC1090
+  source "$runtime_file"
   export ARGO_MODE="${argo_mode:-off}"
   export ARGO_DOMAIN="${argo_domain:-}"
   export ARGO_TOKEN="${argo_token:-}"
@@ -141,7 +147,7 @@ provider_cfg_set_tls() {
   log_success "TLS mode updated: ${mode}"
 }
 
-provider_cfg_command() {
+provider_cfg_apply_dispatch() {
   local action="${1:-}"
   shift || true
   case "$action" in
@@ -152,6 +158,6 @@ provider_cfg_command() {
     domain-split) provider_cfg_set_domain_split "${1:-}" "${2:-}" "${3:-}" ;;
     tls) provider_cfg_set_tls "$@" ;;
     rebuild) provider_cfg_rebuild_runtime ;;
-    *) die "Usage: cfg [rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme> [cert] [key]|rebuild]" ;;
+    *) die "Usage: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|rebuild> ..." ;;
   esac
 }

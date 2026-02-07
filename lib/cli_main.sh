@@ -29,6 +29,11 @@ Usage:
   sing-box-deve.sh sub gitlab-push
   sing-box-deve.sh sub tg-set <bot_token> <chat_id>
   sing-box-deve.sh sub tg-push
+  sing-box-deve.sh cfg preview <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|rebuild> ...
+  sing-box-deve.sh cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|rebuild> ...
+  sing-box-deve.sh cfg rollback [snapshot_id|latest]
+  sing-box-deve.sh cfg snapshots list
+  sing-box-deve.sh cfg snapshots prune [keep_count]
   sing-box-deve.sh cfg rotate-id
   sing-box-deve.sh cfg argo <off|temp|fixed> [token] [domain]
   sing-box-deve.sh cfg ip-pref <auto|v4|v6>
