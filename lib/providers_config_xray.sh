@@ -97,6 +97,10 @@ build_xray_config() {
     xray_routing=$',\n  "routing": {"domainStrategy": "AsIs", "rules": [{"type": "field", "network": "tcp,udp", "outboundTag": "proxy-out"}]}'
   fi
 
+  inbounds="${inbounds//\\n/$'\n'}"
+  xray_outbounds="${xray_outbounds//\\n/$'\n'}"
+  xray_routing="${xray_routing//\\n/$'\n'}"
+
   cat > "$config_file" <<EOF
 {
   "log": {"loglevel": "warning"},

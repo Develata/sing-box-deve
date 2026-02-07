@@ -228,6 +228,9 @@ build_sing_box_config() {
     fi
   fi
 
+  inbounds="${inbounds//\\n/$'\n'}"
+  outbounds="${outbounds//\\n/$'\n'}"
+
   cat > "$config_file" <<EOF
 {
   "log": {"level": "info"},

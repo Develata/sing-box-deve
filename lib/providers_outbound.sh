@@ -86,14 +86,21 @@ EOF
 
 validate_generated_config() {
   local engine="$1"
+  local output
   case "$engine" in
     sing-box)
       [[ -x "${SBD_BIN_DIR}/sing-box" ]] || die "sing-box binary not found"
-      "${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/config.json" >/dev/null 2>&1 || die "sing-box config validation failed"
+      if ! output="$("${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/config.json" 2>&1)"; then
+        log_error "$output"
+        die "sing-box config validation failed"
+      fi
       ;;
     xray)
       [[ -x "${SBD_BIN_DIR}/xray" ]] || die "xray binary not found"
-      "${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray-config.json" >/dev/null 2>&1 || die "xray config validation failed"
+      if ! output="$("${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray-config.json" 2>&1)"; then
+        log_error "$output"
+        die "xray config validation failed"
+      fi
       ;;
     *)
       die "Unsupported engine for config validation: $engine"
