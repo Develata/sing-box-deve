@@ -116,6 +116,8 @@ provider_cfg_snapshots_command() {
 provider_cfg_preview() {
   local action="${1:-}" arg1="${2:-}" arg2="${3:-}" arg3="${4:-}"
   provider_cfg_load_runtime_exports
+  local current_protocols target_protocols
+  current_protocols="${protocols:-vless-reality}"
   case "$action" in
     rotate-id)
       log_info "preview rotate-id: UUID/short-id will be regenerated"
@@ -142,11 +144,26 @@ provider_cfg_preview() {
         log_info "preview tls key: ${ACME_KEY_PATH:-} -> ${arg3:-}"
       fi
       ;;
+    protocol-add)
+      [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-add <proto_csv> [random|manual] [proto:port,...]"
+      target_protocols="$(provider_cfg_protocol_csv_merge "$current_protocols" "$arg1")"
+      log_info "preview protocols: ${current_protocols} -> ${target_protocols}"
+      log_info "preview add port-mode: ${arg2:-random}"
+      if [[ -n "${arg3:-}" ]]; then
+        log_info "preview add port-map: ${arg3}"
+      fi
+      ;;
+    protocol-remove)
+      [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-remove <proto_csv>"
+      target_protocols="$(provider_cfg_protocol_csv_remove "$current_protocols" "$arg1")"
+      [[ -n "$target_protocols" ]] || die "Preview result invalid: at least one protocol must remain"
+      log_info "preview protocols: ${current_protocols} -> ${target_protocols}"
+      ;;
     rebuild)
       log_info "preview rebuild: engine=${engine:-sing-box} protocols=${protocols:-vless-reality}"
       ;;
     *)
-      die "Usage: cfg preview <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|rebuild> ..."
+      die "Usage: cfg preview <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..."
       ;;
   esac
 }
@@ -203,11 +220,11 @@ provider_cfg_command() {
     preview) provider_cfg_preview "$@" ;;
     apply) provider_cfg_apply_with_snapshot "$@" ;;
     rollback) provider_cfg_rollback "${1:-latest}" ;;
-    rotate-id|argo|ip-pref|cdn-host|domain-split|tls|rebuild)
+    rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild)
       provider_cfg_apply_with_snapshot "$action" "$@"
       ;;
     *)
-      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme> [cert] [key]|rebuild]"
+      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme> [cert] [key]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv>|rebuild]"
       ;;
   esac
 }

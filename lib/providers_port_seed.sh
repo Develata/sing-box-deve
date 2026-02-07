@@ -111,3 +111,42 @@ prepare_initial_install_ports() {
     log_info "$(msg "端口分配: ${p}=${chosen}" "Port assigned: ${p}=${chosen}")"
   done
 }
+
+prepare_incremental_protocol_ports() {
+  local engine="$1" current_csv="$2" target_csv="$3" mode="${4:-random}" map_csv="${5:-}"
+  [[ "$mode" == "random" || "$mode" == "manual" ]] || die "Port mode must be random or manual"
+  [[ "$mode" == "manual" && -n "$map_csv" ]] || [[ "$mode" == "random" ]] || die "Manual port mode requires port map: proto:port,..."
+
+  local current=() target=()
+  protocols_to_array "$current_csv" current
+  protocols_to_array "$target_csv" target
+
+  local used_ports="" p current_port mapping proto chosen env_key
+  for p in "${current[@]}"; do
+    protocol_needs_local_listener "$p" || continue
+    current_port="$(resolve_protocol_port_for_engine "$engine" "$p" 2>/dev/null || true)"
+    [[ "$current_port" =~ ^[0-9]+$ ]] || continue
+    used_ports="${used_ports:+${used_ports},}${current_port}"
+  done
+
+  for p in "${target[@]}"; do
+    protocol_enabled "$p" "${current[@]}" && continue
+    protocol_needs_local_listener "$p" || continue
+    mapping="$(protocol_port_map "$p")"
+    proto="${mapping%%:*}"
+
+    if [[ "$mode" == "manual" ]]; then
+      chosen="$(sbd_port_map_get "$map_csv" "$p" 2>/dev/null || true)"
+      [[ -n "$chosen" ]] || die "Manual mode requires port-map entry: ${p}:<port>"
+      sbd_validate_port_candidate "$proto" "$chosen" "$used_ports" "$p"
+    else
+      chosen="$(sbd_random_free_port "$proto" "$used_ports")"
+    fi
+
+    env_key="$(sbd_port_env_key "$p")"
+    printf -v "$env_key" '%s' "$chosen"
+    export "${env_key}=${chosen}"
+    used_ports="${used_ports:+${used_ports},}${chosen}"
+    log_info "$(msg "新增协议端口分配: ${p}=${chosen}" "Port assigned for added protocol: ${p}=${chosen}")"
+  done
+}

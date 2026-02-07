@@ -47,11 +47,17 @@ provider_cfg_load_runtime_exports() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+  CFG_RUNTIME_LOADED="true"
 }
 
+# shellcheck disable=SC2120
 provider_cfg_rebuild_runtime() {
   ensure_root
-  provider_cfg_load_runtime_exports
+  local target_protocols="${1:-}"
+  if [[ "${CFG_RUNTIME_LOADED:-false}" != "true" ]]; then
+    provider_cfg_load_runtime_exports
+  fi
+  [[ -n "$target_protocols" ]] && protocols="$target_protocols"
   validate_feature_modes
   case "${engine:-sing-box}" in
     sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" ;;
@@ -157,7 +163,9 @@ provider_cfg_apply_dispatch() {
     cdn-host) provider_cfg_set_cdn_host "$@" ;;
     domain-split) provider_cfg_set_domain_split "${1:-}" "${2:-}" "${3:-}" ;;
     tls) provider_cfg_set_tls "$@" ;;
+    protocol-add) provider_cfg_protocol_add "${1:-}" "${2:-random}" "${3:-}" ;;
+    protocol-remove) provider_cfg_protocol_remove "${1:-}" ;;
     rebuild) provider_cfg_rebuild_runtime ;;
-    *) die "Usage: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|rebuild> ..." ;;
+    *) die "Usage: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..." ;;
   esac
 }

@@ -12,7 +12,9 @@ menu_cfg_collect_change() {
   echo "4) cdn-host <domain>"
   echo "5) domain-split direct/proxy/block"
   echo "6) tls self-signed/acme"
-  echo "7) rebuild"
+  echo "7) protocol-add <proto_csv> [random|manual]"
+  echo "8) protocol-remove <proto_csv>"
+  echo "9) rebuild"
   read -r -p "$(msg "请选择配置动作编号" "Select cfg action id"): " a
   case "${a:-0}" in
     1)
@@ -47,6 +49,19 @@ menu_cfg_collect_change() {
       fi
       ;;
     7)
+      MENU_CFG_ACTION="protocol-add"
+      read -r -p "$(msg "新增协议列表(csv)" "protocols to add(csv)"): " MENU_CFG_ARG1
+      read -r -p "$(msg "端口模式[random/manual] (默认 random)" "port mode[random/manual] (default random)"): " MENU_CFG_ARG2
+      MENU_CFG_ARG2="${MENU_CFG_ARG2:-random}"
+      if [[ "$MENU_CFG_ARG2" == "manual" ]]; then
+        read -r -p "$(msg "手动端口映射(proto:port,proto:port...)" "manual port map(proto:port,proto:port...)"): " MENU_CFG_ARG3
+      fi
+      ;;
+    8)
+      MENU_CFG_ACTION="protocol-remove"
+      read -r -p "$(msg "移除协议列表(csv)" "protocols to remove(csv)"): " MENU_CFG_ARG1
+      ;;
+    9)
       MENU_CFG_ACTION="rebuild"
       ;;
     *)
@@ -67,7 +82,9 @@ menu_config_center() {
     echo "5) $(msg "清理旧快照（cfg snapshots prune）" "Prune old snapshots (cfg snapshots prune)")"
     echo "6) $(msg "查看三通道分流规则（split3 show）" "Show split3 rules (split3 show)")"
     echo "7) $(msg "设置三通道分流规则（split3 set）" "Set split3 rules (split3 set)")"
-    echo "8) $(msg "多端口跳跃复用管理（jump set/clear/replay）" "Jump-port management (jump set/clear/replay)")"
+    echo "8) $(msg "新增协议（cfg protocol-add ...）" "Add protocol (cfg protocol-add ...)")"
+    echo "9) $(msg "移除协议（cfg protocol-remove ...）" "Remove protocol (cfg protocol-remove ...)")"
+    echo "10) $(msg "多端口跳跃复用管理（jump set/clear/replay）" "Jump-port management (jump set/clear/replay)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -107,6 +124,23 @@ menu_config_center() {
         menu_pause
         ;;
       8)
+        read -r -p "$(msg "新增协议列表(csv)" "protocols to add(csv)"): " ap
+        read -r -p "$(msg "端口模式[random/manual] (默认 random)" "port mode[random/manual] (default random)"): " am
+        am="${am:-random}"
+        if [[ "$am" == "manual" ]]; then
+          read -r -p "$(msg "手动端口映射(proto:port,proto:port...)" "manual port map(proto:port,proto:port...)"): " amap
+          provider_cfg_command protocol-add "$ap" "$am" "$amap"
+        else
+          provider_cfg_command protocol-add "$ap" "$am"
+        fi
+        menu_pause
+        ;;
+      9)
+        read -r -p "$(msg "移除协议列表(csv)" "protocols to remove(csv)"): " rp
+        provider_cfg_command protocol-remove "$rp"
+        menu_pause
+        ;;
+      10)
         read -r -p "$(msg "jump 动作[set/clear/replay]" "jump action[set/clear/replay]"): " ja
         if [[ "$ja" == "set" ]]; then
           read -r -p "$(msg "协议" "protocol"): " jp

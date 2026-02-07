@@ -91,6 +91,7 @@ perform_script_self_update() {
     "lib/providers_port_seed.sh"
     "lib/providers_ports.sh"
     "lib/providers_config_ops.sh"
+    "lib/providers_protocol_ops.sh"
     "lib/providers_config_flow.sh"
     "lib/providers_split3.sh"
     "lib/providers_jump_ports.sh"
