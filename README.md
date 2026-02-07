@@ -91,6 +91,7 @@ VPS 已支持协议：
 ./sing-box-deve.sh apply -f ./config.env
 ./sing-box-deve.sh list
 ./sing-box-deve.sh panel
+./sing-box-deve.sh status
 ./sing-box-deve.sh doctor
 ./sing-box-deve.sh version
 ./sing-box-deve.sh update
@@ -135,10 +136,15 @@ VPS 已支持协议：
 
 - 说明：以下均为**可选模板**，默认部署不依赖它们
 - `.github/workflows/main.yml`（手动保活）
-- `.github/workflows/mainh.yml`（定时仅保活）
+- `.github/workflows/mainh.yml`（手动保活模板 2）
 - `.github/workflows/ci.yml`（语法、shellcheck、示例校验、checksums 校验）
 - `workers/_worker.js`（反代模板）
 - `workers/workers_keep.js`（Workers 定时保活模板）
+
+发布前建议：
+
+- 执行 `bash scripts/update-checksums.sh` 更新 `checksums.txt`
+- 再执行 `./sing-box-deve.sh update --script` 的安全更新链路验证
 
 ## 安全承诺
 
