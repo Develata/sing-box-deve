@@ -22,6 +22,22 @@ provider_cfg_load_runtime_exports() {
   export TLS_MODE="${tls_mode:-self-signed}"
   export ACME_CERT_PATH="${acme_cert_path:-}"
   export ACME_KEY_PATH="${acme_key_path:-}"
+  export REALITY_SERVER_NAME="${reality_server_name:-}"
+  export REALITY_FINGERPRINT="${reality_fingerprint:-}"
+  export REALITY_HANDSHAKE_PORT="${reality_handshake_port:-}"
+  export TLS_SERVER_NAME="${tls_server_name:-}"
+  export VMESS_WS_PATH="${vmess_ws_path:-}"
+  export VLESS_WS_PATH="${vless_ws_path:-}"
+  export VLESS_XHTTP_PATH="${vless_xhttp_path:-}"
+  export VLESS_XHTTP_MODE="${vless_xhttp_mode:-auto}"
+  export XRAY_VLESS_ENC="${xray_vless_enc:-false}"
+  export XRAY_XHTTP_REALITY="${xray_xhttp_reality:-false}"
+  export CDN_HOST_VMESS="${cdn_host_vmess:-}"
+  export CDN_HOST_VLESS_WS="${cdn_host_vless_ws:-}"
+  export CDN_HOST_VLESS_XHTTP="${cdn_host_vless_xhttp:-}"
+  export PROXYIP_VMESS="${proxyip_vmess:-}"
+  export PROXYIP_VLESS_WS="${proxyip_vless_ws:-}"
+  export PROXYIP_VLESS_XHTTP="${proxyip_vless_xhttp:-}"
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
@@ -62,10 +78,12 @@ provider_cfg_set_argo() {
   if [[ "$mode" == "off" ]]; then
     systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
     rm -f "$SBD_ARGO_SERVICE_FILE"
+    rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
     systemctl daemon-reload
   else
-    configure_argo_tunnel "${protocols:-vless-reality}"
+    configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"
   fi
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
   log_success "Argo mode updated: ${mode}"
 }

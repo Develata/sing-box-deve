@@ -127,24 +127,7 @@ provider_kernel_set() {
   install_engine_binary "$target_engine" "$target_tag"
 
   if [[ "$has_runtime" == "true" ]]; then
-    export ARGO_MODE="${argo_mode:-off}"
-    export ARGO_DOMAIN="${argo_domain:-}"
-    export ARGO_TOKEN="${argo_token:-}"
-    export WARP_MODE="${warp_mode:-off}"
-    export ROUTE_MODE="${route_mode:-direct}"
-    export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
-    export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
-    export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
-    export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
-    export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
-    export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
-    export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
-    export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
-    export IP_PREFERENCE="${ip_preference:-auto}"
-    export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
-    export TLS_MODE="${tls_mode:-self-signed}"
-    export ACME_CERT_PATH="${acme_cert_path:-}"
-    export ACME_KEY_PATH="${acme_key_path:-}"
+    provider_cfg_load_runtime_exports
 
     assert_engine_protocol_compatibility "$target_engine" "${protocols:-vless-reality}"
     case "$target_engine" in

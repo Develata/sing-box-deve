@@ -36,6 +36,57 @@ get_protocol_port() {
   echo "$default_port"
 }
 
+protocol_inbound_tag() {
+  local protocol="$1"
+  case "$protocol" in
+    vless-reality) echo "vless-reality" ;;
+    vmess-ws) echo "vmess-ws" ;;
+    vless-ws) echo "vless-ws" ;;
+    vless-xhttp) echo "vless-xhttp" ;;
+    shadowsocks-2022) echo "ss-2022" ;;
+    hysteria2) echo "hy2" ;;
+    tuic) echo "tuic" ;;
+    trojan) echo "trojan" ;;
+    wireguard) echo "wireguard" ;;
+    anytls) echo "anytls" ;;
+    any-reality) echo "any-reality" ;;
+    socks5) echo "socks5" ;;
+    *) return 1 ;;
+  esac
+}
+
+config_port_for_tag() {
+  local engine="$1" tag="$2"
+  command -v jq >/dev/null 2>&1 || return 1
+  case "$engine" in
+    sing-box)
+      [[ -f "${SBD_CONFIG_DIR}/config.json" ]] || return 1
+      jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.listen_port // .port // empty)' "${SBD_CONFIG_DIR}/config.json" | head -n1
+      ;;
+    xray)
+      [[ -f "${SBD_CONFIG_DIR}/xray-config.json" ]] || return 1
+      jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.port // empty)' "${SBD_CONFIG_DIR}/xray-config.json" | head -n1
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+resolve_protocol_port_for_engine() {
+  local engine="$1" protocol="$2"
+  local default_port tag current_port
+  default_port="$(get_protocol_port "$protocol")"
+  if ! tag="$(protocol_inbound_tag "$protocol")"; then
+    echo "$default_port"
+    return 0
+  fi
+  current_port="$(config_port_for_tag "$engine" "$tag" 2>/dev/null || true)"
+  if [[ "$current_port" =~ ^[0-9]+$ ]] && (( current_port >= 1 && current_port <= 65535 )); then
+    echo "$current_port"
+  else
+    echo "$default_port"
+  fi
+}
+
 protocol_needs_local_listener() {
   local proto="$1"
   case "$proto" in
@@ -68,6 +119,21 @@ validate_feature_modes() {
     self-signed|acme) ;;
     *) die "Invalid TLS_MODE: ${TLS_MODE}" ;;
   esac
+
+  case "${XRAY_VLESS_ENC:-${xray_vless_enc:-false}}" in
+    true|false) ;;
+    *) die "Invalid XRAY_VLESS_ENC: ${XRAY_VLESS_ENC:-${xray_vless_enc:-}}" ;;
+  esac
+
+  case "${XRAY_XHTTP_REALITY:-${xray_xhttp_reality:-false}}" in
+    true|false) ;;
+    *) die "Invalid XRAY_XHTTP_REALITY: ${XRAY_XHTTP_REALITY:-${xray_xhttp_reality:-}}" ;;
+  esac
+
+  local reality_port
+  reality_port="${REALITY_HANDSHAKE_PORT:-${reality_handshake_port:-443}}"
+  [[ "$reality_port" =~ ^[0-9]+$ ]] || die "REALITY_HANDSHAKE_PORT must be numeric"
+  (( reality_port >= 1 && reality_port <= 65535 )) || die "REALITY_HANDSHAKE_PORT must be between 1 and 65535"
 
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     [[ -n "${OUTBOUND_PROXY_HOST:-}" ]] || die "OUTBOUND_PROXY_HOST is required when outbound proxy mode is not direct"

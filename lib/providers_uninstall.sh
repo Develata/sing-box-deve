@@ -10,8 +10,12 @@ provider_uninstall() {
   if systemctl list-unit-files | grep -q '^sing-box-deve-argo.service'; then
     systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
   fi
+  if systemctl list-unit-files | grep -q '^sing-box-deve-jump.service'; then
+    systemctl disable --now sing-box-deve-jump.service >/dev/null 2>&1 || true
+  fi
   rm -f "$SBD_SERVICE_FILE"
   rm -f "$SBD_ARGO_SERVICE_FILE"
+  rm -f /etc/systemd/system/sing-box-deve-jump.service
   systemctl daemon-reload
   fw_detect_backend
   fw_clear_managed_rules

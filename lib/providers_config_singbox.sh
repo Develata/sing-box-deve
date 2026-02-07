@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-generate_reality_keys() {
-  local private_key_file="${SBD_DATA_DIR}/reality_private.key"
-  local public_key_file="${SBD_DATA_DIR}/reality_public.key"
-  local short_id_file="${SBD_DATA_DIR}/reality_short_id"
-
-  if [[ -f "$private_key_file" && -f "$public_key_file" && -f "$short_id_file" ]]; then
-    return 0
-  fi
-
-  local out
-  out="$("${SBD_BIN_DIR}/sing-box" generate reality-keypair)"
-  echo "$out" | awk -F': ' '/PrivateKey/{print $2}' > "$private_key_file"
-  echo "$out" | awk -F': ' '/PublicKey/{print $2}' > "$public_key_file"
-  openssl rand -hex 4 > "$short_id_file"
-}
 build_sing_box_config() {
   local protocols_csv="$1"
   local config_file="${SBD_CONFIG_DIR}/config.json"
@@ -29,19 +14,39 @@ build_sing_box_config() {
   public_key="$(<"${SBD_DATA_DIR}/reality_public.key")"
   short_id="$(<"${SBD_DATA_DIR}/reality_short_id")"
 
+  local reality_server_name reality_port tls_server_name ws_path_vmess ws_path_vless
+  reality_server_name="$(sbd_reality_server_name)"
+  reality_port="$(sbd_reality_handshake_port)"
+  tls_server_name="$(sbd_tls_server_name)"
+  ws_path_vmess="$(sbd_vmess_ws_path)"
+  ws_path_vless="$(sbd_vless_ws_path)"
+
+  local port_vless_reality port_vmess_ws port_vless_ws port_ss2022 port_hysteria2
+  local port_tuic port_trojan port_anytls port_anyreality port_wireguard
+  port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")"
+  port_vmess_ws="$(resolve_protocol_port_for_engine "sing-box" "vmess-ws")"
+  port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")"
+  port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")"
+  port_hysteria2="$(resolve_protocol_port_for_engine "sing-box" "hysteria2")"
+  port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")"
+  port_trojan="$(resolve_protocol_port_for_engine "sing-box" "trojan")"
+  port_anytls="$(resolve_protocol_port_for_engine "sing-box" "anytls")"
+  port_anyreality="$(resolve_protocol_port_for_engine "sing-box" "any-reality")"
+  port_wireguard="$(resolve_protocol_port_for_engine "sing-box" "wireguard")"
+
   local inbounds=""
   inbounds+=$'    {\n'
   inbounds+=$'      "type": "vless",\n'
   inbounds+=$'      "tag": "vless-reality",\n'
   inbounds+=$'      "listen": "::",\n'
-  inbounds+=$'      "listen_port": 443,\n'
+  inbounds+="      \"listen_port\": ${port_vless_reality},\n"
   inbounds+=$'      "users": [{"uuid": "'"${uuid}"'", "flow": "xtls-rprx-vision"}],\n'
   inbounds+=$'      "tls": {\n'
   inbounds+=$'        "enabled": true,\n'
-  inbounds+=$'        "server_name": "apple.com",\n'
+  inbounds+=$'        "server_name": "'"${reality_server_name}"'",\n'
   inbounds+=$'        "reality": {\n'
   inbounds+=$'          "enabled": true,\n'
-  inbounds+=$'          "handshake": {"server": "apple.com", "server_port": 443},\n'
+  inbounds+=$'          "handshake": {"server": "'"${reality_server_name}"'", "server_port": '"${reality_port}"'},\n'
   inbounds+=$'          "private_key": "'"${private_key}"'",\n'
   inbounds+=$'          "short_id": ["'"${short_id}"'"]\n'
   inbounds+=$'        }\n'
@@ -66,9 +71,9 @@ build_sing_box_config() {
     inbounds+=$'      "type": "vmess",\n'
     inbounds+=$'      "tag": "vmess-ws",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 8443,\n'
+    inbounds+="      \"listen_port\": ${port_vmess_ws},\n"
     inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "transport": {"type": "ws", "path": "/vmess"}\n'
+    inbounds+=$'      "transport": {"type": "ws", "path": "'"${ws_path_vmess}"'"}\n'
     inbounds+=$'    }'
   fi
 
@@ -78,9 +83,9 @@ build_sing_box_config() {
     inbounds+=$'      "type": "vless",\n'
     inbounds+=$'      "tag": "vless-ws",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 8444,\n'
+    inbounds+="      \"listen_port\": ${port_vless_ws},\n"
     inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "transport": {"type": "ws", "path": "/vless"}\n'
+    inbounds+=$'      "transport": {"type": "ws", "path": "'"${ws_path_vless}"'"}\n'
     inbounds+=$'    }'
   fi
 
@@ -90,7 +95,7 @@ build_sing_box_config() {
     inbounds+=$'      "type": "shadowsocks",\n'
     inbounds+=$'      "tag": "ss-2022",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 2443,\n'
+    inbounds+="      \"listen_port\": ${port_ss2022},\n"
     inbounds+=$'      "method": "2022-blake3-aes-128-gcm",\n'
     inbounds+=$'      "password": "'"${uuid}"'"\n'
     inbounds+=$'    }'
@@ -102,11 +107,11 @@ build_sing_box_config() {
     inbounds+=$'      "type": "hysteria2",\n'
     inbounds+=$'      "tag": "hy2",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 8443,\n'
+    inbounds+="      \"listen_port\": ${port_hysteria2},\n"
     inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "www.bing.com",\n'
+    inbounds+=$'        "server_name": "'"${tls_server_name}"'",\n'
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
@@ -119,12 +124,12 @@ build_sing_box_config() {
     inbounds+=$'      "type": "tuic",\n'
     inbounds+=$'      "tag": "tuic",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 10443,\n'
+    inbounds+="      \"listen_port\": ${port_tuic},\n"
     inbounds+=$'      "users": [{"uuid": "'"${uuid}"'", "password": "'"${uuid}"'"}],\n'
     inbounds+=$'      "congestion_control": "bbr",\n'
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "www.bing.com",\n'
+    inbounds+=$'        "server_name": "'"${tls_server_name}"'",\n'
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
@@ -137,11 +142,11 @@ build_sing_box_config() {
     inbounds+=$'      "type": "trojan",\n'
     inbounds+=$'      "tag": "trojan",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 4433,\n'
+    inbounds+="      \"listen_port\": ${port_trojan},\n"
     inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "www.bing.com",\n'
+    inbounds+=$'        "server_name": "'"${tls_server_name}"'",\n'
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
@@ -154,7 +159,7 @@ build_sing_box_config() {
     inbounds+=$'      "type": "anytls",\n'
     inbounds+=$'      "tag": "anytls",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 20443,\n'
+    inbounds+="      \"listen_port\": ${port_anytls},\n"
     inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
     inbounds+=$'      "padding_scheme": [],\n'
     inbounds+=$'      "tls": {\n'
@@ -171,15 +176,15 @@ build_sing_box_config() {
     inbounds+=$'      "type": "anytls",\n'
     inbounds+=$'      "tag": "any-reality",\n'
     inbounds+=$'      "listen": "::",\n'
-    inbounds+=$'      "listen_port": 30443,\n'
+    inbounds+="      \"listen_port\": ${port_anyreality},\n"
     inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
     inbounds+=$'      "padding_scheme": [],\n'
     inbounds+=$'      "tls": {\n'
     inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "apple.com",\n'
+    inbounds+=$'        "server_name": "'"${reality_server_name}"'",\n'
     inbounds+=$'        "reality": {\n'
     inbounds+=$'          "enabled": true,\n'
-    inbounds+=$'          "handshake": {"server": "apple.com", "server_port": 443},\n'
+    inbounds+=$'          "handshake": {"server": "'"${reality_server_name}"'", "server_port": '"${reality_port}"'},\n'
     inbounds+=$'          "private_key": "'"${private_key}"'",\n'
     inbounds+=$'          "short_id": ["'"${short_id}"'"]\n'
     inbounds+=$'        }\n'
@@ -200,32 +205,27 @@ build_sing_box_config() {
     inbounds+=$'    {\n'
     inbounds+=$'      "type": "wireguard",\n'
     inbounds+=$'      "tag": "wireguard",\n'
-    inbounds+=$'      "listen_port": 51820,\n'
+    inbounds+="      \"listen_port\": ${port_wireguard},\n"
     inbounds+=$'      "address": ["10.66.66.1/24"],\n'
     inbounds+=$'      "private_key": "'"${wg_private}"'",\n'
     inbounds+=$'      "peers": []\n'
     inbounds+=$'    }'
   fi
 
-  local outbounds
-  local final_tag="direct"
+  local outbounds final_tag upstream_mode
+  final_tag="direct"
   outbounds=$'    {"type": "direct", "tag": "direct"},\n'
   outbounds+=$'    {"type": "block", "tag": "block"}'
-
-  local upstream_mode
   upstream_mode="${OUTBOUND_PROXY_MODE:-direct}"
   if [[ "$upstream_mode" != "direct" ]]; then
     outbounds+=$',\n'
     outbounds+="$(build_upstream_outbound_singbox)"
     final_tag="proxy-out"
   fi
-
   if [[ "$has_warp" == "true" ]]; then
     outbounds+=$',\n'
     outbounds+="$(build_warp_outbound_singbox)"
-    if [[ "$upstream_mode" == "direct" ]]; then
-      final_tag="warp-out"
-    fi
+    [[ "$upstream_mode" == "direct" ]] && final_tag="warp-out"
   fi
 
   inbounds="${inbounds//\\n/$'\n'}"
@@ -233,7 +233,7 @@ build_sing_box_config() {
   local route_json
   route_json="$(build_singbox_route_json "$final_tag")"
 
-  cat > "$config_file" <<EOF
+  cat > "$config_file" <<EOF_JSON
 {
   "log": {"level": "info"},
   "inbounds": [
@@ -244,7 +244,7 @@ ${outbounds}
   ],
   "route": ${route_json}
 }
-EOF
+EOF_JSON
 
   echo "$public_key" > "${SBD_DATA_DIR}/reality_public.key"
 }

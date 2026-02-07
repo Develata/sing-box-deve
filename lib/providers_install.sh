@@ -57,7 +57,7 @@ provider_vps_install() {
 
   validate_generated_config "$engine"
   write_systemd_service "$engine"
-  configure_argo_tunnel "$protocols_csv"
+  configure_argo_tunnel "$protocols_csv" "$engine"
   write_nodes_output "$engine" "$protocols_csv"
 
   mkdir -p /etc/sing-box-deve
@@ -74,8 +74,21 @@ if [[ -f /etc/sing-box-deve/runtime.env ]]; then
   script_root="${script_root:-}"
 fi
 
+if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
+  :
+else
+  script_root=""
+  for candidate in "/opt/sing-box-deve/script" "/opt/sing-box-deve" "/usr/local/share/sing-box-deve" "$PWD/sing-box-deve"; do
+    if [[ -x "$candidate/sing-box-deve.sh" ]]; then
+      script_root="$candidate"
+      break
+    fi
+  done
+fi
+
 if [[ -z "$script_root" || ! -x "$script_root/sing-box-deve.sh" ]]; then
-  script_root="/home/develata/gitclone/sing-box-deve"
+  echo "[ERROR] Unable to locate sing-box-deve.sh. Reinstall with: sudo bash ./sing-box-deve.sh install ..." >&2
+  exit 1
 fi
 
 if [[ $# -eq 0 ]]; then
@@ -107,12 +120,30 @@ cdn_template_host=${CDN_TEMPLATE_HOST:-}
 tls_mode=${TLS_MODE:-self-signed}
 acme_cert_path=${ACME_CERT_PATH:-}
 acme_key_path=${ACME_KEY_PATH:-}
+reality_server_name=${REALITY_SERVER_NAME:-${reality_server_name:-}}
+reality_fingerprint=${REALITY_FINGERPRINT:-${reality_fingerprint:-}}
+reality_handshake_port=${REALITY_HANDSHAKE_PORT:-${reality_handshake_port:-}}
+tls_server_name=${TLS_SERVER_NAME:-${tls_server_name:-}}
+vmess_ws_path=${VMESS_WS_PATH:-${vmess_ws_path:-}}
+vless_ws_path=${VLESS_WS_PATH:-${vless_ws_path:-}}
+vless_xhttp_path=${VLESS_XHTTP_PATH:-${vless_xhttp_path:-}}
+vless_xhttp_mode=${VLESS_XHTTP_MODE:-${vless_xhttp_mode:-}}
+xray_vless_enc=${XRAY_VLESS_ENC:-${xray_vless_enc:-false}}
+xray_xhttp_reality=${XRAY_XHTTP_REALITY:-${xray_xhttp_reality:-false}}
+cdn_host_vmess=${CDN_HOST_VMESS:-${cdn_host_vmess:-}}
+cdn_host_vless_ws=${CDN_HOST_VLESS_WS:-${cdn_host_vless_ws:-}}
+cdn_host_vless_xhttp=${CDN_HOST_VLESS_XHTTP:-${cdn_host_vless_xhttp:-}}
+proxyip_vmess=${PROXYIP_VMESS:-${proxyip_vmess:-}}
+proxyip_vless_ws=${PROXYIP_VLESS_WS:-${proxyip_vless_ws:-}}
+proxyip_vless_xhttp=${PROXYIP_VLESS_XHTTP:-${proxyip_vless_xhttp:-}}
 domain_split_direct=${DOMAIN_SPLIT_DIRECT:-}
 domain_split_proxy=${DOMAIN_SPLIT_PROXY:-}
 domain_split_block=${DOMAIN_SPLIT_BLOCK:-}
 outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
 outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
+outbound_proxy_user=${OUTBOUND_PROXY_USER:-}
+outbound_proxy_pass=${OUTBOUND_PROXY_PASS:-}
 direct_share_endpoints=${DIRECT_SHARE_ENDPOINTS:-}
 proxy_share_endpoints=${PROXY_SHARE_ENDPOINTS:-}
 warp_share_endpoints=${WARP_SHARE_ENDPOINTS:-}

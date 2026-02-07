@@ -1,2 +1,5 @@
 #!/usr/bin/env bash
-# Provider-specific Docker hooks will be implemented here.
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "${script_dir}/entry.sh" docker "$@"

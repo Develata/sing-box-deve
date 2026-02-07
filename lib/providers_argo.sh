@@ -32,6 +32,7 @@ install_cloudflared_binary() {
 
 configure_argo_tunnel() {
   local protocols_csv="$1"
+  local engine="${2:-sing-box}"
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
   if ! protocol_enabled "argo" "${protocols[@]}"; then
@@ -44,8 +45,11 @@ configure_argo_tunnel() {
 
   install_cloudflared_binary
 
-  local target_port="8443"
-  protocol_enabled "vless-ws" "${protocols[@]}" && target_port="8444"
+  local target_port
+  target_port="$(resolve_protocol_port_for_engine "$engine" "vmess-ws")"
+  if protocol_enabled "vless-ws" "${protocols[@]}"; then
+    target_port="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
+  fi
 
   local mode="${ARGO_MODE:-temp}"
   local token="${ARGO_TOKEN:-}"

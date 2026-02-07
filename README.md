@@ -117,6 +117,8 @@ sudo sb doctor
 ./sing-box-deve.sh set-route cn-direct
 ./sing-box-deve.sh set-share direct 1.2.3.4:443,1.2.3.4:8443
 ./sing-box-deve.sh set-share proxy 9.9.9.9:443,9.9.9.9:2053
+./sing-box-deve.sh split3 set cn.example.com,qq.com google.com,youtube.com ads.example.com
+./sing-box-deve.sh jump set vless-reality 443 8443,2053,2083
 ./sing-box-deve.sh regen-nodes
 ```
 
@@ -172,6 +174,8 @@ sudo sb doctor
 验收矩阵脚本：
 
 - `scripts/acceptance-matrix.sh`
+- `scripts/integration-smoke.sh`（root + systemd 实机冒烟回归）
+- `scripts/consistency-check.sh`（配置与节点端口/路径一致性检查）
 - 运行：`bash scripts/acceptance-matrix.sh`
 
 ## 进阶与实现细节（可后看）
@@ -240,6 +244,36 @@ sb
 sb list --nodes
 sb restart --core
 sb set-port --list
+```
+
+Provider 快捷入口（已实现，不再是占位）：
+
+```bash
+./providers/vps.sh install --profile lite --engine sing-box --protocols vless-reality --yes
+./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vmess-ws,argo --yes
+./providers/sap.sh install --profile lite --engine sing-box --protocols vless-reality --yes
+./providers/docker.sh install --profile lite --engine sing-box --protocols vless-reality --yes
+```
+
+高级协议参数（对齐 argosbx 风格）：
+
+- Reality/TLS：`REALITY_SERVER_NAME`、`REALITY_FINGERPRINT`、`REALITY_HANDSHAKE_PORT`、`TLS_SERVER_NAME`
+- WS/XHTTP：`VMESS_WS_PATH`、`VLESS_WS_PATH`、`VLESS_XHTTP_PATH`、`VLESS_XHTTP_MODE`
+- Xray ENC：`XRAY_VLESS_ENC=true`、`XRAY_XHTTP_REALITY=true`
+- 细粒度 CDN/ProxyIP：`CDN_HOST_VMESS`、`CDN_HOST_VLESS_WS`、`CDN_HOST_VLESS_XHTTP`、`PROXYIP_VMESS`、`PROXYIP_VLESS_WS`、`PROXYIP_VLESS_XHTTP`
+
+示例（xray + vless enc + xhttp/ws 细粒度）：
+
+```bash
+XRAY_VLESS_ENC=true \
+REALITY_SERVER_NAME=apple.com \
+VMESS_WS_PATH=/my-vm \
+VLESS_WS_PATH=/my-vl \
+VLESS_XHTTP_PATH=/my-xh \
+CDN_HOST_VMESS=cdn-a.example.com \
+CDN_HOST_VLESS_WS=cdn-b.example.com \
+PROXYIP_VLESS_XHTTP=203.0.113.10 \
+./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws,vless-ws,vless-xhttp --yes
 ```
 
 详细文档：

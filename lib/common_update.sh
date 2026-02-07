@@ -64,13 +64,16 @@ perform_script_self_update() {
     "lib/legacy_compat.sh"
     "lib/providers.sh"
     "lib/providers_base.sh"
+    "lib/providers_params.sh"
     "lib/providers_release.sh"
     "lib/providers_outbound.sh"
     "lib/providers_routing.sh"
     "lib/providers_argo.sh"
+    "lib/providers_config_shared.sh"
     "lib/providers_config_singbox.sh"
     "lib/providers_config_xray.sh"
     "lib/providers_nodes.sh"
+    "lib/providers_client_templates.sh"
     "lib/providers_install.sh"
     "lib/providers_serv00.sh"
     "lib/providers_sap.sh"
@@ -78,6 +81,8 @@ perform_script_self_update() {
     "lib/providers_manage.sh"
     "lib/providers_ports.sh"
     "lib/providers_config_ops.sh"
+    "lib/providers_split3.sh"
+    "lib/providers_jump_ports.sh"
     "lib/providers_system_tools.sh"
     "lib/providers_subscriptions.sh"
     "lib/providers_panel.sh"
@@ -111,7 +116,14 @@ perform_script_self_update() {
     "examples/serv00-accounts.json"
     "examples/sap-accounts.json"
     "web-generator/index.html"
+    "providers/entry.sh"
+    "providers/vps.sh"
+    "providers/serv00.sh"
+    "providers/sap.sh"
+    "providers/docker.sh"
     "scripts/acceptance-matrix.sh"
+    "scripts/integration-smoke.sh"
+    "scripts/consistency-check.sh"
     "scripts/update-checksums.sh"
     ".github/workflows/main.yml"
     ".github/workflows/mainh.yml"
@@ -146,6 +158,7 @@ perform_script_self_update() {
 
   chmod +x "${PROJECT_ROOT}/sing-box-deve.sh" \
     "${PROJECT_ROOT}/lib/common.sh" "${PROJECT_ROOT}/lib/protocols.sh" "${PROJECT_ROOT}/lib/security.sh" "${PROJECT_ROOT}/lib/providers.sh" "${PROJECT_ROOT}/lib/output.sh" \
-    "${PROJECT_ROOT}/scripts/acceptance-matrix.sh" "${PROJECT_ROOT}/scripts/update-checksums.sh" || true
+    "${PROJECT_ROOT}/providers/entry.sh" "${PROJECT_ROOT}/providers/vps.sh" "${PROJECT_ROOT}/providers/serv00.sh" "${PROJECT_ROOT}/providers/sap.sh" "${PROJECT_ROOT}/providers/docker.sh" \
+    "${PROJECT_ROOT}/scripts/acceptance-matrix.sh" "${PROJECT_ROOT}/scripts/integration-smoke.sh" "${PROJECT_ROOT}/scripts/consistency-check.sh" "${PROJECT_ROOT}/scripts/update-checksums.sh" || true
   rm -rf "$tmp_dir"
 }

@@ -25,36 +25,11 @@ generate_client_artifacts() {
   [[ -f "$SBD_NODES_FILE" ]] || die "nodes file not found"
   [[ -f "$SBD_SUB_FILE" ]] || build_aggregate_subscription
 
-  cat > "${SBD_DATA_DIR}/sing_box_client.json" <<EOF
-{
-  "version": "sbd-subscription-v1",
-  "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "aggregate_base64": "$(cat "$SBD_SUB_FILE")",
-  "nodes_file": "${SBD_NODES_FILE}"
-}
-EOF
-
-  cat > "${SBD_DATA_DIR}/clash_meta_client.yaml" <<EOF
-# sing-box-deve generated subscription bundle
-# generated_at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-# aggregate_base64:
-# $(cat "$SBD_SUB_FILE")
-# nodes:
-EOF
-  sed 's/^/# /' "$SBD_NODES_FILE" >> "${SBD_DATA_DIR}/clash_meta_client.yaml"
-
-  cat > "${SBD_DATA_DIR}/sfa_client.json" <<EOF
-{
-  "app": "SFA",
-  "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "subscription_base64": "$(cat "$SBD_SUB_FILE")",
-  "source_nodes": "${SBD_NODES_FILE}"
-}
-EOF
-  cp "${SBD_DATA_DIR}/sfa_client.json" "${SBD_DATA_DIR}/sfi_client.json"
-  cp "${SBD_DATA_DIR}/sfa_client.json" "${SBD_DATA_DIR}/sfw_client.json"
-  sed -i 's/"SFA"/"SFI"/g' "${SBD_DATA_DIR}/sfi_client.json"
-  sed -i 's/"SFA"/"SFW"/g' "${SBD_DATA_DIR}/sfw_client.json"
+  render_singbox_client_json "${SBD_DATA_DIR}/sing_box_client.json"
+  render_clash_meta_yaml "${SBD_DATA_DIR}/clash_meta_client.yaml"
+  render_sfa_sfi_sfw "SFA" "${SBD_DATA_DIR}/sfa_client.json"
+  render_sfa_sfi_sfw "SFI" "${SBD_DATA_DIR}/sfi_client.json"
+  render_sfa_sfi_sfw "SFW" "${SBD_DATA_DIR}/sfw_client.json"
 
   cp "$SBD_NODES_FILE" "${SBD_DATA_DIR}/jh_sub.txt"
   cp "$SBD_NODES_FILE" "${SBD_DATA_DIR}/jhdy.txt"
@@ -86,7 +61,15 @@ provider_sub_show() {
       qrencode -o - -t ANSIUTF8 "aggregate-base64://$(cat "$SBD_SUB_FILE")"
     fi
   fi
-  [[ -f "${SBD_DATA_DIR}/gitlab_urls.txt" ]] && cat "${SBD_DATA_DIR}/gitlab_urls.txt"
+  if [[ -f "${SBD_DATA_DIR}/gitlab_urls.txt" ]]; then
+    cat "${SBD_DATA_DIR}/gitlab_urls.txt"
+    if command -v qrencode >/dev/null 2>&1; then
+      while IFS= read -r line; do
+        [[ "$line" == *": "* ]] || continue
+        qrencode -o - -t ANSIUTF8 "${line#*: }"
+      done < "${SBD_DATA_DIR}/gitlab_urls.txt"
+    fi
+  fi
 }
 
 provider_sub_gitlab_set() {

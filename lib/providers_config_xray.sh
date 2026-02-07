@@ -5,14 +5,27 @@ build_xray_config() {
   local config_file="${SBD_CONFIG_DIR}/xray-config.json"
   local uuid
   uuid="$(ensure_uuid)"
+  local reality_server_name reality_port ws_path_vmess ws_path_vless xhttp_path xhttp_mode vless_decryption
+  reality_server_name="$(sbd_reality_server_name)"
+  reality_port="$(sbd_reality_handshake_port)"
+  ws_path_vmess="$(sbd_vmess_ws_path)"
+  ws_path_vless="$(sbd_vless_ws_path)"
+  xhttp_path="$(sbd_vless_xhttp_path "$uuid")"
+  xhttp_mode="$(sbd_vless_xhttp_mode)"
+  vless_decryption="none"
+  if sbd_xray_vless_enc_enabled; then
+    ensure_xray_vless_enc_keys
+    vless_decryption="$(sbd_xray_vless_decryption_key)"
+    [[ -n "$vless_decryption" ]] || die "XRAY_VLESS_ENC=true but decryption key is empty"
+  fi
 
   local port_vless_reality port_vmess_ws port_vless_ws port_vless_xhttp port_trojan port_socks5
-  port_vless_reality="$(get_protocol_port "vless-reality")"
-  port_vmess_ws="$(get_protocol_port "vmess-ws")"
-  port_vless_ws="$(get_protocol_port "vless-ws")"
-  port_vless_xhttp="$(get_protocol_port "vless-xhttp")"
-  port_trojan="$(get_protocol_port "trojan")"
-  port_socks5="$(get_protocol_port "socks5")"
+  port_vless_reality="$(resolve_protocol_port_for_engine "xray" "vless-reality")"
+  port_vmess_ws="$(resolve_protocol_port_for_engine "xray" "vmess-ws")"
+  port_vless_ws="$(resolve_protocol_port_for_engine "xray" "vless-ws")"
+  port_vless_xhttp="$(resolve_protocol_port_for_engine "xray" "vless-xhttp")"
+  port_trojan="$(resolve_protocol_port_for_engine "xray" "trojan")"
+  port_socks5="$(resolve_protocol_port_for_engine "xray" "socks5")"
 
   if [[ ! -f "${SBD_DATA_DIR}/xray_private.key" ]]; then
     local out
@@ -37,7 +50,7 @@ build_xray_config() {
   inbounds+="      \"port\": ${port_vless_reality},\n"
   inbounds+=$'      "protocol": "vless",\n'
   inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
-  inbounds+=$'      "streamSettings": {"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "apple.com:443", "xver": 0, "serverNames": ["apple.com"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}}\n'
+  inbounds+=$'      "streamSettings": {"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "'"${reality_server_name}:${reality_port}"'", "xver": 0, "serverNames": ["'"${reality_server_name}"'"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}}\n'
   inbounds+=$'    }'
 
   local protocols=()
@@ -59,7 +72,7 @@ build_xray_config() {
     inbounds+="      \"port\": ${port_vmess_ws},\n"
     inbounds+=$'      "protocol": "vmess",\n'
     inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}]},\n'
-    inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "/vmess"}}\n'
+    inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "'"${ws_path_vmess}"'"}}\n'
     inbounds+=$'    }'
   fi
 
@@ -70,8 +83,8 @@ build_xray_config() {
     inbounds+=$'      "listen": "::",\n'
     inbounds+="      \"port\": ${port_vless_ws},\n"
     inbounds+=$'      "protocol": "vless",\n'
-    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}], "decryption": "none"},\n'
-    inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "/vless"}}\n'
+    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}], "decryption": "'"${vless_decryption}"'"},\n'
+    inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "'"${ws_path_vless}"'"}}\n'
     inbounds+=$'    }'
   fi
 
@@ -82,11 +95,11 @@ build_xray_config() {
     inbounds+=$'      "listen": "::",\n'
     inbounds+="      \"port\": ${port_vless_xhttp},\n"
     inbounds+=$'      "protocol": "vless",\n'
-    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
-    if [[ "${SBD_XHTTP_REALITY_ENC:-false}" == "true" ]]; then
-      inbounds+=$'      "streamSettings": {"network": "xhttp", "security": "reality", "realitySettings": {"show": false, "dest": "apple.com:443", "xver": 0, "serverNames": ["apple.com"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}, "xhttpSettings": {"path": "/'"${uuid}"'-xh", "mode": "auto"}}\n'
+    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "'"${vless_decryption}"'"},\n'
+    if sbd_xhttp_use_reality; then
+      inbounds+=$'      "streamSettings": {"network": "xhttp", "security": "reality", "realitySettings": {"show": false, "dest": "'"${reality_server_name}:${reality_port}"'", "xver": 0, "serverNames": ["'"${reality_server_name}"'"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}, "xhttpSettings": {"path": "'"${xhttp_path}"'", "mode": "'"${xhttp_mode}"'"}}\n'
     else
-      inbounds+=$'      "streamSettings": {"network": "xhttp", "xhttpSettings": {"path": "/'"${uuid}"'-xh", "mode": "auto"}}\n'
+      inbounds+=$'      "streamSettings": {"network": "xhttp", "xhttpSettings": {"path": "'"${xhttp_path}"'", "mode": "'"${xhttp_mode}"'"}}\n'
     fi
     inbounds+=$'    }'
   fi

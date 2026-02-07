@@ -15,6 +15,22 @@ create_install_context() {
   local tls_mode="${TLS_MODE:-self-signed}"
   local acme_cert_path="${ACME_CERT_PATH:-}"
   local acme_key_path="${ACME_KEY_PATH:-}"
+  local reality_server_name="${REALITY_SERVER_NAME:-}"
+  local reality_fingerprint="${REALITY_FINGERPRINT:-}"
+  local reality_handshake_port="${REALITY_HANDSHAKE_PORT:-443}"
+  local tls_server_name="${TLS_SERVER_NAME:-}"
+  local vmess_ws_path="${VMESS_WS_PATH:-/vmess}"
+  local vless_ws_path="${VLESS_WS_PATH:-/vless}"
+  local vless_xhttp_path="${VLESS_XHTTP_PATH:-}"
+  local vless_xhttp_mode="${VLESS_XHTTP_MODE:-auto}"
+  local xray_vless_enc="${XRAY_VLESS_ENC:-false}"
+  local xray_xhttp_reality="${XRAY_XHTTP_REALITY:-false}"
+  local cdn_host_vmess="${CDN_HOST_VMESS:-}"
+  local cdn_host_vless_ws="${CDN_HOST_VLESS_WS:-}"
+  local cdn_host_vless_xhttp="${CDN_HOST_VLESS_XHTTP:-}"
+  local proxyip_vmess="${PROXYIP_VMESS:-}"
+  local proxyip_vless_ws="${PROXYIP_VLESS_WS:-}"
+  local proxyip_vless_xhttp="${PROXYIP_VLESS_XHTTP:-}"
   local domain_split_direct="${DOMAIN_SPLIT_DIRECT:-}"
   local domain_split_proxy="${DOMAIN_SPLIT_PROXY:-}"
   local domain_split_block="${DOMAIN_SPLIT_BLOCK:-}"
@@ -49,6 +65,22 @@ cdn_template_host=${cdn_template_host}
 tls_mode=${tls_mode}
 acme_cert_path=${acme_cert_path}
 acme_key_path=${acme_key_path}
+reality_server_name=${reality_server_name}
+reality_fingerprint=${reality_fingerprint}
+reality_handshake_port=${reality_handshake_port}
+tls_server_name=${tls_server_name}
+vmess_ws_path=${vmess_ws_path}
+vless_ws_path=${vless_ws_path}
+vless_xhttp_path=${vless_xhttp_path}
+vless_xhttp_mode=${vless_xhttp_mode}
+xray_vless_enc=${xray_vless_enc}
+xray_xhttp_reality=${xray_xhttp_reality}
+cdn_host_vmess=${cdn_host_vmess}
+cdn_host_vless_ws=${cdn_host_vless_ws}
+cdn_host_vless_xhttp=${cdn_host_vless_xhttp}
+proxyip_vmess=${proxyip_vmess}
+proxyip_vless_ws=${proxyip_vless_ws}
+proxyip_vless_xhttp=${proxyip_vless_xhttp}
 domain_split_direct=${domain_split_direct}
 domain_split_proxy=${domain_split_proxy}
 domain_split_block=${domain_split_block}
@@ -99,6 +131,22 @@ features:
   tls_mode: ${tls_mode:-self-signed}
   acme_cert_path: ${acme_cert_path:-""}
   acme_key_path: ${acme_key_path:-""}
+  reality_server_name: ${reality_server_name:-apple.com}
+  reality_fingerprint: ${reality_fingerprint:-chrome}
+  reality_handshake_port: ${reality_handshake_port:-443}
+  tls_server_name: ${tls_server_name:-www.bing.com}
+  vmess_ws_path: ${vmess_ws_path:-/vmess}
+  vless_ws_path: ${vless_ws_path:-/vless}
+  vless_xhttp_path: ${vless_xhttp_path:-""}
+  vless_xhttp_mode: ${vless_xhttp_mode:-auto}
+  xray_vless_enc: ${xray_vless_enc:-false}
+  xray_xhttp_reality: ${xray_xhttp_reality:-false}
+  cdn_host_vmess: ${cdn_host_vmess:-""}
+  cdn_host_vless_ws: ${cdn_host_vless_ws:-""}
+  cdn_host_vless_xhttp: ${cdn_host_vless_xhttp:-""}
+  proxyip_vmess: ${proxyip_vmess:-""}
+  proxyip_vless_ws: ${proxyip_vless_ws:-""}
+  proxyip_vless_xhttp: ${proxyip_vless_xhttp:-""}
   domain_split_direct: ${domain_split_direct:-""}
   domain_split_proxy: ${domain_split_proxy:-""}
   domain_split_block: ${domain_split_block:-""}

@@ -89,7 +89,7 @@ provider_doctor() {
   if [[ -f "$SBD_NODES_FILE" ]]; then
     log_success "Node output file present: $SBD_NODES_FILE"
     local bad_nodes
-    bad_nodes="$(awk '!/^(vless|vmess|hysteria2|trojan|wireguard|anytls|argo-domain|warp-mode):\/\//{print NR":"$0}' "$SBD_NODES_FILE" || true)"
+    bad_nodes="$(awk '!/^(vless|vmess|hysteria2|trojan|wireguard|anytls|socks|ss|tuic|argo-domain|warp-mode):\/\//{print NR":"$0}' "$SBD_NODES_FILE" || true)"
     if [[ -n "$bad_nodes" ]]; then
       log_warn "Node output contains unrecognized lines:"
       printf '%s\n' "$bad_nodes"
@@ -104,15 +104,18 @@ provider_doctor() {
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
     # shellcheck disable=SC1091
     source /etc/sing-box-deve/runtime.env
-    local p mapping proto port
+    local p mapping proto port tag
     IFS=',' read -r -a _plist <<< "${protocols:-}"
     for p in "${_plist[@]}"; do
       p="$(echo "$p" | xargs)"
       [[ -n "$p" ]] || continue
       protocol_needs_local_listener "$p" || continue
+      tag="$(protocol_inbound_tag "$p" || true)"
+      [[ -n "$tag" ]] || continue
       mapping="$(protocol_port_map "$p")"
       proto="${mapping%%:*}"
-      port="${mapping##*:}"
+      port="$(config_port_for_tag "${engine:-sing-box}" "$tag" 2>/dev/null || true)"
+      [[ -n "$port" ]] || port="$(get_protocol_port "$p")"
       if ss -lntup 2>/dev/null | grep -E "[.:]${port}[[:space:]]" >/dev/null; then
         log_success "Port listening detected for ${p}: ${proto}/${port}"
       else

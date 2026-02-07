@@ -63,7 +63,8 @@ provider_set_port() {
   local protocol="$1"
   local new_port="$2"
   local tag
-  tag="$(protocol_to_tag "$protocol")"
+  tag="$(protocol_inbound_tag "$protocol" || true)"
+  [[ -n "$tag" ]] || die "Unsupported protocol for set-port: $protocol"
   local fw_proto
   fw_proto="$(protocol_port_map "$protocol")"
   fw_proto="${fw_proto%%:*}"
@@ -95,6 +96,9 @@ provider_set_port() {
     local old_tag
     old_tag="MYBOX:${install_id}:core:${fw_proto}:${old_port}"
     fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag" || true
+    if [[ -f "$SBD_RULES_FILE" ]]; then
+      awk -F'|' -v tag="$old_tag" '$4 != tag' "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" && mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE"
+    fi
   fi
   fw_apply_rule "$fw_proto" "$new_port"
 

@@ -11,6 +11,9 @@ menu_config_center() {
     echo "5) cfg domain-split direct/proxy/block"
     echo "6) cfg tls self-signed/acme"
     echo "7) cfg rebuild"
+    echo "8) split3 show"
+    echo "9) split3 set"
+    echo "10) jump set/clear/replay"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -51,6 +54,28 @@ menu_config_center() {
         menu_pause
         ;;
       7) provider_cfg_command rebuild; menu_pause ;;
+      8) provider_split3_show; menu_pause ;;
+      9)
+        read -r -p "split3 direct(csv): " sd
+        read -r -p "split3 proxy(csv): " sp
+        read -r -p "split3 block(csv): " sb
+        provider_split3_set "$sd" "$sp" "$sb"
+        menu_pause
+        ;;
+      10)
+        read -r -p "jump action[set/clear/replay]: " ja
+        if [[ "$ja" == "set" ]]; then
+          read -r -p "protocol: " jp
+          read -r -p "main port: " jm
+          read -r -p "extra ports(csv): " je
+          provider_jump_set "$jp" "$jm" "$je"
+        elif [[ "$ja" == "replay" ]]; then
+          provider_jump_replay
+        else
+          provider_jump_clear
+        fi
+        menu_pause
+        ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
