@@ -16,17 +16,17 @@ menu_subscriptions() {
       1) provider_sub_command refresh; menu_pause ;;
       2) provider_sub_command show; menu_pause ;;
       3)
-        read -r -p "GitLab token: " t
-        read -r -p "GitLab project(group/project): " p
-        read -r -p "branch(default main): " b
-        read -r -p "path(default subs): " sp
+        read -r -p "$(msg "GitLab token" "GitLab token"): " t
+        read -r -p "$(msg "GitLab 项目(group/project)" "GitLab project(group/project)"): " p
+        read -r -p "$(msg "分支(默认 main)" "branch(default main)"): " b
+        read -r -p "$(msg "路径(默认 subs)" "path(default subs)"): " sp
         provider_sub_command gitlab-set "$t" "$p" "${b:-main}" "${sp:-subs}"
         menu_pause
         ;;
       4) provider_sub_command gitlab-push; menu_pause ;;
       5)
-        read -r -p "Telegram bot token: " bt
-        read -r -p "Telegram chat id: " cid
+        read -r -p "$(msg "Telegram bot token" "Telegram bot token"): " bt
+        read -r -p "$(msg "Telegram chat id" "Telegram chat id"): " cid
         provider_sub_command tg-set "$bt" "$cid"
         menu_pause
         ;;

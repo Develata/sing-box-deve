@@ -13,37 +13,37 @@ menu_cfg_collect_change() {
   echo "5) domain-split direct/proxy/block"
   echo "6) tls self-signed/acme"
   echo "7) rebuild"
-  read -r -p "cfg action: " a
+  read -r -p "$(msg "请选择配置动作编号" "Select cfg action id"): " a
   case "${a:-0}" in
     1)
       MENU_CFG_ACTION="rotate-id"
       ;;
     2)
       MENU_CFG_ACTION="argo"
-      read -r -p "argo mode[off/temp/fixed]: " MENU_CFG_ARG1
-      read -r -p "token(optional): " MENU_CFG_ARG2
-      read -r -p "domain(optional): " MENU_CFG_ARG3
+      read -r -p "$(msg "Argo 模式[off/temp/fixed]" "argo mode[off/temp/fixed]"): " MENU_CFG_ARG1
+      read -r -p "$(msg "token(可选)" "token(optional)"): " MENU_CFG_ARG2
+      read -r -p "$(msg "domain(可选)" "domain(optional)"): " MENU_CFG_ARG3
       ;;
     3)
       MENU_CFG_ACTION="ip-pref"
-      read -r -p "ip preference[auto/v4/v6]: " MENU_CFG_ARG1
+      read -r -p "$(msg "IP 优先级[auto/v4/v6]" "ip preference[auto/v4/v6]"): " MENU_CFG_ARG1
       ;;
     4)
       MENU_CFG_ACTION="cdn-host"
-      read -r -p "cdn host: " MENU_CFG_ARG1
+      read -r -p "$(msg "CDN 主机名" "cdn host"): " MENU_CFG_ARG1
       ;;
     5)
       MENU_CFG_ACTION="domain-split"
-      read -r -p "direct domains(csv): " MENU_CFG_ARG1
-      read -r -p "proxy domains(csv): " MENU_CFG_ARG2
-      read -r -p "block domains(csv): " MENU_CFG_ARG3
+      read -r -p "$(msg "直连域名(csv)" "direct domains(csv)"): " MENU_CFG_ARG1
+      read -r -p "$(msg "代理域名(csv)" "proxy domains(csv)"): " MENU_CFG_ARG2
+      read -r -p "$(msg "屏蔽域名(csv)" "block domains(csv)"): " MENU_CFG_ARG3
       ;;
     6)
       MENU_CFG_ACTION="tls"
-      read -r -p "tls mode[self-signed/acme]: " MENU_CFG_ARG1
+      read -r -p "$(msg "TLS 模式[self-signed/acme]" "tls mode[self-signed/acme]"): " MENU_CFG_ARG1
       if [[ "$MENU_CFG_ARG1" == "acme" ]]; then
-        read -r -p "acme cert path: " MENU_CFG_ARG2
-        read -r -p "acme key path: " MENU_CFG_ARG3
+        read -r -p "$(msg "acme 证书路径" "acme cert path"): " MENU_CFG_ARG2
+        read -r -p "$(msg "acme 私钥路径" "acme key path"): " MENU_CFG_ARG3
       fi
       ;;
     7)
@@ -88,30 +88,30 @@ menu_config_center() {
         menu_pause
         ;;
       3)
-        read -r -p "snapshot id(default latest): " sid
+        read -r -p "$(msg "快照 ID(默认 latest)" "snapshot id(default latest)"): " sid
         provider_cfg_command rollback "${sid:-latest}"
         menu_pause
         ;;
       4) provider_cfg_command snapshots list; menu_pause ;;
       5)
-        read -r -p "keep count(default 10): " keep
+        read -r -p "$(msg "保留数量(默认 10)" "keep count(default 10)"): " keep
         provider_cfg_command snapshots prune "${keep:-10}"
         menu_pause
         ;;
       6) provider_split3_show; menu_pause ;;
       7)
-        read -r -p "split3 direct(csv): " sd
-        read -r -p "split3 proxy(csv): " sp
-        read -r -p "split3 block(csv): " sb
+        read -r -p "$(msg "split3 直连(csv)" "split3 direct(csv)"): " sd
+        read -r -p "$(msg "split3 代理(csv)" "split3 proxy(csv)"): " sp
+        read -r -p "$(msg "split3 屏蔽(csv)" "split3 block(csv)"): " sb
         provider_split3_set "$sd" "$sp" "$sb"
         menu_pause
         ;;
       8)
-        read -r -p "jump action[set/clear/replay]: " ja
+        read -r -p "$(msg "jump 动作[set/clear/replay]" "jump action[set/clear/replay]"): " ja
         if [[ "$ja" == "set" ]]; then
-          read -r -p "protocol: " jp
-          read -r -p "main port: " jm
-          read -r -p "extra ports(csv): " je
+          read -r -p "$(msg "协议" "protocol"): " jp
+          read -r -p "$(msg "主端口" "main port"): " jm
+          read -r -p "$(msg "附加端口(csv)" "extra ports(csv)"): " je
           provider_jump_set "$jp" "$jm" "$je"
         elif [[ "$ja" == "replay" ]]; then
           provider_jump_replay

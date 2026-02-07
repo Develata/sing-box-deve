@@ -1,5 +1,35 @@
 #!/usr/bin/env bash
 
+provider_i18n_value() {
+  local value="${1:-}"
+  case "$value" in
+    running) msg "运行中" "running" ;;
+    stopped) msg "已停止" "stopped" ;;
+    off) msg "关闭" "off" ;;
+    unknown) msg "未知" "unknown" ;;
+    yes) msg "是" "yes" ;;
+    no) msg "否" "no" ;;
+    direct) msg "直连" "direct" ;;
+    global-proxy) msg "全局代理" "global-proxy" ;;
+    cn-direct) msg "国内直连" "cn-direct" ;;
+    cn-proxy) msg "国内代理" "cn-proxy" ;;
+    auto) msg "自动" "auto" ;;
+    self-signed) msg "自签名" "self-signed" ;;
+    none) msg "无" "none" ;;
+    n/a) msg "无" "n/a" ;;
+    *) echo "$value" ;;
+  esac
+}
+
+provider_i18n_upgrade() {
+  local value="${1:-unknown}"
+  case "$value" in
+    yes) msg "可升级" "yes" ;;
+    no) msg "无需升级" "no" ;;
+    *) msg "未知" "unknown" ;;
+  esac
+}
+
 provider_status_header() {
   local core_state="unknown"
   local argo_state="off"
@@ -17,17 +47,17 @@ provider_status_header() {
       argo_state="stopped"
     fi
   fi
-  log_info "State: core=${core_state} argo=${argo_state}"
+  log_info "$(msg "状态: 核心=$(provider_i18n_value "$core_state") argo=$(provider_i18n_value "$argo_state")" "State: core=${core_state} argo=${argo_state}")"
 
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
     # shellcheck disable=SC1091
     source /etc/sing-box-deve/runtime.env
-    log_info "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}"
-    log_info "Protocols: ${protocols:-none}"
-    log_info "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}"
-    log_info "IP preference: ${ip_preference:-auto} | TLS: ${tls_mode:-self-signed} | CDN host: ${cdn_template_host:-auto}"
-    log_info "Domain split: direct='${domain_split_direct:-}' proxy='${domain_split_proxy:-}' block='${domain_split_block:-}'"
-    log_info "Share endpoints: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'"
+    log_info "$(msg "环境: ${provider:-unknown} | 规格: ${profile:-unknown} | 内核: ${engine:-unknown}" "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}")"
+    log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
+    log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"
+    log_info "$(msg "IP 优先级: $(provider_i18n_value "${ip_preference:-auto}") | TLS: $(provider_i18n_value "${tls_mode:-self-signed}") | CDN 主机: ${cdn_template_host:-$(provider_i18n_value auto)}" "IP preference: ${ip_preference:-auto} | TLS: ${tls_mode:-self-signed} | CDN host: ${cdn_template_host:-auto}")"
+    log_info "$(msg "分流域名: 直连='${domain_split_direct:-}' 代理='${domain_split_proxy:-}' 屏蔽='${domain_split_block:-}'" "Domain split: direct='${domain_split_direct:-}' proxy='${domain_split_proxy:-}' block='${domain_split_block:-}'")"
+    log_info "$(msg "分享出口: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'" "Share endpoints: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'")"
 
     local main_port="n/a"
     if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" ]]; then
@@ -37,16 +67,16 @@ provider_status_header() {
     fi
     local pub_ip
     pub_ip="$(detect_public_ip)"
-    log_info "PublicIP: ${pub_ip} | MainPort: ${main_port}"
+    log_info "$(msg "公网IP: ${pub_ip} | 主端口: ${main_port}" "PublicIP: ${pub_ip} | MainPort: ${main_port}")"
   else
-    log_warn "Runtime state not found (/etc/sing-box-deve/runtime.env)"
+    log_warn "$(msg "未找到运行时状态文件 (/etc/sing-box-deve/runtime.env)" "Runtime state not found (/etc/sing-box-deve/runtime.env)")"
   fi
 
   if [[ -f "$SBD_SERVICE_FILE" ]]; then
     if systemctl is-active --quiet sing-box-deve.service; then
-      log_success "Core service: running"
+      log_success "$(msg "核心服务: 运行中" "Core service: running")"
     else
-      log_warn "Core service: not running"
+      log_warn "$(msg "核心服务: 未运行" "Core service: not running")"
     fi
   fi
 
@@ -60,7 +90,7 @@ provider_status_header() {
   else
     script_upgrade="yes"
   fi
-  log_info "Script: local=${script_local} remote=${script_remote:-n/a} upgrade=${script_upgrade}"
+  log_info "$(msg "脚本: 本地=${script_local} 远端=${script_remote:-n/a} 升级=$(provider_i18n_upgrade "$script_upgrade")" "Script: local=${script_local} remote=${script_remote:-n/a} upgrade=${script_upgrade}")"
 
   if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
     local sbver
@@ -77,7 +107,7 @@ provider_status_header() {
       else
         sb_upgrade="yes"
       fi
-      log_info "sing-box: local=${sbver} remote=${sb_remote:-n/a} upgrade=${sb_upgrade}"
+      log_info "$(msg "sing-box: 本地=${sbver} 远端=${sb_remote:-n/a} 升级=$(provider_i18n_upgrade "$sb_upgrade")" "sing-box: local=${sbver} remote=${sb_remote:-n/a} upgrade=${sb_upgrade}")"
     fi
   fi
 
@@ -96,44 +126,44 @@ provider_status_header() {
       else
         x_upgrade="yes"
       fi
-      log_info "xray: local=${xver} remote=${x_remote:-n/a} upgrade=${x_upgrade}"
+      log_info "$(msg "xray: 本地=${xver} 远端=${x_remote:-n/a} 升级=$(provider_i18n_upgrade "$x_upgrade")" "xray: local=${xver} remote=${x_remote:-n/a} upgrade=${x_upgrade}")"
     fi
   fi
 
   if [[ -x "${SBD_BIN_DIR}/cloudflared" ]]; then
     local cver
     cver="$("${SBD_BIN_DIR}/cloudflared" --version 2>/dev/null | awk '{print $3}' | head -n1)"
-    [[ -n "$cver" ]] && log_info "cloudflared version: ${cver}"
+    [[ -n "$cver" ]] && log_info "$(msg "cloudflared 版本: ${cver}" "cloudflared version: ${cver}")"
     if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
       if systemctl is-active --quiet sing-box-deve-argo.service; then
-        log_success "Argo sidecar: running"
+        log_success "$(msg "Argo 边车: 运行中" "Argo sidecar: running")"
       else
-        log_warn "Argo sidecar: not running"
+        log_warn "$(msg "Argo 边车: 未运行" "Argo sidecar: not running")"
       fi
     fi
   fi
 
   if [[ -f "$SBD_NODES_FILE" ]]; then
-    log_info "Nodes file: $SBD_NODES_FILE"
+    log_info "$(msg "节点文件: $SBD_NODES_FILE" "Nodes file: $SBD_NODES_FILE")"
   fi
 }
 
 provider_panel() {
   local mode="${1:-compact}"
-  log_info "========== sing-box-deve panel =========="
+  log_info "$(msg "========== sing-box-deve 面板 ==========" "========== sing-box-deve panel ==========")"
   provider_status_header
 
   if [[ "$mode" == "full" ]]; then
     echo
-    log_info "----- Runtime Details -----"
+    log_info "$(msg "----- 运行时详情 -----" "----- Runtime Details -----")"
     if [[ -f /etc/sing-box-deve/runtime.env ]]; then
       cat /etc/sing-box-deve/runtime.env
     else
-      log_warn "runtime.env missing"
+      log_warn "$(msg "缺少 runtime.env" "runtime.env missing")"
     fi
-    log_info "----- Settings -----"
+    log_info "$(msg "----- 持久化设置 -----" "----- Settings -----")"
     show_settings
-    log_info "----- Managed Firewall Rules -----"
+    log_info "$(msg "----- 防火墙托管规则 -----" "----- Managed Firewall Rules -----")"
     fw_status
   fi
 

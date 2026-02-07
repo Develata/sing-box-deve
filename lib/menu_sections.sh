@@ -57,22 +57,22 @@ menu_egress() {
         menu_pause
         ;;
       2)
-        read -r -p "mode[socks/http/https]: " m
-        read -r -p "host: " h
-        read -r -p "port: " p
-        read -r -p "user(optional): " u
-        read -r -p "pass(optional): " pw
+        read -r -p "$(msg "模式[socks/http/https]" "mode[socks/http/https]"): " m
+        read -r -p "$(msg "主机" "host"): " h
+        read -r -p "$(msg "端口" "port"): " p
+        read -r -p "$(msg "用户(可选)" "user(optional)"): " u
+        read -r -p "$(msg "密码(可选)" "pass(optional)"): " pw
         provider_set_egress "$m" "$h" "$p" "$u" "$pw"
         menu_pause
         ;;
       3)
-        read -r -p "route mode[direct/global-proxy/cn-direct/cn-proxy]: " rm
+        read -r -p "$(msg "路由模式[direct/global-proxy/cn-direct/cn-proxy]" "route mode[direct/global-proxy/cn-direct/cn-proxy]"): " rm
         provider_set_route "$rm"
         menu_pause
         ;;
       4)
-        read -r -p "share kind[direct/proxy/warp]: " sk
-        read -r -p "endpoints(host:port,host:port...): " se
+        read -r -p "$(msg "分享类别[direct/proxy/warp]" "share kind[direct/proxy/warp]"): " sk
+        read -r -p "$(msg "出口列表(host:port,host:port...)" "endpoints(host:port,host:port...)"): " se
         provider_set_share_endpoints "$sk" "$se"
         menu_pause
         ;;
@@ -155,13 +155,13 @@ menu_settings() {
     case "${c:-0}" in
       1) show_settings; menu_pause ;;
       2)
-        read -r -p "lang[zh/en]: " l
+        read -r -p "$(msg "语言[zh/en]" "lang[zh/en]"): " l
         set_setting lang "$l"
         show_settings
         menu_pause
         ;;
       3)
-        read -r -p "auto_yes[true/false]: " ay
+        read -r -p "$(msg "自动确认[true/false]" "auto_yes[true/false]"): " ay
         set_setting auto_yes "$ay"
         show_settings
         menu_pause

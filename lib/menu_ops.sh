@@ -22,8 +22,8 @@ menu_ops() {
       2) provider_kernel_set sing-box latest; menu_pause ;;
       3) provider_kernel_set xray latest; menu_pause ;;
       4)
-        read -r -p "engine[sing-box/xray]: " e
-        read -r -p "tag(ex: v1.12.20): " t
+        read -r -p "$(msg "内核[sing-box/xray]" "engine[sing-box/xray]"): " e
+        read -r -p "$(msg "版本标签(例: v1.12.20)" "tag(ex: v1.12.20)"): " t
         provider_kernel_set "$e" "$t"
         menu_pause
         ;;
@@ -33,14 +33,14 @@ menu_ops() {
       8) provider_sys_command bbr-enable; menu_pause ;;
       9) provider_sys_command acme-install; menu_pause ;;
       10)
-        read -r -p "domain: " d
-        read -r -p "email: " e
+        read -r -p "$(msg "域名" "domain"): " d
+        read -r -p "$(msg "邮箱" "email"): " e
         provider_sys_command acme-issue "$d" "$e"
         menu_pause
         ;;
       11)
-        read -r -p "cert path: " cpath
-        read -r -p "key path: " kpath
+        read -r -p "$(msg "证书路径" "cert path"): " cpath
+        read -r -p "$(msg "私钥路径" "key path"): " kpath
         provider_sys_command acme-apply "$cpath" "$kpath"
         menu_pause
         ;;
