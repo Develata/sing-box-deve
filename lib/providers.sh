@@ -953,18 +953,30 @@ provider_vps_install() {
   write_nodes_output "$engine" "$protocols_csv"
 
   mkdir -p /etc/sing-box-deve
-  cat > /etc/sing-box-deve/runtime.env <<EOF
-provider=vps
-profile=${profile}
-engine=${engine}
-protocols=${protocols_csv}
-argo_mode=${ARGO_MODE:-off}
-warp_mode=${WARP_MODE:-off}
-outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
-outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
-outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
-installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  persist_runtime_state "vps" "$profile" "$engine" "$protocols_csv"
+
+  cat > /usr/local/bin/sb <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_root=""
+if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  script_root="${script_root:-}"
+fi
+
+if [[ -z "$script_root" || ! -x "$script_root/sing-box-deve.sh" ]]; then
+  script_root="/home/develata/gitclone/sing-box-deve"
+fi
+
+if [[ $# -eq 0 ]]; then
+  exec "$script_root/sing-box-deve.sh" menu
+fi
+
+exec "$script_root/sing-box-deve.sh" "$@"
 EOF
+  chmod +x /usr/local/bin/sb
 
   log_success "VPS provider setup complete"
 }
@@ -1388,6 +1400,219 @@ provider_restart() {
   fi
 }
 
+provider_logs() {
+  ensure_root
+  local target="${1:-core}"
+  case "$target" in
+    core)
+      if [[ ! -f "$SBD_SERVICE_FILE" ]]; then
+        die "Core service is not installed"
+      fi
+      journalctl -u sing-box-deve.service -n 120 --no-pager
+      ;;
+    argo)
+      if [[ ! -f "$SBD_ARGO_SERVICE_FILE" ]]; then
+        die "Argo service is not installed"
+      fi
+      journalctl -u sing-box-deve-argo.service -n 120 --no-pager
+      ;;
+    *)
+      die "Unsupported logs target: $target"
+      ;;
+  esac
+}
+
+protocol_to_tag() {
+  local protocol="$1"
+  case "$protocol" in
+    vless-reality) echo "vless-reality" ;;
+    vmess-ws) echo "vmess-ws" ;;
+    vless-ws) echo "vless-ws" ;;
+    vless-xhttp) echo "vless-xhttp" ;;
+    shadowsocks-2022) echo "ss-2022" ;;
+    hysteria2) echo "hy2" ;;
+    tuic) echo "tuic" ;;
+    trojan) echo "trojan" ;;
+    wireguard) echo "wireguard" ;;
+    anytls) echo "anytls" ;;
+    any-reality) echo "any-reality" ;;
+    *) die "Unsupported protocol for set-port: $protocol" ;;
+  esac
+}
+
+persist_runtime_state() {
+  local provider="$1"
+  local profile="$2"
+  local engine="$3"
+  local protocols_csv="$4"
+  cat > /etc/sing-box-deve/runtime.env <<EOF
+provider=${provider}
+profile=${profile}
+engine=${engine}
+protocols=${protocols_csv}
+argo_mode=${ARGO_MODE:-off}
+warp_mode=${WARP_MODE:-off}
+outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
+outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
+outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
+script_root=${PROJECT_ROOT}
+installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EOF
+}
+
+provider_set_port_info() {
+  ensure_root
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+
+  local whitelist cfg
+  case "${engine:-sing-box}" in
+    sing-box)
+      whitelist="vless-reality,vmess-ws,vless-ws,shadowsocks-2022,hysteria2,tuic,trojan,wireguard,anytls,any-reality"
+      cfg="${SBD_CONFIG_DIR}/config.json"
+      ;;
+    xray)
+      whitelist="vless-reality,vmess-ws,vless-ws,vless-xhttp,trojan"
+      cfg="${SBD_CONFIG_DIR}/xray-config.json"
+      ;;
+    *)
+      die "Unknown engine in runtime state: ${engine:-unknown}"
+      ;;
+  esac
+
+  log_info "Whitelist (engine=${engine}): ${whitelist}"
+  [[ -f "$cfg" ]] || die "Config file not found: $cfg"
+  command -v jq >/dev/null 2>&1 || die "jq is required for set-port --list"
+
+  log_info "Current protocol ports:"
+  if [[ "${engine}" == "sing-box" ]]; then
+    jq -r '.inbounds[] | [.tag, (.listen_port // .port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
+      case "$tag" in
+        vless-reality|vmess-ws|vless-ws|ss-2022|hy2|tuic|trojan|wireguard|anytls|any-reality)
+          log_info "- ${tag}: ${port}"
+          ;;
+      esac
+    done
+  else
+    jq -r '.inbounds[] | [.tag, (.port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
+      case "$tag" in
+        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan)
+          log_info "- ${tag}: ${port}"
+          ;;
+      esac
+    done
+  fi
+
+  log_info "Usage: ./sing-box-deve.sh set-port --protocol <name> --port <1-65535>"
+}
+
+provider_set_port() {
+  ensure_root
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  validate_provider "${provider:-vps}"
+  validate_engine "${engine:-sing-box}"
+  [[ "${provider}" == "vps" ]] || die "set-port currently supports provider=vps only"
+  [[ "$2" =~ ^[0-9]+$ ]] || die "Port must be numeric"
+  (( $2 >= 1 && $2 <= 65535 )) || die "Port must be between 1 and 65535"
+
+  local protocol="$1"
+  local new_port="$2"
+  local tag
+  tag="$(protocol_to_tag "$protocol")"
+  local fw_proto
+  fw_proto="$(protocol_port_map "$protocol")"
+  fw_proto="${fw_proto%%:*}"
+
+  local cfg
+  if [[ "${engine}" == "sing-box" ]]; then
+    cfg="${SBD_CONFIG_DIR}/config.json"
+    [[ -f "$cfg" ]] || die "Config file missing: $cfg"
+    local old_port
+    old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.listen_port // .port)' "$cfg" | head -n1)"
+    [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
+    tmp_cfg="${SBD_RUNTIME_DIR}/config.json.tmp"
+    jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .listen_port) = $p | (.inbounds[] | select(.tag==$t) | .port) = $p' "$cfg" > "$tmp_cfg"
+    mv "$tmp_cfg" "$cfg"
+    validate_generated_config "sing-box"
+    fw_detect_backend
+    load_install_context || true
+    if [[ -n "${install_id:-}" && -n "$old_port" ]]; then
+      local old_tag
+      old_tag="MYBOX:${install_id}:core:${fw_proto}:${old_port}"
+      fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag" || true
+    fi
+    fw_apply_rule "$fw_proto" "$new_port"
+  else
+    cfg="${SBD_CONFIG_DIR}/xray-config.json"
+    [[ -f "$cfg" ]] || die "Config file missing: $cfg"
+    local old_port
+    old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | .port' "$cfg" | head -n1)"
+    [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
+    tmp_cfg="${SBD_RUNTIME_DIR}/xray-config.json.tmp"
+    jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .port) = $p' "$cfg" > "$tmp_cfg"
+    mv "$tmp_cfg" "$cfg"
+    validate_generated_config "xray"
+    fw_detect_backend
+    load_install_context || true
+    if [[ -n "${install_id:-}" && -n "$old_port" ]]; then
+      local old_tag
+      old_tag="MYBOX:${install_id}:core:${fw_proto}:${old_port}"
+      fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag" || true
+    fi
+    fw_apply_rule "$fw_proto" "$new_port"
+  fi
+
+  provider_restart core
+  log_success "Protocol port updated: ${protocol} -> ${new_port}"
+}
+
+provider_set_egress() {
+  ensure_root
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  local mode="$1" host="$2" port="$3" user="$4" pass="$5"
+  case "$mode" in
+    direct|socks|http|https) ;;
+    *) die "Unsupported egress mode: $mode" ;;
+  esac
+  if [[ "$mode" != "direct" ]]; then
+    [[ -n "$host" && -n "$port" ]] || die "host and port are required when mode != direct"
+    [[ "$port" =~ ^[0-9]+$ ]] || die "egress port must be numeric"
+  fi
+
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  export OUTBOUND_PROXY_MODE="$mode"
+  export OUTBOUND_PROXY_HOST="$host"
+  export OUTBOUND_PROXY_PORT="$port"
+  export OUTBOUND_PROXY_USER="$user"
+  export OUTBOUND_PROXY_PASS="$pass"
+  export ARGO_MODE="${argo_mode:-off}"
+  export WARP_MODE="${warp_mode:-off}"
+  export ARGO_DOMAIN="${argo_domain:-${ARGO_DOMAIN:-}}"
+  export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
+
+  validate_feature_modes
+  case "${engine}" in
+    sing-box) build_sing_box_config "${protocols}" && validate_generated_config "sing-box" ;;
+    xray) build_xray_config "${protocols}" && validate_generated_config "xray" ;;
+  esac
+  persist_runtime_state "$provider" "$profile" "$engine" "$protocols"
+  provider_restart core
+  log_success "Egress mode updated: ${mode}"
+}
+
+provider_regen_nodes() {
+  ensure_root
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  # shellcheck disable=SC1091
+  source /etc/sing-box-deve/runtime.env
+  write_nodes_output "$engine" "$protocols"
+  log_success "Nodes regenerated: $SBD_NODES_FILE"
+}
+
 provider_update() {
   if [[ ! -f /etc/sing-box-deve/runtime.env ]]; then
     die "No installed runtime found"
@@ -1404,9 +1629,24 @@ provider_update() {
   provider_panel
 }
 
-provider_panel() {
-  local mode="${1:-compact}"
-  log_info "========== sing-box-deve panel =========="
+provider_status_header() {
+  local core_state="unknown"
+  local argo_state="off"
+  if [[ -f "$SBD_SERVICE_FILE" ]]; then
+    if systemctl is-active --quiet sing-box-deve.service; then
+      core_state="running"
+    else
+      core_state="stopped"
+    fi
+  fi
+  if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
+    if systemctl is-active --quiet sing-box-deve-argo.service; then
+      argo_state="running"
+    else
+      argo_state="stopped"
+    fi
+  fi
+  log_info "State: core=${core_state} argo=${argo_state}"
 
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
     # shellcheck disable=SC1091
@@ -1414,6 +1654,16 @@ provider_panel() {
     log_info "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}"
     log_info "Protocols: ${protocols:-none}"
     log_info "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Egress: ${outbound_proxy_mode:-direct}"
+
+    local main_port="n/a"
+    if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" ]]; then
+      main_port="$(jq -r '.inbounds[0] | (.listen_port // .port // "n/a")' "${SBD_CONFIG_DIR}/config.json" 2>/dev/null || true)"
+    elif [[ "${engine:-}" == "xray" && -f "${SBD_CONFIG_DIR}/xray-config.json" ]]; then
+      main_port="$(jq -r '.inbounds[0] | (.port // "n/a")' "${SBD_CONFIG_DIR}/xray-config.json" 2>/dev/null || true)"
+    fi
+    local pub_ip
+    pub_ip="$(detect_public_ip)"
+    log_info "PublicIP: ${pub_ip} | MainPort: ${main_port}"
   else
     log_warn "Runtime state not found (/etc/sing-box-deve/runtime.env)"
   fi
@@ -1493,6 +1743,13 @@ provider_panel() {
     log_info "Nodes file: $SBD_NODES_FILE"
   fi
 
+}
+
+provider_panel() {
+  local mode="${1:-compact}"
+  log_info "========== sing-box-deve panel =========="
+  provider_status_header
+
   if [[ "$mode" == "full" ]]; then
     echo
     log_info "----- Runtime Details -----"
@@ -1512,10 +1769,12 @@ provider_doctor() {
       log_success "Service status: active"
     else
       log_warn "Service status: inactive"
+      log_info "Suggestion: run './sing-box-deve.sh restart --core' and re-check logs"
       systemctl status sing-box-deve.service --no-pager -l || true
     fi
   else
     log_warn "Service file not found: $SBD_SERVICE_FILE"
+    log_info "Suggestion: install runtime first via 'install' command"
   fi
 
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
@@ -1542,9 +1801,11 @@ provider_doctor() {
           log_success "Argo diagnostic: service active"
         else
           log_warn "Argo diagnostic: service inactive"
+          log_info "Suggestion: run './sing-box-deve.sh restart --argo'"
         fi
       else
         log_warn "Argo diagnostic: service file missing"
+        log_info "Suggestion: reinstall with protocol including argo and --argo temp|fixed"
       fi
 
       if [[ -f "${SBD_DATA_DIR}/argo_domain" ]]; then
@@ -1570,6 +1831,7 @@ provider_doctor() {
           log_success "WARP diagnostic: warp-out configured in config.json"
         else
           log_warn "WARP diagnostic: warp keys not found in env and warp-out not detected"
+          log_info "Suggestion: set WARP_PRIVATE_KEY/WARP_PEER_PUBLIC_KEY and re-apply runtime"
         fi
       fi
     fi
@@ -1579,10 +1841,12 @@ provider_doctor() {
         log_success "Outbound proxy diagnostic: ${outbound_proxy_mode}://${outbound_proxy_host}:${outbound_proxy_port}"
       else
         log_warn "Outbound proxy diagnostic: mode enabled but host/port missing in runtime state"
+        log_info "Suggestion: use set-egress to persist a valid outbound proxy endpoint"
       fi
     fi
   else
     log_warn "Runtime state file missing"
+    log_info "Suggestion: run install once or restore /etc/sing-box-deve/runtime.env"
   fi
 
   if [[ -f "$SBD_NODES_FILE" ]]; then
@@ -1597,6 +1861,7 @@ provider_doctor() {
     fi
   else
     log_warn "Node output file missing"
+    log_info "Suggestion: run './sing-box-deve.sh regen-nodes'"
   fi
 
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
@@ -1615,6 +1880,7 @@ provider_doctor() {
         log_success "Port listening detected for ${p}: ${proto}/${port}"
       else
         log_warn "Port not detected for ${p}: ${proto}/${port}"
+        log_info "Suggestion: check service status and firewall rules, then run './sing-box-deve.sh restart --all'"
       fi
     done
   fi

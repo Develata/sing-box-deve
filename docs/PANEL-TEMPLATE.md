@@ -13,6 +13,7 @@
 [INFO] Provider: <provider> | Profile: <profile> | Engine: <engine>
 [INFO] Protocols: <protocols_csv>
 [INFO] Argo: <argo_mode> | WARP: <warp_mode> | Egress: <outbound_proxy_mode>
+[INFO] PublicIP: <public_ip> | MainPort: <main_port>
 [SUCCESS] Core service: running
 [INFO] sing-box core version: <sing_box_version>
 [INFO] xray core version: <xray_version>
@@ -43,6 +44,7 @@ lang=<...>;auto_yes=<...>;update_channel=<...>
 [INFO] Provider: <provider> | Profile: <profile> | Engine: <engine>
 [INFO] Protocols: <protocols_csv>
 [INFO] Argo: <argo_mode> | WARP: <warp_mode> | Egress: <outbound_proxy_mode>
+[INFO] PublicIP: <public_ip> | MainPort: <main_port>
 [SUCCESS] Core service: running
 [INFO] sing-box core version: <sing_box_version>
 [INFO] xray core version: <xray_version>

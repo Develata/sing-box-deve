@@ -232,6 +232,9 @@ FAIL：
 ```bash
 sudo ./sing-box-deve.sh settings show
 sudo ./sing-box-deve.sh list --settings
+sudo ./sing-box-deve.sh set-port --protocol vless-reality --port 443
+sudo ./sing-box-deve.sh set-egress --mode direct
+sudo ./sing-box-deve.sh regen-nodes
 sudo ./sing-box-deve.sh uninstall --keep-settings
 sudo ./sing-box-deve.sh settings show
 ```

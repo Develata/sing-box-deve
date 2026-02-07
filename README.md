@@ -22,6 +22,20 @@ chmod +x ./sing-box-deve.sh
 ./sing-box-deve.sh wizard
 ```
 
+## 三分钟上手（推荐）
+
+```bash
+# 1) 远程一键安装（推荐）
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
+
+# 2) 用 sb 打开面板
+sb
+
+# 3) 查看节点与诊断
+sb list --nodes
+sudo sb doctor
+```
+
 ## 核心特性
 
 - 多场景支持：VPS、Serv00/Hostuno、SAP、Docker、Workers、GitHub Actions
@@ -85,21 +99,45 @@ VPS 已支持协议：
 
 默认情况下无需启用任何 keepalive workflow（`main.yml` / `mainh.yml`）。
 
+基础流程：
+
 ```bash
 ./sing-box-deve.sh wizard
 ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality
 ./sing-box-deve.sh apply -f ./config.env
 ./sing-box-deve.sh apply --runtime
+```
+
+查看与诊断：
+
+```bash
 ./sing-box-deve.sh list --all
 ./sing-box-deve.sh list --settings
 ./sing-box-deve.sh panel --full
 ./sing-box-deve.sh status
+./sing-box-deve.sh list --nodes
+./sing-box-deve.sh list --runtime
+./sing-box-deve.sh doctor
+./sing-box-deve.sh logs --core
+```
+
+运行管理：
+
+```bash
 ./sing-box-deve.sh restart --all
 ./sing-box-deve.sh restart --core
 ./sing-box-deve.sh restart --argo
-./sing-box-deve.sh apply --runtime
+./sing-box-deve.sh logs --argo
+./sing-box-deve.sh set-port --list
+./sing-box-deve.sh set-port --protocol vless-reality --port 443
+./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
+./sing-box-deve.sh regen-nodes
+```
+
+版本与更新：
+
+```bash
 ./sing-box-deve.sh uninstall --keep-settings
-./sing-box-deve.sh doctor
 ./sing-box-deve.sh version
 ./sing-box-deve.sh update
 ./sing-box-deve.sh update --script
@@ -128,6 +166,20 @@ VPS 已支持协议：
 - `sap`：支持单账号和批量 JSON 部署（CF CLI）
 - `docker`：生成并可执行 `docker-compose` 部署
 
+VPS 安装后快捷命令：
+
+- 直接输入 `sb` 可启动交互菜单控制台
+- `sb <子命令>` 可直接透传到 `sing-box-deve.sh`
+
+示例：
+
+```bash
+sb
+sb list --nodes
+sb restart --core
+sb set-port --list
+```
+
 详细文档：
 
 - `docs/README.md`（文档总索引）
@@ -152,6 +204,15 @@ VPS 已支持协议：
 
 - 执行 `bash scripts/update-checksums.sh` 更新 `checksums.txt`
 - 再执行 `./sing-box-deve.sh update --script` 的安全更新链路验证
+
+## 常见问题
+
+- `mainh.yml` 会自动运行吗？
+  - 不会。当前仅支持手动触发（`workflow_dispatch`），默认不依赖。
+- 为什么 `doctor` 提示请用 root？
+  - 安装、服务、端口、防火墙诊断都需要 root 权限。
+- `set-port` 为什么先要 `--list`？
+  - 先看白名单和当前端口，避免修改到不支持协议。
 
 ## 安全承诺
 

@@ -9,17 +9,24 @@ source "${PROJECT_ROOT}/lib/protocols.sh"
 source "${PROJECT_ROOT}/lib/security.sh"
 source "${PROJECT_ROOT}/lib/providers.sh"
 source "${PROJECT_ROOT}/lib/output.sh"
+source "${PROJECT_ROOT}/lib/menu.sh"
 
 usage() {
   cat <<'EOF'
 Usage:
   sing-box-deve.sh wizard
+  sing-box-deve.sh menu
   sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
   sing-box-deve.sh panel [--compact|--full]
   sing-box-deve.sh restart [--core|--argo|--all]
+  sing-box-deve.sh logs [--core|--argo]
+  sing-box-deve.sh set-port --list
+  sing-box-deve.sh set-port --protocol <name> --port <1-65535>
+  sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS]
+  sing-box-deve.sh regen-nodes
   sing-box-deve.sh update [--script|--core|--all] [--yes]
   sing-box-deve.sh version
   sing-box-deve.sh settings show
@@ -147,12 +154,60 @@ parse_restart_args() {
   done
 }
 
+parse_logs_args() {
+  LOG_TARGET="core"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --core) LOG_TARGET="core"; shift ;;
+      --argo) LOG_TARGET="argo"; shift ;;
+      *) die "Unknown logs argument: $1" ;;
+    esac
+  done
+}
+
 parse_uninstall_args() {
   KEEP_SETTINGS="false"
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --keep-settings) KEEP_SETTINGS="true"; shift ;;
       *) die "Unknown uninstall argument: $1" ;;
+    esac
+  done
+}
+
+parse_set_port_args() {
+  if [[ $# -eq 0 ]] || [[ "${1:-}" == "--list" ]]; then
+    SET_PORT_PROTOCOL=""
+    SET_PORT_VALUE=""
+    return 0
+  fi
+
+  SET_PORT_PROTOCOL=""
+  SET_PORT_VALUE=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --protocol) SET_PORT_PROTOCOL="$2"; shift 2 ;;
+      --port) SET_PORT_VALUE="$2"; shift 2 ;;
+      *) die "Unknown set-port argument: $1" ;;
+    esac
+  done
+  [[ -n "$SET_PORT_PROTOCOL" && -n "$SET_PORT_VALUE" ]] || die "Usage: set-port --list | set-port --protocol <name> --port <1-65535>"
+}
+
+parse_set_egress_args() {
+  SET_EGRESS_MODE="direct"
+  SET_EGRESS_HOST=""
+  SET_EGRESS_PORT=""
+  SET_EGRESS_USER=""
+  SET_EGRESS_PASS=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --mode) SET_EGRESS_MODE="$2"; shift 2 ;;
+      --host) SET_EGRESS_HOST="$2"; shift 2 ;;
+      --port) SET_EGRESS_PORT="$2"; shift 2 ;;
+      --user) SET_EGRESS_USER="$2"; shift 2 ;;
+      --pass) SET_EGRESS_PASS="$2"; shift 2 ;;
+      *) die "Unknown set-egress argument: $1" ;;
     esac
   done
 }
@@ -474,6 +529,10 @@ main() {
       shift
       wizard "$@"
       ;;
+    menu)
+      shift
+      menu_main "$@"
+      ;;
     install)
       shift
       parse_install_args "$@"
@@ -503,6 +562,29 @@ main() {
       shift
       parse_restart_args "$@"
       provider_restart "$RESTART_TARGET"
+      ;;
+    logs)
+      shift
+      parse_logs_args "$@"
+      provider_logs "$LOG_TARGET"
+      ;;
+    set-port)
+      shift
+      parse_set_port_args "$@"
+      if [[ -z "${SET_PORT_PROTOCOL}" ]]; then
+        provider_set_port_info
+      else
+        provider_set_port "$SET_PORT_PROTOCOL" "$SET_PORT_VALUE"
+      fi
+      ;;
+    set-egress)
+      shift
+      parse_set_egress_args "$@"
+      provider_set_egress "$SET_EGRESS_MODE" "$SET_EGRESS_HOST" "$SET_EGRESS_PORT" "$SET_EGRESS_USER" "$SET_EGRESS_PASS"
+      ;;
+    regen-nodes)
+      shift
+      provider_regen_nodes
       ;;
     update)
       shift
