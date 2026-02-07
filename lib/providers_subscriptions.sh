@@ -65,6 +65,7 @@ provider_sub_show() {
 
 provider_sub_gitlab_set() {
   ensure_root
+  load_subscription_env
   GITLAB_TOKEN="$1"
   GITLAB_PROJECT="$2"
   GITLAB_BRANCH="${3:-main}"
@@ -126,6 +127,7 @@ EOF
 
 provider_sub_tg_set() {
   ensure_root
+  load_subscription_env
   TG_BOT_TOKEN="$1"
   TG_CHAT_ID="$2"
   [[ -n "$TG_BOT_TOKEN" && -n "$TG_CHAT_ID" ]] || die "Usage: sub tg-set <bot_token> <chat_id>"

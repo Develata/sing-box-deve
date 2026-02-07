@@ -8,7 +8,6 @@ build_sing_box_config() {
   cert_file="$(get_tls_cert_path)"
   key_file="$(get_tls_key_path)"
   generate_reality_keys
-
   local private_key public_key short_id
   private_key="$(<"${SBD_DATA_DIR}/reality_private.key")"
   public_key="$(<"${SBD_DATA_DIR}/reality_public.key")"
@@ -194,6 +193,7 @@ build_sing_box_config() {
 
   if protocol_enabled "wireguard" "${protocols[@]}"; then
     local wg_private wg_public
+    command -v wg >/dev/null 2>&1 || die "wireguard protocol requires 'wg' command (install wireguard-tools)"
     if [[ ! -f "${SBD_DATA_DIR}/wg_private.key" ]]; then
       wg_private="$(wg genkey)"
       wg_public="$(printf '%s' "$wg_private" | wg pubkey)"

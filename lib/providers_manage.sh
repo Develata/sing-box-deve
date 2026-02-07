@@ -145,8 +145,8 @@ provider_kernel_set() {
 
 provider_warp_status() {
   local w4 w6
-  w4="$(curl -s4m5 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^warp=/{print $2}' | head -n1)"
-  w6="$(curl -s6m5 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^warp=/{print $2}' | head -n1)"
+  w4="$(curl -s4m5 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^warp=/{print $2}' | head -n1 || true)"
+  w6="$(curl -s6m5 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '/^warp=/{print $2}' | head -n1 || true)"
   log_info "$(msg "warp 状态 ipv4=${w4:-unknown} ipv6=${w6:-unknown}" "warp status ipv4=${w4:-unknown} ipv6=${w6:-unknown}")"
 }
 
