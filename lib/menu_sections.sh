@@ -132,11 +132,13 @@ menu_firewall() {
     menu_title "$(msg "[防火墙管理]" "[Firewall Management]")"
     echo "1) $(msg "查看防火墙托管状态（fw status）" "Show firewall status (fw status)")"
     echo "2) $(msg "回滚到上次防火墙快照（fw rollback）" "Rollback firewall snapshot (fw rollback)")"
+    echo "3) $(msg "重放托管防火墙规则（fw replay）" "Replay managed firewall rules (fw replay)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) fw_detect_backend; fw_status; menu_pause ;;
       2) fw_detect_backend; fw_rollback; menu_pause ;;
+      3) fw_detect_backend; fw_replay; menu_pause ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac

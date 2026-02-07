@@ -7,6 +7,10 @@ parse_install_args() {
   ENGINE="sing-box"
   PROTOCOLS="vless-reality"
   DRY_RUN="false"
+  PORT_MODE="${PORT_MODE:-random}"
+  MANUAL_PORT_MAP="${MANUAL_PORT_MAP:-}"
+  INSTALL_MAIN_PORT="${INSTALL_MAIN_PORT:-}"
+  RANDOM_MAIN_PORT="${RANDOM_MAIN_PORT:-false}"
   AUTO_YES="${AUTO_YES:-false}"
   ARGO_MODE="${ARGO_MODE:-off}"
   ARGO_DOMAIN="${ARGO_DOMAIN:-}"
@@ -57,6 +61,10 @@ parse_install_args() {
       --engine) ENGINE="$2"; shift 2 ;;
       --protocols) PROTOCOLS="$2"; shift 2 ;;
       --dry-run) DRY_RUN="true"; shift ;;
+      --port-mode) PORT_MODE="$2"; shift 2 ;;
+      --port-map) MANUAL_PORT_MAP="$2"; shift 2 ;;
+      --main-port) INSTALL_MAIN_PORT="$2"; shift 2 ;;
+      --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
       --argo) ARGO_MODE="$2"; shift 2 ;;
       --argo-domain) ARGO_DOMAIN="$2"; shift 2 ;;
@@ -98,6 +106,23 @@ parse_install_args() {
       *) die "Unknown install argument: $1" ;;
     esac
   done
+
+  [[ "$PORT_MODE" == "random" || "$PORT_MODE" == "manual" ]] || die "--port-mode must be random|manual"
+  if [[ "$PORT_MODE" == "manual" ]]; then
+    [[ -n "$MANUAL_PORT_MAP" || -n "$INSTALL_MAIN_PORT" ]] || die "--port-mode manual requires --port-map (or --main-port)"
+  fi
+  [[ "$RANDOM_MAIN_PORT" == "true" || "$RANDOM_MAIN_PORT" == "false" ]] || die "RANDOM_MAIN_PORT must be true/false"
+  if [[ -n "$INSTALL_MAIN_PORT" ]]; then
+    [[ "$INSTALL_MAIN_PORT" =~ ^[0-9]+$ ]] || die "--main-port must be numeric"
+    (( INSTALL_MAIN_PORT >= 1 && INSTALL_MAIN_PORT <= 65535 )) || die "--main-port must be within 1..65535"
+  fi
+  if [[ "$RANDOM_MAIN_PORT" == "true" && -n "$INSTALL_MAIN_PORT" ]]; then
+    die "Use either --main-port or --random-main-port, not both"
+  fi
+  if [[ "$RANDOM_MAIN_PORT" == "true" && "$PORT_MODE" == "manual" ]]; then
+    die "--random-main-port conflicts with --port-mode manual"
+  fi
+  return 0
 }
 
 parse_set_route_args() {

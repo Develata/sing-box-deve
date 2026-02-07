@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-
 FW_BACKEND=""
+SBD_FW_REPLAY_SERVICE_FILE="/etc/systemd/system/sing-box-deve-fw-replay.service"
 
 fw_detect_backend() {
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
@@ -38,6 +38,25 @@ fw_record_rule() {
   local created_at
   created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "$created_at" >> "$SBD_RULES_FILE"
+}
+
+fw_enable_replay_service() {
+  local script_cmd="/usr/local/bin/sb"
+  cat > "$SBD_FW_REPLAY_SERVICE_FILE" <<EOF
+[Unit]
+Description=sing-box-deve firewall replay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=${script_cmd} fw replay
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable sing-box-deve-fw-replay.service >/dev/null 2>&1 || true
 }
 
 fw_rule_exists_record() {
@@ -80,7 +99,42 @@ fw_apply_rule() {
   esac
 
   fw_record_rule "$FW_BACKEND" "$proto" "$port" "$tag"
+  fw_enable_replay_service
   log_success "Firewall rule applied: ${proto}/${port}"
+}
+
+fw_replay() {
+  [[ -s "$SBD_RULES_FILE" ]] || {
+    log_info "No managed firewall rules to replay"
+    return 0
+  }
+
+  local backend proto port tag _created
+  while IFS='|' read -r backend proto port tag _created; do
+    [[ -n "$backend" && -n "$proto" && -n "$port" && -n "$tag" ]] || continue
+    FW_BACKEND="$backend"
+    case "$backend" in
+      ufw)
+        ufw allow "${port}/${proto}" comment "$tag" >/dev/null 2>&1 || true
+        ;;
+      nftables)
+        nft list table inet sing_box_deve >/dev/null 2>&1 || nft add table inet sing_box_deve
+        nft list chain inet sing_box_deve input >/dev/null 2>&1 || nft add chain inet sing_box_deve input '{ type filter hook input priority 0; policy accept; }'
+        nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment "$tag" >/dev/null 2>&1 || true
+        ;;
+      firewalld)
+        firewall-cmd --permanent --add-port="${port}/${proto}" >/dev/null 2>&1 || true
+        firewall-cmd --add-port="${port}/${proto}" >/dev/null 2>&1 || true
+        ;;
+      iptables)
+        iptables -N SING_BOX_DEVE_INPUT >/dev/null 2>&1 || true
+        iptables -C INPUT -j SING_BOX_DEVE_INPUT >/dev/null 2>&1 || iptables -I INPUT -j SING_BOX_DEVE_INPUT
+        iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || \
+          iptables -A SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT
+        ;;
+    esac
+  done < "$SBD_RULES_FILE"
+  log_success "Managed firewall rules replayed"
 }
 
 fw_remove_rule_by_record() {

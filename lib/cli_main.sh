@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-
 usage() {
   cat <<'EOF'
 Usage:
   sing-box-deve.sh wizard
   sing-box-deve.sh menu
-  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--reality-sni SNI] [--reality-fp FP] [--tls-sni SNI] [--vmess-ws-path PATH] [--vless-ws-path PATH] [--vless-xhttp-path PATH] [--vless-xhttp-mode MODE] [--xray-vless-enc true|false] [--xray-xhttp-reality true|false] [--cdn-host-vmess HOST] [--cdn-host-vless-ws HOST] [--cdn-host-vless-xhttp HOST] [--proxyip-vmess IP] [--proxyip-vless-ws IP] [--proxyip-vless-xhttp IP] [--direct-share-endpoints CSV] [--proxy-share-endpoints CSV] [--warp-share-endpoints CSV] [--yes]
+  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--port-mode random|manual] [--port-map proto:port[,proto:port...]] [--main-port PORT|--random-main-port] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--reality-sni SNI] [--reality-fp FP] [--tls-sni SNI] [--vmess-ws-path PATH] [--vless-ws-path PATH] [--vless-xhttp-path PATH] [--vless-xhttp-mode MODE] [--xray-vless-enc true|false] [--xray-xhttp-reality true|false] [--cdn-host-vmess HOST] [--cdn-host-vless-ws HOST] [--cdn-host-vless-xhttp HOST] [--proxyip-vmess IP] [--proxyip-vless-ws IP] [--proxyip-vless-xhttp IP] [--direct-share-endpoints CSV] [--proxy-share-endpoints CSV] [--warp-share-endpoints CSV] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
@@ -60,6 +59,7 @@ Usage:
   sing-box-deve.sh doctor
   sing-box-deve.sh fw status
   sing-box-deve.sh fw rollback
+  sing-box-deve.sh fw replay
 
 Examples:
   ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality
@@ -230,8 +230,12 @@ main() {
           fw_detect_backend
           fw_rollback
           ;;
+        replay)
+          fw_detect_backend
+          fw_replay
+          ;;
         *)
-          die "Usage: fw [status|rollback]"
+          die "Usage: fw [status|rollback|replay]"
           ;;
       esac
       ;;

@@ -5,6 +5,10 @@ wizard() {
   ensure_root
   detect_os
   init_runtime_layout
+  PORT_MODE="${PORT_MODE:-random}"
+  MANUAL_PORT_MAP="${MANUAL_PORT_MAP:-}"
+  INSTALL_MAIN_PORT="${INSTALL_MAIN_PORT:-}"
+  RANDOM_MAIN_PORT="${RANDOM_MAIN_PORT:-false}"
 
   log_info "$(msg "欢迎使用 ${PROJECT_NAME} 交互向导" "Welcome to ${PROJECT_NAME} interactive wizard")"
   echo
@@ -77,6 +81,48 @@ wizard() {
   if [[ "$PROFILE" == "lite" ]] && prompt_yes_no "$(msg "Lite 模式：启用推荐第二协议 'hysteria2' 吗？" "Lite mode: enable recommended second protocol 'hysteria2'?")" "N"; then
     if [[ "$PROTOCOLS" == "vless-reality" ]]; then
       PROTOCOLS="vless-reality,hysteria2"
+    fi
+  fi
+
+  local wizard_protocols=()
+  protocols_to_array "$PROTOCOLS" wizard_protocols
+  if [[ "${#wizard_protocols[@]}" -gt 0 ]]; then
+    echo
+    if prompt_yes_no "$(msg "首次安装端口策略使用随机端口吗？（推荐）" "Use random ports for first install? (recommended)")" "Y"; then
+      PORT_MODE="random"
+      MANUAL_PORT_MAP=""
+      INSTALL_MAIN_PORT=""
+      RANDOM_MAIN_PORT="true"
+    else
+      PORT_MODE="manual"
+      MANUAL_PORT_MAP=""
+      RANDOM_MAIN_PORT="false"
+      local used_ports="" p mapping proto default_port chosen
+      for p in "${wizard_protocols[@]}"; do
+        protocol_needs_local_listener "$p" || continue
+        mapping="$(protocol_port_map "$p")"
+        proto="${mapping%%:*}"
+        default_port="$(get_protocol_port "$p")"
+        while true; do
+          prompt_with_default "$(msg "输入协议 ${p} 的端口 (1-65535)" "Input port for protocol ${p} (1-65535)")" "$default_port" chosen
+          if [[ ! "$chosen" =~ ^[0-9]+$ ]] || (( chosen < 1 || chosen > 65535 )); then
+            log_warn "$(msg "端口必须是 1-65535 的数字" "Port must be numeric within 1-65535")"
+            continue
+          fi
+          if sbd_port_used_in_list "$chosen" "$used_ports"; then
+            log_warn "$(msg "端口与本次已选端口冲突，请重新输入" "Port conflicts with selected ports, please input again")"
+            continue
+          fi
+          if sbd_port_is_in_use "$proto" "$chosen"; then
+            log_warn "$(msg "端口已被系统占用，请重新输入" "Port already in use, please input again")"
+            continue
+          fi
+          break
+        done
+        used_ports="${used_ports:+${used_ports},}${chosen}"
+        MANUAL_PORT_MAP="${MANUAL_PORT_MAP:+${MANUAL_PORT_MAP},}${p}:${chosen}"
+      done
+      INSTALL_MAIN_PORT=""
     fi
   fi
 

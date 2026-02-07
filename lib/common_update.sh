@@ -88,6 +88,7 @@ perform_script_self_update() {
     "lib/providers_sap.sh"
     "lib/providers_docker.sh"
     "lib/providers_manage.sh"
+    "lib/providers_port_seed.sh"
     "lib/providers_ports.sh"
     "lib/providers_config_ops.sh"
     "lib/providers_config_flow.sh"

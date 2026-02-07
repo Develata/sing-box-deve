@@ -92,15 +92,10 @@ provider_set_port() {
 
   fw_detect_backend
   load_install_context || true
-  if [[ -n "${install_id:-}" && -n "$old_port" ]]; then
-    local old_tag
-    old_tag="MYBOX:${install_id}:core:${fw_proto}:${old_port}"
-    fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag" || true
-    if [[ -f "$SBD_RULES_FILE" ]]; then
-      awk -F'|' -v tag="$old_tag" '$4 != tag' "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" && mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE"
-    fi
-  fi
   fw_apply_rule "$fw_proto" "$new_port"
+  if [[ -n "$old_port" && "$old_port" != "$new_port" ]]; then
+    log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
+  fi
 
   provider_restart core
   log_success "Protocol port updated: ${protocol} -> ${new_port}"
