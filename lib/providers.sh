@@ -1426,16 +1426,54 @@ provider_panel() {
     fi
   fi
 
+  local script_local script_remote script_upgrade
+  script_local="$(current_script_version)"
+  script_remote="$(fetch_remote_script_version 2>/dev/null || true)"
+  if [[ -z "$script_remote" ]]; then
+    script_upgrade="unknown"
+  elif [[ "$script_local" == "$script_remote" ]]; then
+    script_upgrade="no"
+  else
+    script_upgrade="yes"
+  fi
+  log_info "Script: local=${script_local} remote=${script_remote:-n/a} upgrade=${script_upgrade}"
+
   if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
     local sbver
     sbver="$(${SBD_BIN_DIR}/sing-box version 2>/dev/null | awk '/version/{print $NF}' | head -n1)"
-    [[ -n "$sbver" ]] && log_info "sing-box core version: ${sbver}"
+    if [[ -n "$sbver" ]]; then
+      local sb_remote sb_upgrade sb_local_norm sb_remote_norm
+      sb_remote="$(fetch_latest_release_tag "SagerNet/sing-box" 2>/dev/null || true)"
+      sb_local_norm="${sbver#v}"
+      sb_remote_norm="${sb_remote#v}"
+      if [[ -z "$sb_remote" ]]; then
+        sb_upgrade="unknown"
+      elif [[ "$sb_local_norm" == "$sb_remote_norm" ]]; then
+        sb_upgrade="no"
+      else
+        sb_upgrade="yes"
+      fi
+      log_info "sing-box: local=${sbver} remote=${sb_remote:-n/a} upgrade=${sb_upgrade}"
+    fi
   fi
 
   if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
     local xver
     xver="$(${SBD_BIN_DIR}/xray version 2>/dev/null | awk '/^Xray/{print $2}' | head -n1)"
-    [[ -n "$xver" ]] && log_info "xray core version: ${xver}"
+    if [[ -n "$xver" ]]; then
+      local x_remote x_upgrade x_local_norm x_remote_norm
+      x_remote="$(fetch_latest_release_tag "XTLS/Xray-core" 2>/dev/null || true)"
+      x_local_norm="${xver#v}"
+      x_remote_norm="${x_remote#v}"
+      if [[ -z "$x_remote" ]]; then
+        x_upgrade="unknown"
+      elif [[ "$x_local_norm" == "$x_remote_norm" ]]; then
+        x_upgrade="no"
+      else
+        x_upgrade="yes"
+      fi
+      log_info "xray: local=${xver} remote=${x_remote:-n/a} upgrade=${x_upgrade}"
+    fi
   fi
 
   if [[ -x "${SBD_BIN_DIR}/cloudflared" ]]; then
@@ -1449,13 +1487,6 @@ provider_panel() {
         log_warn "Argo sidecar: not running"
       fi
     fi
-  fi
-
-  log_info "Script version: $(current_script_version)"
-  local remote_ver
-  remote_ver="$(fetch_remote_script_version 2>/dev/null || true)"
-  if [[ -n "$remote_ver" ]]; then
-    log_info "Remote script version: ${remote_ver}"
   fi
 
   if [[ -f "$SBD_NODES_FILE" ]]; then

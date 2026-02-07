@@ -9,6 +9,7 @@
 
 ```text
 [INFO] ========== sing-box-deve panel ==========
+[INFO] Script: local=<local_script_version> remote=<remote_script_version|n/a> upgrade=<yes|no|unknown>
 [INFO] Provider: <provider> | Profile: <profile> | Engine: <engine>
 [INFO] Protocols: <protocols_csv>
 [INFO] Argo: <argo_mode> | WARP: <warp_mode> | Egress: <outbound_proxy_mode>
@@ -38,6 +39,7 @@ lang=<...>;auto_yes=<...>;update_channel=<...>
 
 ```text
 [INFO] ========== sing-box-deve panel ==========
+[INFO] Script: local=<local_script_version> remote=<remote_script_version|n/a> upgrade=<yes|no|unknown>
 [INFO] Provider: <provider> | Profile: <profile> | Engine: <engine>
 [INFO] Protocols: <protocols_csv>
 [INFO] Argo: <argo_mode> | WARP: <warp_mode> | Egress: <outbound_proxy_mode>
