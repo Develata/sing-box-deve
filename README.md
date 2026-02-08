@@ -154,7 +154,7 @@ sudo sb doctor
 ./sing-box-deve.sh cfg ip-pref auto|v4|v6
 ./sing-box-deve.sh cfg cdn-host <domain>
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
-./sing-box-deve.sh cfg tls self-signed|acme [cert_path] [key_path]
+./sing-box-deve.sh cfg tls self-signed|acme|acme-auto [cert_path|domain] [key_path|email] [dns_provider]
 ./sing-box-deve.sh cfg rebuild
 ./sing-box-deve.sh kernel show
 ./sing-box-deve.sh kernel set sing-box v1.12.20

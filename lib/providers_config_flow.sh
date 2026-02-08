@@ -114,7 +114,7 @@ provider_cfg_snapshots_command() {
 }
 
 provider_cfg_preview() {
-  local action="${1:-}" arg1="${2:-}" arg2="${3:-}" arg3="${4:-}"
+  local action="${1:-}" arg1="${2:-}" arg2="${3:-}" arg3="${4:-}" arg4="${5:-}"
   provider_cfg_load_runtime_exports
   local current_protocols target_protocols
   current_protocols="${protocols:-vless-reality}"
@@ -142,6 +142,10 @@ provider_cfg_preview() {
       if [[ "${arg1:-}" == "acme" ]]; then
         log_info "preview tls cert: ${ACME_CERT_PATH:-} -> ${arg2:-}"
         log_info "preview tls key: ${ACME_KEY_PATH:-} -> ${arg3:-}"
+      elif [[ "${arg1:-}" == "acme-auto" ]]; then
+        log_info "preview acme-auto domain: ${arg2:-}"
+        log_info "preview acme-auto email: ${arg3:-}"
+        log_info "preview acme-auto dns-provider: ${arg4:-${ACME_DNS_PROVIDER:-auto-detect}}"
       fi
       ;;
     protocol-add)
@@ -224,7 +228,7 @@ provider_cfg_command() {
       provider_cfg_apply_with_snapshot "$action" "$@"
       ;;
     *)
-      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme> [cert] [key]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv>|rebuild]"
+      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email] [dns_provider]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv>|rebuild]"
       ;;
   esac
 }

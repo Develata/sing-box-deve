@@ -29,13 +29,28 @@ provider_sys_acme_install() {
 
 provider_sys_acme_issue() {
   ensure_root
-  local domain="$1" email="$2"
-  [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email>" "Usage: sys acme-issue <domain> <email>")"
+  local domain="$1" email="$2" dns_provider="${3:-${ACME_DNS_PROVIDER:-}}"
+  [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email> [dns_provider]" "Usage: sys acme-issue <domain> <email> [dns_provider]")"
   provider_sys_acme_install
   /root/.acme.sh/acme.sh --register-account -m "$email" >/dev/null 2>&1 || true
-  /root/.acme.sh/acme.sh --issue -d "$domain" --standalone
-  local cert="/root/.acme.sh/${domain}_ecc/fullchain.cer"
-  local key="/root/.acme.sh/${domain}_ecc/${domain}.key"
+
+  local cert_domain="$domain"
+  if [[ "$domain" == "*."* ]]; then
+    cert_domain="${domain#*.}"
+    if [[ -z "$dns_provider" ]]; then
+      if [[ -n "${CF_Token:-}" || -n "${CF_Key:-}" ]]; then
+        dns_provider="dns_cf"
+      fi
+    fi
+    [[ -n "$dns_provider" ]] || die "$(msg "泛域名证书需要 DNS 验证，请设置 ACME_DNS_PROVIDER（如 dns_cf）及对应凭据" "Wildcard cert requires DNS challenge. Set ACME_DNS_PROVIDER (e.g. dns_cf) and provider credentials.")"
+    /root/.acme.sh/acme.sh --issue --dns "$dns_provider" -d "$cert_domain" -d "*.${cert_domain}"
+    log_info "$(msg "已使用 DNS 验证签发泛域名证书: provider=${dns_provider}" "Issued wildcard cert via DNS challenge: provider=${dns_provider}")"
+  else
+    /root/.acme.sh/acme.sh --issue -d "$domain" --standalone
+  fi
+
+  local cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
+  local key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
   [[ -f "$cert" && -f "$key" ]] || die "$(msg "ACME 签发成功但证书文件缺失" "ACME issue succeeded but cert files missing")"
   log_success "$(msg "ACME 证书签发完成: cert=${cert} key=${key}" "ACME cert issued: cert=${cert} key=${key}")"
 }
@@ -57,7 +72,7 @@ provider_sys_command() {
     acme-issue) provider_sys_acme_issue "$@" ;;
     acme-apply) provider_sys_acme_apply "$@" ;;
     *)
-      die "$(msg "用法: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email>|acme-apply <cert> <key>]" "Usage: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email>|acme-apply <cert> <key>]")"
+      die "$(msg "用法: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email> [dns_provider]|acme-apply <cert> <key>]" "Usage: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email> [dns_provider]|acme-apply <cert> <key>]")"
       ;;
   esac
 }

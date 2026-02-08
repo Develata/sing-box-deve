@@ -5,13 +5,14 @@ menu_cfg_collect_change() {
   MENU_CFG_ARG1=""
   MENU_CFG_ARG2=""
   MENU_CFG_ARG3=""
+  MENU_CFG_ARG4=""
 
   echo "1) rotate-id"
   echo "2) argo off/temp/fixed"
   echo "3) ip-pref auto/v4/v6"
   echo "4) cdn-host <domain>"
   echo "5) domain-split direct/proxy/block"
-  echo "6) tls self-signed/acme"
+  echo "6) tls self-signed/acme/acme-auto"
   echo "7) protocol-add <proto_csv> [random|manual]"
   echo "8) protocol-remove <proto_csv>"
   echo "9) rebuild"
@@ -42,10 +43,14 @@ menu_cfg_collect_change() {
       ;;
     6)
       MENU_CFG_ACTION="tls"
-      read -r -p "$(msg "TLS 模式[self-signed/acme]" "tls mode[self-signed/acme]"): " MENU_CFG_ARG1
+      read -r -p "$(msg "TLS 模式[self-signed/acme/acme-auto]" "tls mode[self-signed/acme/acme-auto]"): " MENU_CFG_ARG1
       if [[ "$MENU_CFG_ARG1" == "acme" ]]; then
         read -r -p "$(msg "acme 证书路径" "acme cert path"): " MENU_CFG_ARG2
         read -r -p "$(msg "acme 私钥路径" "acme key path"): " MENU_CFG_ARG3
+      elif [[ "$MENU_CFG_ARG1" == "acme-auto" ]]; then
+        read -r -p "$(msg "签发域名" "domain for cert"): " MENU_CFG_ARG2
+        read -r -p "$(msg "签发邮箱" "email for cert"): " MENU_CFG_ARG3
+        read -r -p "$(msg "DNS Provider(泛域名可选，如 dns_cf)" "DNS provider(optional for wildcard, e.g. dns_cf)"): " MENU_CFG_ARG4
       fi
       ;;
     7)
@@ -90,7 +95,7 @@ menu_config_center() {
     case "${c:-0}" in
       2)
         if menu_cfg_collect_change; then
-          provider_cfg_command apply "$MENU_CFG_ACTION" "$MENU_CFG_ARG1" "$MENU_CFG_ARG2" "$MENU_CFG_ARG3"
+          provider_cfg_command apply "$MENU_CFG_ACTION" "$MENU_CFG_ARG1" "$MENU_CFG_ARG2" "$MENU_CFG_ARG3" "$MENU_CFG_ARG4"
         else
           menu_invalid
         fi
@@ -98,7 +103,7 @@ menu_config_center() {
         ;;
       1)
         if menu_cfg_collect_change; then
-          provider_cfg_command preview "$MENU_CFG_ACTION" "$MENU_CFG_ARG1" "$MENU_CFG_ARG2" "$MENU_CFG_ARG3"
+          provider_cfg_command preview "$MENU_CFG_ACTION" "$MENU_CFG_ARG1" "$MENU_CFG_ARG2" "$MENU_CFG_ARG3" "$MENU_CFG_ARG4"
         else
           menu_invalid
         fi

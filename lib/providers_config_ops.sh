@@ -136,13 +136,25 @@ provider_cfg_set_domain_split() {
 
 provider_cfg_set_tls() {
   ensure_root
-  local mode="$1" cert="${2:-}" key="${3:-}"
-  case "$mode" in self-signed|acme) ;;
-    *) die "Usage: cfg tls <self-signed|acme> [cert_path] [key_path]" ;;
+  local mode="$1" cert="${2:-}" key="${3:-}" dns_provider="${4:-${ACME_DNS_PROVIDER:-}}"
+  case "$mode" in self-signed|acme|acme-auto) ;;
+    *) die "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" ;;
   esac
   provider_cfg_load_runtime_exports
+  if [[ "$mode" == "acme-auto" ]]; then
+    local domain="$cert" email="$key" cert_domain
+    [[ -n "$domain" && -n "$email" ]] || die "Usage: cfg tls acme-auto <domain> <email> [dns_provider]"
+    provider_sys_acme_issue "$domain" "$email" "$dns_provider"
+    cert_domain="$domain"
+    [[ "$cert_domain" == "*."* ]] && cert_domain="${cert_domain#*.}"
+    cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
+    key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
+    [[ -f "$cert" && -f "$key" ]] || die "ACME auto issue succeeded but cert files missing"
+    mode="acme"
+  fi
+
   TLS_MODE="$mode"
-  if [[ "$mode" == "acme" ]]; then
+  if [[ "$TLS_MODE" == "acme" ]]; then
     ACME_CERT_PATH="$cert"
     ACME_KEY_PATH="$key"
   else
