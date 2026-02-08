@@ -33,19 +33,24 @@ share_generate_groups() {
   mkdir -p "$SBD_SHARE_GROUP_DIR"
   cp "$SBD_SHARE_RAW_FILE" "$SBD_SHARE_GROUP_DIR/all.txt"
 
-  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks)://' "$SBD_SHARE_GROUP_DIR/v2rayn.txt"
+  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls)://' "$SBD_SHARE_GROUP_DIR/v2rayn.txt"
+  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks)://' "$SBD_SHARE_GROUP_DIR/v2rayng.txt"
   share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls)://' "$SBD_SHARE_GROUP_DIR/nekobox.txt"
-  share_build_group_file '^(vless|vmess|trojan|ss|socks|wireguard|anytls)://' "$SBD_SHARE_GROUP_DIR/shadowrocket.txt"
+  share_build_group_file '^(vless|vmess|trojan|ss)://' "$SBD_SHARE_GROUP_DIR/shadowrocket.txt"
   share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|wireguard|socks|anytls)://' "$SBD_SHARE_GROUP_DIR/singbox.txt"
-  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic)://' "$SBD_SHARE_GROUP_DIR/clash-meta.txt"
+  cat > "$SBD_SHARE_GROUP_DIR/clash-meta.txt" <<EOF_CLASH_META
+# clash-meta 建议直接使用 YAML 配置文件，而不是通用协议链接
+${SBD_DATA_DIR}/clash_meta_client.yaml
+EOF_CLASH_META
 
   cat > "$SBD_SHARE_GROUP_DIR/index.txt" <<EOF_INDEX
 all: all.txt
 v2rayn: v2rayn.txt
+v2rayng: v2rayng.txt
 nekobox: nekobox.txt
 shadowrocket: shadowrocket.txt
 sing-box-client: singbox.txt
-clash-meta-client: clash-meta.txt
+clash-meta-client: clash-meta.txt (yaml path)
 EOF_INDEX
 }
 
@@ -70,6 +75,7 @@ share_group_path() {
   case "$name" in
     all) echo "$SBD_SHARE_GROUP_DIR/all.txt" ;;
     v2rayn) echo "$SBD_SHARE_GROUP_DIR/v2rayn.txt" ;;
+    v2rayng) echo "$SBD_SHARE_GROUP_DIR/v2rayng.txt" ;;
     nekobox) echo "$SBD_SHARE_GROUP_DIR/nekobox.txt" ;;
     shadowrocket) echo "$SBD_SHARE_GROUP_DIR/shadowrocket.txt" ;;
     singbox) echo "$SBD_SHARE_GROUP_DIR/singbox.txt" ;;
@@ -85,14 +91,14 @@ share_group_count() {
     echo 0
     return 0
   }
-  awk 'NF{c++} END{print c+0}' "$file"
+  awk 'NF && $1 !~ /^#/{c++} END{print c+0}' "$file"
 }
 
 share_print_group() {
   local title="$1" file="$2" with_qr="${3:-false}"
   [[ -f "$file" ]] || return 0
   local count
-  count="$(awk 'NF{c++} END{print c+0}' "$file")"
+  count="$(awk 'NF && $1 !~ /^#/{c++} END{print c+0}' "$file")"
   [[ "$count" -gt 0 ]] || return 0
 
   echo
@@ -102,7 +108,7 @@ share_print_group() {
   if [[ "$with_qr" == "true" ]] && command -v qrencode >/dev/null 2>&1; then
     local line
     while IFS= read -r line; do
-      [[ -n "$line" ]] || continue
+      [[ -n "$line" && "$line" != \#* ]] || continue
       qrencode -o - -t ANSIUTF8 "$line"
     done < "$file"
   fi
@@ -125,6 +131,7 @@ share_show_bundle() {
   fi
 
   share_print_group "group:v2rayn" "$SBD_SHARE_GROUP_DIR/v2rayn.txt" "$with_qr"
+  share_print_group "group:v2rayng" "$SBD_SHARE_GROUP_DIR/v2rayng.txt" "$with_qr"
   share_print_group "group:nekobox" "$SBD_SHARE_GROUP_DIR/nekobox.txt" "$with_qr"
   share_print_group "group:shadowrocket" "$SBD_SHARE_GROUP_DIR/shadowrocket.txt" "$with_qr"
   share_print_group "group:sing-box-client" "$SBD_SHARE_GROUP_DIR/singbox.txt" "$with_qr"

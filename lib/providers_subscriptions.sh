@@ -23,13 +23,12 @@ EOF
 generate_client_artifacts() {
   mkdir -p "$SBD_DATA_DIR"
   [[ -f "$SBD_NODES_FILE" ]] || die "nodes file not found"
-  share_generate_bundle "$SBD_NODES_FILE"
-
   render_singbox_client_json "${SBD_DATA_DIR}/sing_box_client.json"
   render_clash_meta_yaml "${SBD_DATA_DIR}/clash_meta_client.yaml"
   render_sfa_sfi_sfw "SFA" "${SBD_DATA_DIR}/sfa_client.json"
   render_sfa_sfi_sfw "SFI" "${SBD_DATA_DIR}/sfi_client.json"
   render_sfa_sfi_sfw "SFW" "${SBD_DATA_DIR}/sfw_client.json"
+  share_generate_bundle "$SBD_NODES_FILE"
 }
 
 provider_sub_refresh() {
@@ -112,10 +111,11 @@ clash-meta-yaml: ${raw}/clash_meta_client.yaml
 jh-raw: ${raw}/jhdy.txt
 jh-base64: ${raw}/jh_sub.txt
 group-v2rayn: ${raw}/share-groups/v2rayn.txt
+group-v2rayng: ${raw}/share-groups/v2rayng.txt
 group-nekobox: ${raw}/share-groups/nekobox.txt
 group-shadowrocket: ${raw}/share-groups/shadowrocket.txt
 group-singbox: ${raw}/share-groups/singbox.txt
-group-clash-meta: ${raw}/share-groups/clash-meta.txt
+group-clash-meta: ${raw}/clash_meta_client.yaml
 SFA-client: ${raw}/sfa_client.json
 SFI-client: ${raw}/sfi_client.json
 SFW-client: ${raw}/sfw_client.json
@@ -140,17 +140,18 @@ provider_sub_tg_push() {
   load_subscription_env
   [[ -n "${TG_BOT_TOKEN:-}" && -n "${TG_CHAT_ID:-}" ]] || die "Telegram settings missing, run: sub tg-set"
   provider_sub_refresh
-  local text b64 c_all c_v2 c_neko c_sr c_sb c_cm
+  local text b64 c_all c_v2n c_v2g c_neko c_sr c_sb c_cm
   b64="$(cat "$SBD_SHARE_BASE64_FILE" 2>/dev/null || true)"
   c_all="$(share_group_count all)"
-  c_v2="$(share_group_count v2rayn)"
+  c_v2n="$(share_group_count v2rayn)"
+  c_v2g="$(share_group_count v2rayng)"
   c_neko="$(share_group_count nekobox)"
   c_sr="$(share_group_count shadowrocket)"
   c_sb="$(share_group_count singbox)"
   c_cm="$(share_group_count clash-meta)"
   text="sing-box-deve links
 
-counts: all=${c_all} v2rayn=${c_v2} nekobox=${c_neko} shadowrocket=${c_sr} singbox=${c_sb} clash-meta=${c_cm}
+counts: all=${c_all} v2rayn=${c_v2n} v2rayng=${c_v2g} nekobox=${c_neko} shadowrocket=${c_sr} singbox=${c_sb} clash-meta-yaml=${c_cm}
 
 four-in-one(base64):
 ${b64}
@@ -160,7 +161,7 @@ aggregate-base64://${b64}"
   if [[ -z "$b64" ]]; then
     text="sing-box-deve links
 
-counts: all=${c_all} v2rayn=${c_v2} nekobox=${c_neko} shadowrocket=${c_sr} singbox=${c_sb} clash-meta=${c_cm}
+counts: all=${c_all} v2rayn=${c_v2n} v2rayng=${c_v2g} nekobox=${c_neko} shadowrocket=${c_sr} singbox=${c_sb} clash-meta-yaml=${c_cm}
 
 four-in-one(base64): unavailable"
   fi

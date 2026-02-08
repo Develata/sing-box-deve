@@ -139,7 +139,8 @@ sudo sb doctor
 
 - 四合一聚合原始链接：`/opt/sing-box-deve/data/jhdy.txt`
 - 四合一聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
-- 客户端分组链接：`/opt/sing-box-deve/data/share-groups/*.txt`（v2rayn/nekobox/shadowrocket/singbox/clash-meta）
+- 客户端分组链接：`/opt/sing-box-deve/data/share-groups/*.txt`（v2rayn/v2rayng/nekobox/shadowrocket/singbox）
+- clash-meta 建议使用：`/opt/sing-box-deve/data/clash_meta_client.yaml`
 
 配置变更中心与系统工具（面板同样可操作）：
 
