@@ -39,18 +39,18 @@ provider_sub_refresh() {
   source /etc/sing-box-deve/runtime.env
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   generate_client_artifacts
-  log_success "Subscription artifacts refreshed"
+  log_success "$(msg "订阅与分享产物已刷新" "Subscription artifacts refreshed")"
 }
 
 provider_sub_show() {
   load_subscription_env
-  [[ -f "$SBD_NODES_FILE" ]] && log_info "nodes: $SBD_NODES_FILE"
-  [[ -f "$SBD_SUB_FILE" ]] && log_info "aggregate: $SBD_SUB_FILE"
-  [[ -f "${SBD_DATA_DIR}/sing_box_client.json" ]] && log_info "sing-box client: ${SBD_DATA_DIR}/sing_box_client.json"
-  [[ -f "${SBD_DATA_DIR}/clash_meta_client.yaml" ]] && log_info "clash-meta client: ${SBD_DATA_DIR}/clash_meta_client.yaml"
-  [[ -f "${SBD_DATA_DIR}/sfa_client.json" ]] && log_info "SFA client: ${SBD_DATA_DIR}/sfa_client.json"
-  [[ -f "${SBD_DATA_DIR}/sfi_client.json" ]] && log_info "SFI client: ${SBD_DATA_DIR}/sfi_client.json"
-  [[ -f "${SBD_DATA_DIR}/sfw_client.json" ]] && log_info "SFW client: ${SBD_DATA_DIR}/sfw_client.json"
+  [[ -f "$SBD_NODES_FILE" ]] && log_info "$(msg "节点文件: $SBD_NODES_FILE" "nodes: $SBD_NODES_FILE")"
+  [[ -f "$SBD_SUB_FILE" ]] && log_info "$(msg "聚合订阅: $SBD_SUB_FILE" "aggregate: $SBD_SUB_FILE")"
+  [[ -f "${SBD_DATA_DIR}/sing_box_client.json" ]] && log_info "$(msg "sing-box 客户端配置: ${SBD_DATA_DIR}/sing_box_client.json" "sing-box client: ${SBD_DATA_DIR}/sing_box_client.json")"
+  [[ -f "${SBD_DATA_DIR}/clash_meta_client.yaml" ]] && log_info "$(msg "clash-meta 客户端配置: ${SBD_DATA_DIR}/clash_meta_client.yaml" "clash-meta client: ${SBD_DATA_DIR}/clash_meta_client.yaml")"
+  [[ -f "${SBD_DATA_DIR}/sfa_client.json" ]] && log_info "$(msg "SFA 客户端配置: ${SBD_DATA_DIR}/sfa_client.json" "SFA client: ${SBD_DATA_DIR}/sfa_client.json")"
+  [[ -f "${SBD_DATA_DIR}/sfi_client.json" ]] && log_info "$(msg "SFI 客户端配置: ${SBD_DATA_DIR}/sfi_client.json" "SFI client: ${SBD_DATA_DIR}/sfi_client.json")"
+  [[ -f "${SBD_DATA_DIR}/sfw_client.json" ]] && log_info "$(msg "SFW 客户端配置: ${SBD_DATA_DIR}/sfw_client.json" "SFW client: ${SBD_DATA_DIR}/sfw_client.json")"
   share_show_bundle true
   if [[ -f "${SBD_DATA_DIR}/gitlab_urls.txt" ]]; then
     cat "${SBD_DATA_DIR}/gitlab_urls.txt"
@@ -72,7 +72,7 @@ provider_sub_gitlab_set() {
   GITLAB_SUB_PATH="${4:-subs}"
   [[ -n "$GITLAB_TOKEN" && -n "$GITLAB_PROJECT" ]] || die "Usage: sub gitlab-set <token> <group/project> [branch] [path]"
   save_subscription_env
-  log_success "GitLab subscription settings saved"
+  log_success "$(msg "GitLab 订阅配置已保存" "GitLab subscription settings saved")"
 }
 
 provider_sub_gitlab_push() {
@@ -121,7 +121,7 @@ SFI-client: ${raw}/sfi_client.json
 SFW-client: ${raw}/sfw_client.json
 EOF
   rm -rf "$tmp"
-  log_success "GitLab subscription pushed"
+  log_success "$(msg "GitLab 订阅推送完成" "GitLab subscription pushed")"
   cat "${SBD_DATA_DIR}/gitlab_urls.txt"
 }
 
@@ -132,7 +132,7 @@ provider_sub_tg_set() {
   TG_CHAT_ID="$2"
   [[ -n "$TG_BOT_TOKEN" && -n "$TG_CHAT_ID" ]] || die "Usage: sub tg-set <bot_token> <chat_id>"
   save_subscription_env
-  log_success "Telegram settings saved"
+  log_success "$(msg "Telegram 推送配置已保存" "Telegram settings saved")"
 }
 
 provider_sub_tg_push() {
@@ -167,7 +167,7 @@ four-in-one(base64): unavailable"
   curl -fsSL -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
     -d chat_id="${TG_CHAT_ID}" \
     --data-urlencode text="${text}" >/dev/null
-  log_success "Telegram push sent"
+  log_success "$(msg "Telegram 推送已发送" "Telegram push sent")"
 }
 
 provider_sub_command() {

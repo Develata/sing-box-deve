@@ -47,11 +47,11 @@ provider_cfg_snapshots_list() {
   local ids id meta created reason count=0 latest=""
   ids="$(provider_cfg_snapshot_ids | sort -r)"
   [[ -n "$ids" ]] || {
-    log_info "No cfg snapshots found"
+    log_info "$(msg "未找到配置快照" "No cfg snapshots found")"
     return 0
   }
 
-  log_info "cfg snapshots (${SBD_CFG_SNAPSHOT_DIR})"
+  log_info "$(msg "配置快照列表（${SBD_CFG_SNAPSHOT_DIR}）" "cfg snapshots (${SBD_CFG_SNAPSHOT_DIR})")"
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
     meta="${SBD_CFG_SNAPSHOT_DIR}/${id}/meta.env"
@@ -67,9 +67,9 @@ provider_cfg_snapshots_list() {
 
   if [[ -f "$SBD_CFG_SNAPSHOT_LATEST_FILE" ]]; then
     latest="$(cat "$SBD_CFG_SNAPSHOT_LATEST_FILE")"
-    [[ -n "$latest" ]] && log_info "latest snapshot: $latest"
+    [[ -n "$latest" ]] && log_info "$(msg "最新快照: $latest" "latest snapshot: $latest")"
   fi
-  log_info "total snapshots: $count"
+  log_info "$(msg "快照总数: $count" "total snapshots: $count")"
 }
 
 provider_cfg_snapshots_prune_unlocked() {
@@ -79,14 +79,14 @@ provider_cfg_snapshots_prune_unlocked() {
 
   ids="$(provider_cfg_snapshot_ids)"
   [[ -n "$ids" ]] || {
-    log_info "No cfg snapshots to prune"
+    log_info "$(msg "没有可清理的配置快照" "No cfg snapshots to prune")"
     return 0
   }
 
   total="$(printf '%s\n' "$ids" | sed '/^$/d' | wc -l | tr -d ' ')"
   if (( keep >= total )); then
     provider_cfg_snapshot_update_latest
-    log_info "No prune needed: keep=${keep}, total=${total}"
+    log_info "$(msg "无需清理: 保留=${keep}, 总数=${total}" "No prune needed: keep=${keep}, total=${total}")"
     return 0
   fi
 
@@ -95,12 +95,12 @@ provider_cfg_snapshots_prune_unlocked() {
     [[ -n "$id" ]] || continue
     (( removed < remove_count )) || break
     rm -rf "${SBD_CFG_SNAPSHOT_DIR:?}/${id:?}"
-    log_info "pruned snapshot: ${id}"
+    log_info "$(msg "已清理快照: ${id}" "pruned snapshot: ${id}")"
     removed=$((removed + 1))
   done <<< "$ids"
 
   provider_cfg_snapshot_update_latest
-  log_success "cfg snapshots pruned: removed=${removed}, kept=${keep}"
+  log_success "$(msg "配置快照清理完成: 已删=${removed}, 保留=${keep}" "cfg snapshots pruned: removed=${removed}, kept=${keep}")"
 }
 
 provider_cfg_snapshots_command() {
@@ -120,51 +120,51 @@ provider_cfg_preview() {
   current_protocols="${protocols:-vless-reality}"
   case "$action" in
     rotate-id)
-      log_info "preview rotate-id: UUID/short-id will be regenerated"
+      log_info "$(msg "预览 rotate-id: 将重置 UUID/short-id" "preview rotate-id: UUID/short-id will be regenerated")"
       ;;
     argo)
-      log_info "preview argo: mode ${ARGO_MODE:-off} -> ${arg1:-off}"
-      log_info "preview argo domain: ${ARGO_DOMAIN:-} -> ${arg3:-${ARGO_DOMAIN:-}}"
+      log_info "$(msg "预览 argo: 模式 ${ARGO_MODE:-off} -> ${arg1:-off}" "preview argo: mode ${ARGO_MODE:-off} -> ${arg1:-off}")"
+      log_info "$(msg "预览 argo 域名: ${ARGO_DOMAIN:-} -> ${arg3:-${ARGO_DOMAIN:-}}" "preview argo domain: ${ARGO_DOMAIN:-} -> ${arg3:-${ARGO_DOMAIN:-}}")"
       ;;
     ip-pref)
-      log_info "preview ip-pref: ${IP_PREFERENCE:-auto} -> ${arg1:-auto}"
+      log_info "$(msg "预览 ip-pref: ${IP_PREFERENCE:-auto} -> ${arg1:-auto}" "preview ip-pref: ${IP_PREFERENCE:-auto} -> ${arg1:-auto}")"
       ;;
     cdn-host)
-      log_info "preview cdn-host: ${CDN_TEMPLATE_HOST:-} -> ${arg1:-}"
+      log_info "$(msg "预览 cdn-host: ${CDN_TEMPLATE_HOST:-} -> ${arg1:-}" "preview cdn-host: ${CDN_TEMPLATE_HOST:-} -> ${arg1:-}")"
       ;;
     domain-split)
-      log_info "preview split direct: ${DOMAIN_SPLIT_DIRECT:-} -> ${arg1:-}"
-      log_info "preview split proxy: ${DOMAIN_SPLIT_PROXY:-} -> ${arg2:-}"
-      log_info "preview split block: ${DOMAIN_SPLIT_BLOCK:-} -> ${arg3:-}"
+      log_info "$(msg "预览分流直连: ${DOMAIN_SPLIT_DIRECT:-} -> ${arg1:-}" "preview split direct: ${DOMAIN_SPLIT_DIRECT:-} -> ${arg1:-}")"
+      log_info "$(msg "预览分流代理: ${DOMAIN_SPLIT_PROXY:-} -> ${arg2:-}" "preview split proxy: ${DOMAIN_SPLIT_PROXY:-} -> ${arg2:-}")"
+      log_info "$(msg "预览分流屏蔽: ${DOMAIN_SPLIT_BLOCK:-} -> ${arg3:-}" "preview split block: ${DOMAIN_SPLIT_BLOCK:-} -> ${arg3:-}")"
       ;;
     tls)
-      log_info "preview tls mode: ${TLS_MODE:-self-signed} -> ${arg1:-self-signed}"
+      log_info "$(msg "预览 TLS 模式: ${TLS_MODE:-self-signed} -> ${arg1:-self-signed}" "preview tls mode: ${TLS_MODE:-self-signed} -> ${arg1:-self-signed}")"
       if [[ "${arg1:-}" == "acme" ]]; then
-        log_info "preview tls cert: ${ACME_CERT_PATH:-} -> ${arg2:-}"
-        log_info "preview tls key: ${ACME_KEY_PATH:-} -> ${arg3:-}"
+        log_info "$(msg "预览 TLS 证书: ${ACME_CERT_PATH:-} -> ${arg2:-}" "preview tls cert: ${ACME_CERT_PATH:-} -> ${arg2:-}")"
+        log_info "$(msg "预览 TLS 私钥: ${ACME_KEY_PATH:-} -> ${arg3:-}" "preview tls key: ${ACME_KEY_PATH:-} -> ${arg3:-}")"
       elif [[ "${arg1:-}" == "acme-auto" ]]; then
-        log_info "preview acme-auto domain: ${arg2:-}"
-        log_info "preview acme-auto email: ${arg3:-}"
-        log_info "preview acme-auto dns-provider: ${arg4:-${ACME_DNS_PROVIDER:-auto-detect}}"
+        log_info "$(msg "预览 acme-auto 域名: ${arg2:-}" "preview acme-auto domain: ${arg2:-}")"
+        log_info "$(msg "预览 acme-auto 邮箱: ${arg3:-}" "preview acme-auto email: ${arg3:-}")"
+        log_info "$(msg "预览 acme-auto DNS 提供商: ${arg4:-${ACME_DNS_PROVIDER:-auto-detect}}" "preview acme-auto dns-provider: ${arg4:-${ACME_DNS_PROVIDER:-auto-detect}}")"
       fi
       ;;
     protocol-add)
       [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-add <proto_csv> [random|manual] [proto:port,...]"
       target_protocols="$(provider_cfg_protocol_csv_merge "$current_protocols" "$arg1")"
-      log_info "preview protocols: ${current_protocols} -> ${target_protocols}"
-      log_info "preview add port-mode: ${arg2:-random}"
+      log_info "$(msg "预览协议变更: ${current_protocols} -> ${target_protocols}" "preview protocols: ${current_protocols} -> ${target_protocols}")"
+      log_info "$(msg "预览新增协议端口模式: ${arg2:-random}" "preview add port-mode: ${arg2:-random}")"
       if [[ -n "${arg3:-}" ]]; then
-        log_info "preview add port-map: ${arg3}"
+        log_info "$(msg "预览新增协议端口映射: ${arg3}" "preview add port-map: ${arg3}")"
       fi
       ;;
     protocol-remove)
       [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-remove <proto_csv>"
       target_protocols="$(provider_cfg_protocol_csv_remove "$current_protocols" "$arg1")"
       [[ -n "$target_protocols" ]] || die "Preview result invalid: at least one protocol must remain"
-      log_info "preview protocols: ${current_protocols} -> ${target_protocols}"
+      log_info "$(msg "预览协议变更: ${current_protocols} -> ${target_protocols}" "preview protocols: ${current_protocols} -> ${target_protocols}")"
       ;;
     rebuild)
-      log_info "preview rebuild: engine=${engine:-sing-box} protocols=${protocols:-vless-reality}"
+      log_info "$(msg "预览重建: engine=${engine:-sing-box} protocols=${protocols:-vless-reality}" "preview rebuild: engine=${engine:-sing-box} protocols=${protocols:-vless-reality}")"
       ;;
     *)
       die "Usage: cfg preview <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..."
@@ -178,7 +178,7 @@ provider_cfg_apply_with_snapshot_unlocked() {
   [[ -n "$action" ]] || die "Usage: cfg apply <action> ..."
   local sid
   sid="$(provider_cfg_snapshot_create "cfg ${action}")"
-  log_info "cfg snapshot created: ${sid}"
+  log_info "$(msg "已创建配置快照: ${sid}" "cfg snapshot created: ${sid}")"
   provider_cfg_apply_dispatch "$action" "$@"
 }
 
@@ -213,7 +213,7 @@ provider_cfg_rollback_unlocked() {
   fi
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
-  log_success "cfg rollback completed: ${id}"
+  log_success "$(msg "配置回滚完成: ${id}" "cfg rollback completed: ${id}")"
 }
 
 provider_cfg_command() {

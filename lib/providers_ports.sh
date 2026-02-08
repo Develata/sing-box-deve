@@ -21,16 +21,16 @@ provider_set_port_info() {
       ;;
   esac
 
-  log_info "Whitelist (engine=${engine}): ${whitelist}"
+  log_info "$(msg "可管理协议白名单（engine=${engine}）: ${whitelist}" "Whitelist (engine=${engine}): ${whitelist}")"
   [[ -f "$cfg" ]] || die "Config file not found: $cfg"
   command -v jq >/dev/null 2>&1 || die "jq is required for set-port --list"
 
-  log_info "Current protocol ports:"
+  log_info "$(msg "当前协议端口映射:" "Current protocol ports:")"
   if [[ "${engine}" == "sing-box" ]]; then
     jq -r '.inbounds[] | [.tag, (.listen_port // .port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
         vless-reality|vmess-ws|vless-ws|ss-2022|hy2|tuic|trojan|wireguard|anytls|any-reality)
-          log_info "- ${tag}: ${port}"
+          log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac
     done
@@ -38,13 +38,13 @@ provider_set_port_info() {
     jq -r '.inbounds[] | [.tag, (.port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
         vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|socks5)
-          log_info "- ${tag}: ${port}"
+          log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac
     done
   fi
 
-  log_info "Usage: ./sing-box-deve.sh set-port --protocol <name> --port <1-65535>"
+  log_info "$(msg "用法: ./sing-box-deve.sh set-port --protocol <协议名> --port <1-65535>" "Usage: ./sing-box-deve.sh set-port --protocol <name> --port <1-65535>")"
 }
 
 provider_set_port() {
@@ -98,7 +98,7 @@ provider_set_port() {
   fi
 
   provider_restart core
-  log_success "Protocol port updated: ${protocol} -> ${new_port}"
+  log_success "$(msg "协议端口已更新: ${protocol} -> ${new_port}" "Protocol port updated: ${protocol} -> ${new_port}")"
 }
 
 provider_set_egress() {
@@ -149,7 +149,7 @@ provider_set_egress() {
   esac
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
-  log_success "Egress mode updated: ${mode}"
+  log_success "$(msg "出站模式已更新: ${mode}" "Egress mode updated: ${mode}")"
 }
 
 provider_set_route() {
@@ -194,7 +194,7 @@ provider_set_route() {
   esac
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
-  log_success "Route mode updated: ${mode}"
+  log_success "$(msg "分流路由模式已更新: ${mode}" "Route mode updated: ${mode}")"
 }
 
 provider_set_share_endpoints() {
@@ -239,5 +239,5 @@ provider_set_share_endpoints() {
 
   write_nodes_output "$runtime_engine" "$runtime_protocols"
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
-  log_success "Share endpoints updated for ${kind}"
+  log_success "$(msg "分享出口已更新(${kind}): ${endpoints}" "Share endpoints updated for ${kind}: ${endpoints}")"
 }
