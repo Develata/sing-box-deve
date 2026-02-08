@@ -50,8 +50,9 @@ Usage:
   sing-box-deve.sh sys acme-issue <domain> <email> [dns_provider]
   sing-box-deve.sh sys acme-apply <cert_path> <key_path>
   sing-box-deve.sh regen-nodes
-  sing-box-deve.sh update [--script|--core|--all] [--yes]
+  sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--yes]
   sing-box-deve.sh version
+  sing-box-deve.sh protocol matrix [--enabled]
   sing-box-deve.sh settings show
   sing-box-deve.sh settings set <key> <value>
   sing-box-deve.sh settings set key1=value1 key2=value2 ...
@@ -206,6 +207,10 @@ main() {
       shift
       show_version
       ;;
+    protocol)
+      shift
+      cli_handle_protocol_command "$@"
+      ;;
     settings)
       shift
       settings_command "$@"
@@ -221,23 +226,7 @@ main() {
       ;;
     fw)
       shift
-      case "${1:-}" in
-        status)
-          fw_detect_backend
-          fw_status
-          ;;
-        rollback)
-          fw_detect_backend
-          fw_rollback
-          ;;
-        replay)
-          fw_detect_backend
-          fw_replay
-          ;;
-        *)
-          die "Usage: fw [status|rollback|replay]"
-          ;;
-      esac
+      cli_handle_fw_command "$@"
       ;;
     help|-h|--help)
       usage

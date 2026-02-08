@@ -51,6 +51,7 @@ source "${PROJECT_ROOT}/lib/menu.sh"
 source "${PROJECT_ROOT}/lib/cli_args.sh"
 source "${PROJECT_ROOT}/lib/cli_commands.sh"
 source "${PROJECT_ROOT}/lib/cli_wizard.sh"
+source "${PROJECT_ROOT}/lib/cli_main_handlers.sh"
 source "${PROJECT_ROOT}/lib/cli_main.sh"
 
 init_i18n

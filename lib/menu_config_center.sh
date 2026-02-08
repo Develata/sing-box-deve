@@ -7,15 +7,15 @@ menu_cfg_collect_change() {
   MENU_CFG_ARG3=""
   MENU_CFG_ARG4=""
 
-  echo "1) rotate-id"
-  echo "2) argo off/temp/fixed"
-  echo "3) ip-pref auto/v4/v6"
-  echo "4) cdn-host <domain>"
-  echo "5) domain-split direct/proxy/block"
-  echo "6) tls self-signed/acme/acme-auto"
-  echo "7) protocol-add <proto_csv> [random|manual]"
-  echo "8) protocol-remove <proto_csv>"
-  echo "9) rebuild"
+  echo "1) $(msg "轮换身份标识（UUID 与 short-id）" "Rotate identity (UUID + short-id)")"
+  echo "2) $(msg "切换 Argo 模式（off/temp/fixed）" "Switch Argo mode (off/temp/fixed)")"
+  echo "3) $(msg "设置 IP 优先级（auto/v4/v6）" "Set IP preference (auto/v4/v6)")"
+  echo "4) $(msg "设置 CDN 主机模板（domain）" "Set CDN host template (domain)")"
+  echo "5) $(msg "设置三通道域名分流（直连/代理/屏蔽）" "Set domain split (direct/proxy/block)")"
+  echo "6) $(msg "切换 TLS 证书策略（自签/ACME/自动签发）" "Switch TLS cert strategy (self-signed/ACME/auto)")"
+  echo "7) $(msg "新增协议并分配端口（随机/手动）" "Add protocol and assign ports (random/manual)")"
+  echo "8) $(msg "移除已启用协议" "Remove enabled protocols")"
+  echo "9) $(msg "按当前状态重建配置与节点" "Rebuild config and nodes from runtime state")"
   read -r -p "$(msg "请选择配置动作编号" "Select cfg action id"): " a
   case "${a:-0}" in
     1)

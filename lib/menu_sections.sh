@@ -7,12 +7,16 @@ menu_view() {
     echo "1) $(msg "查看完整状态面板（panel --full）" "Full status panel (panel --full)")"
     echo "2) $(msg "查看全量运行信息（list --all）" "All runtime info (list --all)")"
     echo "3) $(msg "仅查看节点链接（list --nodes）" "Nodes only (list --nodes)")"
+    echo "4) $(msg "查看协议能力矩阵（protocol matrix）" "Protocol capability matrix (protocol matrix)")"
+    echo "5) $(msg "仅查看已启用协议能力（protocol matrix --enabled）" "Enabled protocol capability matrix (protocol matrix --enabled)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) provider_panel full; menu_pause ;;
       2) provider_list all; menu_pause ;;
       3) provider_list nodes; menu_pause ;;
+      4) provider_protocol_matrix_show all; menu_pause ;;
+      5) provider_protocol_matrix_show enabled; menu_pause ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
@@ -114,12 +118,16 @@ menu_update() {
     echo "1) $(msg "更新核心内核（update --core）" "Update core engine (update --core)")"
     echo "2) $(msg "更新脚本与模块（update --script）" "Update script/modules (update --script)")"
     echo "3) $(msg "同时更新内核与脚本（update --all）" "Update both core+script (update --all)")"
+    echo "4) $(msg "仅主源更新脚本（update --script --source primary）" "Script update by primary source")"
+    echo "5) $(msg "仅备源更新脚本（update --script --source backup）" "Script update by backup source")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) update_command --core --yes; menu_pause ;;
       2) update_command --script --yes; menu_pause ;;
       3) update_command --all --yes; menu_pause ;;
+      4) update_command --script --source primary --yes; menu_pause ;;
+      5) update_command --script --source backup --yes; menu_pause ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac

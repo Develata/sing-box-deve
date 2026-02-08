@@ -167,3 +167,38 @@ protocol_hint() {
       ;;
   esac
 }
+
+protocol_capability() {
+  local protocol="$1"
+  case "$protocol" in
+    vless-reality) echo "tls=yes;reality=yes;multi-port=yes;warp-egress=yes;share=yes" ;;
+    vmess-ws) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    vless-xhttp) echo "tls=yes;reality=optional;multi-port=yes;warp-egress=yes;share=yes" ;;
+    vless-ws) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    shadowsocks-2022) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    hysteria2) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    tuic) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    anytls) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    any-reality) echo "tls=yes;reality=yes;multi-port=yes;warp-egress=yes;share=yes" ;;
+    trojan) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    wireguard) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    socks5) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=limited" ;;
+    argo) echo "tls=depends;reality=no;multi-port=n/a;warp-egress=n/a;share=indirect" ;;
+    warp) echo "tls=n/a;reality=no;multi-port=n/a;warp-egress=self;share=mode-only" ;;
+    *) echo "tls=unknown;reality=unknown;multi-port=unknown;warp-egress=unknown;share=unknown" ;;
+  esac
+}
+
+protocol_matrix_rows() {
+  local engine="$1" include_unsupported="${2:-false}" protocol cap support
+  for protocol in "${ALL_PROTOCOLS[@]}"; do
+    support="no"
+    if engine_supports_protocol "$engine" "$protocol"; then
+      support="yes"
+    elif [[ "$include_unsupported" != "true" ]]; then
+      continue
+    fi
+    cap="$(protocol_capability "$protocol")"
+    printf '%s|%s|%s\n' "$protocol" "$support" "$cap"
+  done
+}

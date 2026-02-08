@@ -140,26 +140,6 @@ parse_set_share_args() {
   [[ -n "$SET_SHARE_ENDPOINTS" ]] || die "Usage: set-share <direct|proxy|warp> <host:port[,host:port...]>"
 }
 
-parse_update_args() {
-  UPDATE_SCRIPT="false"
-  UPDATE_CORE="false"
-  AUTO_YES="${AUTO_YES:-false}"
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --script) UPDATE_SCRIPT="true"; shift ;;
-      --core) UPDATE_CORE="true"; shift ;;
-      --all) UPDATE_SCRIPT="true"; UPDATE_CORE="true"; shift ;;
-      --yes|-y) AUTO_YES="true"; shift ;;
-      *) die "Unknown update argument: $1" ;;
-    esac
-  done
-
-  if [[ "$UPDATE_SCRIPT" == "false" && "$UPDATE_CORE" == "false" ]]; then
-    UPDATE_SCRIPT="true"
-    UPDATE_CORE="true"
-  fi
-}
-
 parse_list_args() {
   LIST_MODE="all"
   while [[ $# -gt 0 ]]; do
@@ -253,3 +233,5 @@ parse_set_egress_args() {
     esac
   done
 }
+
+source "${PROJECT_ROOT}/lib/cli_args_update.sh"

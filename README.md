@@ -156,10 +156,14 @@ sudo sb doctor
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
 ./sing-box-deve.sh cfg tls self-signed|acme|acme-auto [cert_path|domain] [key_path|email] [dns_provider]
 ./sing-box-deve.sh cfg rebuild
+./sing-box-deve.sh cfg protocol-add <proto_csv> [random|manual] [proto:port,...]
+./sing-box-deve.sh cfg protocol-remove <proto_csv>
 ./sing-box-deve.sh kernel show
 ./sing-box-deve.sh kernel set sing-box v1.12.20
 ./sing-box-deve.sh warp status
 ./sing-box-deve.sh sys bbr-enable
+./sing-box-deve.sh protocol matrix
+./sing-box-deve.sh protocol matrix --enabled
 ```
 
 服务器验证建议：优先使用 `sb` 面板完成安装、分流、端口和节点刷新操作；命令模式仅用于自动化。
@@ -172,7 +176,15 @@ sudo sb doctor
 ./sing-box-deve.sh update
 ./sing-box-deve.sh update --script
 ./sing-box-deve.sh update --core
+./sing-box-deve.sh update --script --source primary
+./sing-box-deve.sh update --script --source backup
 ```
+
+`update --source` 说明：
+
+- `auto`：先主源，失败自动回退到备源
+- `primary`：只使用主源
+- `backup`：只使用备源
 
 ## 示例文件
 
@@ -190,6 +202,7 @@ sudo sb doctor
 - `scripts/acceptance-matrix.sh`
 - `scripts/integration-smoke.sh`（root + systemd 实机冒烟回归）
 - `scripts/consistency-check.sh`（配置与节点端口/路径一致性检查）
+- `scripts/regression-docker.sh`（Docker 模拟回归：首次安装干跑、协议增删、回滚、doctor）
 - 运行：`bash scripts/acceptance-matrix.sh`
 
 ## 进阶与实现细节（可后看）
@@ -314,6 +327,43 @@ PROXYIP_VLESS_XHTTP=203.0.113.10 \
 
 - 执行 `bash scripts/update-checksums.sh` 更新 `checksums.txt`
 - 再执行 `./sing-box-deve.sh update --script` 的安全更新链路验证
+
+## 运维闭环手册
+
+推荐日常巡检顺序：
+
+1. `sb panel --full`
+2. `sb doctor`
+3. `sb cfg snapshots list`
+4. `sb fw status`
+
+常见问题与处理：
+
+1. 端口冲突/端口未监听
+   - 执行：`sb doctor`
+   - 若提示端口冲突：`sb set-port --protocol <协议> --port <新端口>`
+   - 若首次新增协议：`sb cfg protocol-add <协议> random` 或手动映射端口
+
+2. 证书签发失败或即将到期
+   - 安装 acme：`sb sys acme-install`
+   - 自动签发：`sb cfg tls acme-auto <domain> <email> [dns_provider]`
+   - 复用已签证书：脚本会自动检测并优先复用同域名/泛域名证书
+   - `sb panel --full` 与 `sb doctor` 会给出到期预警（30/15/7 天）
+
+3. 订阅为空或产物缺失
+   - 刷新产物：`sb sub refresh`
+   - 检查输出：`sb sub show`
+   - 必要时重建节点：`sb regen-nodes`
+
+4. 配置变更后异常
+   - 先看快照：`sb cfg snapshots list`
+   - 回滚最近快照：`sb cfg rollback latest`
+   - 清理旧快照：`sb cfg snapshots prune 10`
+
+5. 更新失败
+   - 使用主源：`sb update --script --source primary`
+   - 使用备源：`sb update --script --source backup`
+   - 自动回退：`sb update --script --source auto`
 
 ## 常见问题
 

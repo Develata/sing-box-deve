@@ -56,6 +56,7 @@ provider_status_header() {
     log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
     log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"
     log_info "$(msg "IP 优先级: $(provider_i18n_value "${ip_preference:-auto}") | TLS: $(provider_i18n_value "${tls_mode:-self-signed}") | CDN 主机: ${cdn_template_host:-$(provider_i18n_value auto)}" "IP preference: ${ip_preference:-auto} | TLS: ${tls_mode:-self-signed} | CDN host: ${cdn_template_host:-auto}")"
+    provider_panel_tls_warning "${tls_mode:-self-signed}" "${acme_cert_path:-}" "${acme_key_path:-}"
     log_info "$(msg "分流域名: 直连='${domain_split_direct:-}' 代理='${domain_split_proxy:-}' 屏蔽='${domain_split_block:-}'" "Domain split: direct='${domain_split_direct:-}' proxy='${domain_split_proxy:-}' block='${domain_split_block:-}'")"
     log_info "$(msg "分享出口: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'" "Share endpoints: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'")"
 
@@ -148,6 +149,27 @@ provider_status_header() {
   fi
 }
 
+provider_panel_tls_warning() {
+  local tls_mode="$1" acme_cert="$2" _acme_key="$3" cert="" days=""
+  if [[ "$tls_mode" == "acme" && -n "$acme_cert" ]]; then
+    cert="$acme_cert"
+  elif [[ "$tls_mode" == "self-signed" ]]; then
+    cert="${SBD_DATA_DIR}/cert.pem"
+  fi
+  [[ -n "$cert" && -f "$cert" ]] || return 0
+  if declare -F provider_cert_days_left >/dev/null 2>&1; then
+    days="$(provider_cert_days_left "$cert" 2>/dev/null || true)"
+  fi
+  [[ "$days" =~ ^-?[0-9]+$ ]] || return 0
+  if (( days <= 7 )); then
+    log_warn "$(msg "证书到期预警: ${days} 天（建议立即续签）" "Certificate expiry warning: ${days} days left (renew now)")"
+  elif (( days <= 15 )); then
+    log_warn "$(msg "证书到期提醒: ${days} 天（建议尽快续签）" "Certificate expiry notice: ${days} days left (renew soon)")"
+  elif (( days <= 30 )); then
+    log_info "$(msg "证书有效期提醒: ${days} 天（建议提前续签）" "Certificate notice: ${days} days left (plan renewal)")"
+  fi
+}
+
 provider_panel() {
   local mode="${1:-compact}"
   log_info "$(msg "========== sing-box-deve 面板 ==========" "========== sing-box-deve panel ==========")"
@@ -168,4 +190,42 @@ provider_panel() {
   fi
 
   log_info "========================================="
+}
+
+provider_protocol_matrix_show() {
+  local mode="${1:-all}" runtime_engine="sing-box" runtime_protocols=""
+  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+    # shellcheck disable=SC1091
+    source /etc/sing-box-deve/runtime.env
+    runtime_engine="${engine:-sing-box}"
+    runtime_protocols="${protocols:-}"
+  fi
+
+  log_info "$(msg "协议能力矩阵（engine=${runtime_engine}）" "Protocol capability matrix (engine=${runtime_engine})")"
+  printf '%-18s %-10s %-4s %-8s %-10s %-12s %-8s\n' \
+    "$(msg "协议" "Protocol")" \
+    "$(msg "内核支持" "Supported")" \
+    "TLS" \
+    "Reality" \
+    "$(msg "多端口" "MultiPort")" \
+    "$(msg "WARP出站" "WARP Egress")" \
+    "$(msg "订阅" "Share")"
+
+  local row protocol support caps tls reality multi warp share
+  while IFS= read -r row; do
+    [[ -n "$row" ]] || continue
+    protocol="${row%%|*}"
+    support="${row#*|}"; support="${support%%|*}"
+    caps="${row##*|}"
+    if [[ "$mode" == "enabled" && ",${runtime_protocols}," != *",${protocol},"* ]]; then
+      continue
+    fi
+    tls="$(echo "$caps" | awk -F';' '{print $1}' | cut -d= -f2)"
+    reality="$(echo "$caps" | awk -F';' '{print $2}' | cut -d= -f2)"
+    multi="$(echo "$caps" | awk -F';' '{print $3}' | cut -d= -f2)"
+    warp="$(echo "$caps" | awk -F';' '{print $4}' | cut -d= -f2)"
+    share="$(echo "$caps" | awk -F';' '{print $5}' | cut -d= -f2)"
+    printf '%-18s %-10s %-4s %-8s %-10s %-12s %-8s\n' \
+      "$protocol" "$support" "$tls" "$reality" "$multi" "$warp" "$share"
+  done < <(protocol_matrix_rows "$runtime_engine" true)
 }

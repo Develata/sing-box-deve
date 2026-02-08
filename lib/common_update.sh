@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 current_script_version() {
   local version_file="${PROJECT_ROOT}/version"
@@ -9,49 +10,22 @@ current_script_version() {
   fi
 }
 
-resolve_update_base_url() {
-  local repo_ref="${SBD_REPO_REF:-main}"
-
-  if [[ -n "${SBD_UPDATE_BASE_URL:-}" ]]; then
-    echo "$SBD_UPDATE_BASE_URL"
-    return 0
-  fi
-
-  local origin=""
-  if command -v git >/dev/null 2>&1 && [[ -d "${PROJECT_ROOT}/.git" ]]; then
-    origin="$(git -C "$PROJECT_ROOT" config --get remote.origin.url 2>/dev/null || true)"
-  fi
-
-  if [[ "$origin" =~ ^git@github.com:([^/]+)/([^/.]+)(\.git)?$ ]]; then
-    echo "https://raw.githubusercontent.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/${repo_ref}"
-    return 0
-  fi
-
-  if [[ "$origin" =~ ^https://github.com/([^/]+)/([^/.]+)(\.git)?$ ]]; then
-    echo "https://raw.githubusercontent.com/${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/${repo_ref}"
-    return 0
-  fi
-
-  local repo_slug="${SBD_REPO_SLUG:-Develata/sing-box-deve}"
-  if [[ "$repo_slug" =~ ^[^/]+/[^/]+$ ]]; then
-    echo "https://raw.githubusercontent.com/${repo_slug}/${repo_ref}"
-    return 0
-  fi
-
-  echo ""
-}
-
 fetch_remote_script_version() {
-  local base_url
-  base_url="$(resolve_update_base_url)"
-  [[ -n "$base_url" ]] || return 1
-  curl -fsSL "${base_url}/version" 2>/dev/null | tr -d '[:space:]'
+  local mode="${1:-${UPDATE_SOURCE:-auto}}" base_url version
+  while IFS= read -r base_url; do
+    [[ -n "$base_url" ]] || continue
+    version="$(curl -fsSL "${base_url}/version" 2>/dev/null | tr -d '[:space:]' || true)"
+    if [[ -n "$version" ]]; then
+      SBD_ACTIVE_UPDATE_BASE_URL="$base_url"
+      echo "$version"
+      return 0
+    fi
+  done < <(update_base_candidates "$mode")
+  return 1
 }
 
 perform_script_self_update() {
-  local base_url
-  base_url="$(resolve_update_base_url)"
-  [[ -n "$base_url" ]] || die "$(msg "无法解析更新地址，请先设置 SBD_UPDATE_BASE_URL 或 SBD_REPO_SLUG/SBD_REPO_REF" "Cannot resolve update URL. Set SBD_UPDATE_BASE_URL or SBD_REPO_SLUG/SBD_REPO_REF first.")"
+  local mode="${UPDATE_SOURCE:-auto}" base_url ok="false"
 
   local files=(
     "sing-box-deve.sh"
@@ -64,6 +38,7 @@ perform_script_self_update() {
     "lib/common.sh"
     "lib/common_base.sh"
     "lib/common_settings.sh"
+    "lib/common_update_sources.sh"
     "lib/common_update.sh"
     "lib/common_context.sh"
     "lib/common_doctor.sh"
@@ -92,6 +67,7 @@ perform_script_self_update() {
     "lib/providers_ports.sh"
     "lib/providers_config_ops.sh"
     "lib/providers_protocol_ops.sh"
+    "lib/providers_config_lock.sh"
     "lib/providers_config_flow.sh"
     "lib/providers_split3.sh"
     "lib/providers_jump_ports.sh"
@@ -109,8 +85,10 @@ perform_script_self_update() {
     "lib/menu_ops.sh"
     "lib/menu_main.sh"
     "lib/cli_args.sh"
+    "lib/cli_args_update.sh"
     "lib/cli_commands.sh"
     "lib/cli_wizard.sh"
+    "lib/cli_main_handlers.sh"
     "lib/cli_main.sh"
     "docs/README.md"
     "docs/V1-SPEC.md"
@@ -136,6 +114,7 @@ perform_script_self_update() {
     "scripts/acceptance-matrix.sh"
     "scripts/integration-smoke.sh"
     "scripts/consistency-check.sh"
+    "scripts/regression-docker.sh"
     "scripts/update-checksums.sh"
     ".github/workflows/main.yml"
     ".github/workflows/mainh.yml"
@@ -144,33 +123,47 @@ perform_script_self_update() {
     "workers/workers_keep.js"
   )
 
-  local tmp_dir
-  tmp_dir="$(mktemp -d)"
-  local checksums_file="${tmp_dir}/checksums.txt"
-  if ! download_file "${base_url}/checksums.txt" "$checksums_file"; then
-    die "$(msg "安全更新失败：更新源缺少 checksums.txt" "Secure update requires checksums.txt at update source")"
-  fi
+  while IFS= read -r base_url; do
+    [[ -n "$base_url" ]] || continue
+    local tmp_dir checksums_file failed rel expected actual
+    tmp_dir="$(mktemp -d)"
+    checksums_file="${tmp_dir}/checksums.txt"
+    failed="false"
+    log_info "$(msg "尝试更新源" "Trying update source"): ${base_url}"
+    if ! download_file "${base_url}/checksums.txt" "$checksums_file"; then
+      failed="true"
+    fi
 
-  local rel
-  for rel in "${files[@]}"; do
-    mkdir -p "${tmp_dir}/$(dirname "$rel")"
-    download_file "${base_url}/${rel}" "${tmp_dir}/${rel}"
-    local expected actual
-    expected="$(grep -E "[[:space:]]${rel}$" "$checksums_file" | awk '{print $1}' | head -n1)"
-    [[ -n "$expected" ]] || die "Missing checksum entry for ${rel}"
-    actual="$(sha256sum "${tmp_dir}/${rel}" | awk '{print $1}')"
-    [[ "$expected" == "$actual" ]] || die "Checksum mismatch for ${rel}"
-  done
+    if [[ "$failed" == "false" ]]; then
+      for rel in "${files[@]}"; do
+        mkdir -p "${tmp_dir}/$(dirname "$rel")"
+        if ! download_file "${base_url}/${rel}" "${tmp_dir}/${rel}"; then
+          failed="true"; break
+        fi
+        expected="$(grep -E "[[:space:]]${rel}$" "$checksums_file" | awk '{print $1}' | head -n1)"
+        [[ -n "$expected" ]] || { failed="true"; break; }
+        actual="$(sha256sum "${tmp_dir}/${rel}" | awk '{print $1}')"
+        [[ "$expected" == "$actual" ]] || { failed="true"; break; }
+      done
+    fi
 
-  for rel in "${files[@]}"; do
-    install -D -m 0644 "${tmp_dir}/${rel}" "${PROJECT_ROOT}/${rel}"
-  done
+    if [[ "$failed" == "false" ]]; then
+      for rel in "${files[@]}"; do
+        install -D -m 0644 "${tmp_dir}/${rel}" "${PROJECT_ROOT}/${rel}"
+      done
+      install -D -m 0644 "$checksums_file" "${PROJECT_ROOT}/checksums.txt"
+      chmod +x "${PROJECT_ROOT}/sing-box-deve.sh" \
+        "${PROJECT_ROOT}/lib/common.sh" "${PROJECT_ROOT}/lib/protocols.sh" "${PROJECT_ROOT}/lib/security.sh" "${PROJECT_ROOT}/lib/providers.sh" "${PROJECT_ROOT}/lib/output.sh" \
+        "${PROJECT_ROOT}/providers/entry.sh" "${PROJECT_ROOT}/providers/vps.sh" "${PROJECT_ROOT}/providers/serv00.sh" "${PROJECT_ROOT}/providers/sap.sh" "${PROJECT_ROOT}/providers/docker.sh" \
+        "${PROJECT_ROOT}/scripts/acceptance-matrix.sh" "${PROJECT_ROOT}/scripts/integration-smoke.sh" "${PROJECT_ROOT}/scripts/consistency-check.sh" "${PROJECT_ROOT}/scripts/regression-docker.sh" "${PROJECT_ROOT}/scripts/update-checksums.sh" || true
+      rm -rf "$tmp_dir"
+      SBD_ACTIVE_UPDATE_BASE_URL="$base_url"
+      ok="true"
+      break
+    fi
+    rm -rf "$tmp_dir"
+    log_warn "$(msg "该更新源失败，尝试下一个" "Update source failed, trying next one")"
+  done < <(update_base_candidates "$mode")
 
-  install -D -m 0644 "$checksums_file" "${PROJECT_ROOT}/checksums.txt"
-
-  chmod +x "${PROJECT_ROOT}/sing-box-deve.sh" \
-    "${PROJECT_ROOT}/lib/common.sh" "${PROJECT_ROOT}/lib/protocols.sh" "${PROJECT_ROOT}/lib/security.sh" "${PROJECT_ROOT}/lib/providers.sh" "${PROJECT_ROOT}/lib/output.sh" \
-    "${PROJECT_ROOT}/providers/entry.sh" "${PROJECT_ROOT}/providers/vps.sh" "${PROJECT_ROOT}/providers/serv00.sh" "${PROJECT_ROOT}/providers/sap.sh" "${PROJECT_ROOT}/providers/docker.sh" \
-    "${PROJECT_ROOT}/scripts/acceptance-matrix.sh" "${PROJECT_ROOT}/scripts/integration-smoke.sh" "${PROJECT_ROOT}/scripts/consistency-check.sh" "${PROJECT_ROOT}/scripts/update-checksums.sh" || true
-  rm -rf "$tmp_dir"
+  [[ "$ok" == "true" ]] || die "$(msg "安全更新失败：所有更新源不可用或校验失败" "Secure update failed: all update sources unavailable or checksum verification failed")"
 }

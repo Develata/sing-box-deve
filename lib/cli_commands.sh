@@ -3,11 +3,12 @@
 show_version() {
   local local_ver remote_ver
   local_ver="$(current_script_version)"
-  remote_ver="$(fetch_remote_script_version 2>/dev/null || true)"
+  remote_ver="$(fetch_remote_script_version "auto" 2>/dev/null || true)"
 
   log_info "$(msg "当前脚本版本" "Current script version"): ${local_ver}"
   if [[ -n "$remote_ver" ]]; then
     log_info "$(msg "远程最新版本" "Remote latest version"): ${remote_ver}"
+    [[ -n "${SBD_ACTIVE_UPDATE_BASE_URL:-}" ]] && log_info "$(msg "更新源" "Update source"): ${SBD_ACTIVE_UPDATE_BASE_URL}"
   else
     log_warn "$(msg "无法获取远程版本（可设置 SBD_UPDATE_BASE_URL）" "Unable to fetch remote version (set SBD_UPDATE_BASE_URL if needed)")"
   fi
@@ -19,12 +20,13 @@ update_command() {
   if [[ "$UPDATE_SCRIPT" == "true" ]]; then
     local local_ver remote_ver
     local_ver="$(current_script_version)"
-    remote_ver="$(fetch_remote_script_version 2>/dev/null || true)"
+    remote_ver="$(fetch_remote_script_version "${UPDATE_SOURCE:-auto}" 2>/dev/null || true)"
 
     if [[ -n "$remote_ver" && "$remote_ver" == "$local_ver" ]]; then
       log_info "$(msg "脚本已是最新版本" "Script is already up to date") (${local_ver})"
     else
       if prompt_yes_no "$(msg "更新脚本本体与模块文件吗？" "Update script and module files?")" "Y"; then
+        [[ -n "${SBD_ACTIVE_UPDATE_BASE_URL:-}" ]] && log_info "$(msg "更新源" "Update source"): ${SBD_ACTIVE_UPDATE_BASE_URL}"
         perform_script_self_update
         log_success "$(msg "脚本更新完成，请重新执行命令" "Script update completed, please rerun command")"
       else

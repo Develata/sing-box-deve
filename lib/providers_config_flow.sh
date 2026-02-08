@@ -72,7 +72,7 @@ provider_cfg_snapshots_list() {
   log_info "total snapshots: $count"
 }
 
-provider_cfg_snapshots_prune() {
+provider_cfg_snapshots_prune_unlocked() {
   ensure_root
   local keep="${1:-10}" ids id total remove_count removed=0
   [[ "$keep" =~ ^[0-9]+$ ]] || die "Usage: cfg snapshots prune [keep_count]"
@@ -108,7 +108,7 @@ provider_cfg_snapshots_command() {
   shift || true
   case "$sub" in
     list) provider_cfg_snapshots_list ;;
-    prune) provider_cfg_snapshots_prune "${1:-10}" ;;
+    prune) provider_cfg_with_lock provider_cfg_snapshots_prune_unlocked "${1:-10}" ;;
     *) die "Usage: cfg snapshots [list|prune [keep_count]]" ;;
   esac
 }
@@ -172,7 +172,7 @@ provider_cfg_preview() {
   esac
 }
 
-provider_cfg_apply_with_snapshot() {
+provider_cfg_apply_with_snapshot_unlocked() {
   local action="${1:-}"
   shift || true
   [[ -n "$action" ]] || die "Usage: cfg apply <action> ..."
@@ -182,7 +182,7 @@ provider_cfg_apply_with_snapshot() {
   provider_cfg_apply_dispatch "$action" "$@"
 }
 
-provider_cfg_rollback() {
+provider_cfg_rollback_unlocked() {
   ensure_root
   local id="${1:-latest}" target_dir runtime_file
   runtime_file="$(provider_cfg_runtime_file)"
@@ -222,10 +222,10 @@ provider_cfg_command() {
   case "$action" in
     snapshots|snapshot) provider_cfg_snapshots_command "$@" ;;
     preview) provider_cfg_preview "$@" ;;
-    apply) provider_cfg_apply_with_snapshot "$@" ;;
-    rollback) provider_cfg_rollback "${1:-latest}" ;;
+    apply) provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$@" ;;
+    rollback) provider_cfg_with_lock provider_cfg_rollback_unlocked "${1:-latest}" ;;
     rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild)
-      provider_cfg_apply_with_snapshot "$action" "$@"
+      provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$action" "$@"
       ;;
     *)
       die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email] [dns_provider]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv>|rebuild]"
