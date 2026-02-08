@@ -10,11 +10,26 @@ current_script_version() {
   fi
 }
 
+update_url_with_cache_bust() {
+  local url="$1" token="${2:-}"
+  [[ -n "$token" ]] || {
+    echo "$url"
+    return 0
+  }
+  if [[ "$url" == *\?* ]]; then
+    echo "${url}&_cb=${token}"
+  else
+    echo "${url}?_cb=${token}"
+  fi
+}
+
 fetch_remote_script_version() {
-  local mode="${1:-${UPDATE_SOURCE:-auto}}" base_url version
+  local mode="${1:-${UPDATE_SOURCE:-auto}}" base_url version cb version_url
+  cb="$(date +%s)"
   while IFS= read -r base_url; do
     [[ -n "$base_url" ]] || continue
-    version="$(curl -fsSL "${base_url}/version" 2>/dev/null | tr -d '[:space:]' || true)"
+    version_url="$(update_url_with_cache_bust "${base_url}/version" "$cb")"
+    version="$(curl -fsSL "$version_url" 2>/dev/null | tr -d '[:space:]' || true)"
     if [[ -n "$version" ]]; then
       SBD_ACTIVE_UPDATE_BASE_URL="$base_url"
       echo "$version"
@@ -25,7 +40,8 @@ fetch_remote_script_version() {
 }
 
 perform_script_self_update() {
-  local mode="${UPDATE_SOURCE:-auto}" base_url ok="false"
+  local mode="${UPDATE_SOURCE:-auto}" base_url ok="false" cb
+  cb="$(date +%s)"
 
   local files=(
     "sing-box-deve.sh"
@@ -130,14 +146,14 @@ perform_script_self_update() {
     checksums_file="${tmp_dir}/checksums.txt"
     failed="false"
     log_info "$(msg "尝试更新源" "Trying update source"): ${base_url}"
-    if ! download_file "${base_url}/checksums.txt" "$checksums_file"; then
+    if ! download_file "$(update_url_with_cache_bust "${base_url}/checksums.txt" "$cb")" "$checksums_file"; then
       failed="true"
     fi
 
     if [[ "$failed" == "false" ]]; then
       for rel in "${files[@]}"; do
         mkdir -p "${tmp_dir}/$(dirname "$rel")"
-        if ! download_file "${base_url}/${rel}" "${tmp_dir}/${rel}"; then
+        if ! download_file "$(update_url_with_cache_bust "${base_url}/${rel}" "$cb")" "${tmp_dir}/${rel}"; then
           failed="true"; break
         fi
         expected="$(grep -E "[[:space:]]${rel}$" "$checksums_file" | awk '{print $1}' | head -n1)"
