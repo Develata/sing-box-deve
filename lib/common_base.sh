@@ -121,8 +121,18 @@ install_apt_dependencies() {
   fi
 
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y >/dev/null
-  apt-get install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null
+  local apt_opts=(
+    "-o" "Acquire::Retries=2"
+    "-o" "Acquire::http::Timeout=15"
+    "-o" "Acquire::https::Timeout=15"
+  )
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 90s apt-get "${apt_opts[@]}" update -y >/dev/null || die "apt-get update timed out/failed"
+    timeout 120s apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "apt-get install timed out/failed"
+  else
+    apt-get "${apt_opts[@]}" update -y >/dev/null || die "apt-get update failed"
+    apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "apt-get install failed"
+  fi
 }
 
 download_file() {
@@ -144,6 +154,6 @@ rand_hex_8() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 4
   else
-    date +%s | sha256sum | cut -c1-8
+    printf '%s-%s-%s\n' "$(date +%s%N 2>/dev/null || date +%s)" "$$" "${RANDOM:-0}" | sha256sum | cut -c1-8
   fi
 }

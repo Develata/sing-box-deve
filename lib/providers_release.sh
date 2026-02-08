@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+sbd_offline_mode_enabled() {
+  [[ "${SBD_OFFLINE_MODE:-false}" == "true" ]]
+}
+
 fetch_latest_release_tag() {
   local repo="$1"
   curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" | jq -r '.tag_name'
@@ -61,6 +65,13 @@ install_sing_box_binary() {
   local input_tag="${1:-latest}"
   local arch
   arch="$(get_arch)"
+  if sbd_offline_mode_enabled; then
+    if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
+      log_warn "SBD_OFFLINE_MODE=true; using existing local sing-box binary"
+      return 0
+    fi
+    die "SBD_OFFLINE_MODE=true but local sing-box binary not found"
+  fi
   local tag
   if [[ "$input_tag" == "latest" ]]; then
     tag="$(fetch_latest_release_tag "SagerNet/sing-box")"
@@ -84,16 +95,23 @@ install_sing_box_binary() {
   local sums_file="${SBD_RUNTIME_DIR}/sing-box-${version}-checksums.txt"
 
   log_info "Installing sing-box ${tag}"
-  download_file "$url" "$archive"
-  if [[ -n "$expected" ]]; then
-    verify_sha256_expected "$archive" "$expected"
+  if download_file "$url" "$archive"; then
+    if [[ -n "$expected" ]]; then
+      verify_sha256_expected "$archive" "$expected"
+    else
+      log_warn "Release digest metadata missing; fallback to checksums file"
+      download_file "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-checksums.txt" "$sums_file"
+      verify_sha256_from_checksums_file "$archive" "$sums_file"
+    fi
+    tar -xzf "$archive" -C "$SBD_RUNTIME_DIR"
+    install -m 0755 "${SBD_RUNTIME_DIR}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box"
   else
-    log_warn "Release digest metadata missing; fallback to checksums file"
-    download_file "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-checksums.txt" "$sums_file"
-    verify_sha256_from_checksums_file "$archive" "$sums_file"
+    if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
+      log_warn "Failed to download sing-box ${tag}; reusing existing local binary"
+      return 0
+    fi
+    die "Unable to download sing-box and no local binary available"
   fi
-  tar -xzf "$archive" -C "$SBD_RUNTIME_DIR"
-  install -m 0755 "${SBD_RUNTIME_DIR}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box"
 
   echo "$tag" > "${SBD_DATA_DIR}/engine-version"
 }
@@ -102,6 +120,13 @@ install_xray_binary() {
   local input_tag="${1:-latest}"
   local arch
   arch="$(get_arch)"
+  if sbd_offline_mode_enabled; then
+    if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
+      log_warn "SBD_OFFLINE_MODE=true; using existing local xray binary"
+      return 0
+    fi
+    die "SBD_OFFLINE_MODE=true but local xray binary not found"
+  fi
   local x_arch="64"
   [[ "$arch" == "arm64" ]] && x_arch="arm64-v8a"
 
@@ -120,14 +145,21 @@ install_xray_binary() {
   local dgst="${SBD_RUNTIME_DIR}/${filename}.dgst"
 
   log_info "Installing xray ${tag}"
-  download_file "$url" "$archive"
-  download_file "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}.dgst" "$dgst"
-  verify_sha256_from_xray_dgst "$archive" "$dgst"
-  if ! command -v unzip >/dev/null 2>&1; then
-    apt-get install -y unzip >/dev/null
+  if download_file "$url" "$archive"; then
+    download_file "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}.dgst" "$dgst"
+    verify_sha256_from_xray_dgst "$archive" "$dgst"
+    if ! command -v unzip >/dev/null 2>&1; then
+      apt-get install -y unzip >/dev/null
+    fi
+    unzip -o "$archive" xray -d "$SBD_RUNTIME_DIR" >/dev/null
+    install -m 0755 "${SBD_RUNTIME_DIR}/xray" "${SBD_BIN_DIR}/xray"
+  else
+    if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
+      log_warn "Failed to download xray ${tag}; reusing existing local binary"
+      return 0
+    fi
+    die "Unable to download xray and no local binary available"
   fi
-  unzip -o "$archive" xray -d "$SBD_RUNTIME_DIR" >/dev/null
-  install -m 0755 "${SBD_RUNTIME_DIR}/xray" "${SBD_BIN_DIR}/xray"
 
   echo "$tag" > "${SBD_DATA_DIR}/engine-version"
 }

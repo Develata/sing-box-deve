@@ -76,7 +76,7 @@ provider_set_port() {
     old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.listen_port // .port)' "$cfg" | head -n1)"
     [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
     tmp_cfg="${SBD_RUNTIME_DIR}/config.json.tmp"
-    jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .listen_port) = $p | (.inbounds[] | select(.tag==$t) | .port) = $p' "$cfg" > "$tmp_cfg"
+    jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .listen_port) = $p | (.inbounds[] | select(.tag==$t) |= del(.port))' "$cfg" > "$tmp_cfg"
     mv "$tmp_cfg" "$cfg"
     validate_generated_config "sing-box"
   else
