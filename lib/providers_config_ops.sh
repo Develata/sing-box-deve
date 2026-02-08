@@ -142,13 +142,14 @@ provider_cfg_set_tls() {
   esac
   provider_cfg_load_runtime_exports
   if [[ "$mode" == "acme-auto" ]]; then
-    local domain="$cert" email="$key" cert_domain
+    local domain="$cert" email="$key"
     [[ -n "$domain" && -n "$email" ]] || die "Usage: cfg tls acme-auto <domain> <email> [dns_provider]"
     provider_sys_acme_issue "$domain" "$email" "$dns_provider"
-    cert_domain="$domain"
-    [[ "$cert_domain" == "*."* ]] && cert_domain="${cert_domain#*.}"
-    cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
-    key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
+    cert="${SBD_LAST_ACME_CERT_PATH:-}"
+    key="${SBD_LAST_ACME_KEY_PATH:-}"
+    if [[ -z "$cert" || -z "$key" ]]; then
+      acme_resolve_existing_cert "$domain" cert key || true
+    fi
     [[ -f "$cert" && -f "$key" ]] || die "ACME auto issue succeeded but cert files missing"
     mode="acme"
   fi

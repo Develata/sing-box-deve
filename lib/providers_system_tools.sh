@@ -1,4 +1,41 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
+
+SBD_LAST_ACME_CERT_PATH=""
+SBD_LAST_ACME_KEY_PATH=""
+
+acme_base_domain() {
+  local domain="$1"
+  if [[ "$domain" == "*."* ]]; then
+    domain="${domain#*.}"
+  fi
+  printf '%s' "$domain"
+}
+
+acme_resolve_existing_cert() {
+  local domain="$1" out_cert_var="$2" out_key_var="$3"
+  local base dir cert key
+  base="$(acme_base_domain "$domain")"
+
+  local dirs=(
+    "/root/.acme.sh/${base}_ecc"
+    "/root/.acme.sh/${base}"
+  )
+
+  for dir in "${dirs[@]}"; do
+    [[ -d "$dir" ]] || continue
+    for cert in "$dir/fullchain.cer" "$dir/${base}.cer"; do
+      [[ -f "$cert" ]] || continue
+      for key in "$dir/${base}.key" "$dir/private.key"; do
+        [[ -f "$key" ]] || continue
+        printf -v "$out_cert_var" '%s' "$cert"
+        printf -v "$out_key_var" '%s' "$key"
+        return 0
+      done
+    done
+  done
+  return 1
+}
 
 provider_sys_bbr_status() {
   local qdisc cc
@@ -31,6 +68,17 @@ provider_sys_acme_issue() {
   ensure_root
   local domain="$1" email="$2" dns_provider="${3:-${ACME_DNS_PROVIDER:-}}"
   [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email> [dns_provider]" "Usage: sys acme-issue <domain> <email> [dns_provider]")"
+  SBD_LAST_ACME_CERT_PATH=""
+  SBD_LAST_ACME_KEY_PATH=""
+
+  local existing_cert existing_key
+  if acme_resolve_existing_cert "$domain" existing_cert existing_key; then
+    SBD_LAST_ACME_CERT_PATH="$existing_cert"
+    SBD_LAST_ACME_KEY_PATH="$existing_key"
+    log_info "$(msg "检测到已存在证书，直接复用: cert=${existing_cert} key=${existing_key}" "Existing certificate detected, reusing: cert=${existing_cert} key=${existing_key}")"
+    return 0
+  fi
+
   provider_sys_acme_install
   /root/.acme.sh/acme.sh --register-account -m "$email" >/dev/null 2>&1 || true
 
@@ -52,6 +100,8 @@ provider_sys_acme_issue() {
   local cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
   local key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
   [[ -f "$cert" && -f "$key" ]] || die "$(msg "ACME 签发成功但证书文件缺失" "ACME issue succeeded but cert files missing")"
+  SBD_LAST_ACME_CERT_PATH="$cert"
+  SBD_LAST_ACME_KEY_PATH="$key"
   log_success "$(msg "ACME 证书签发完成: cert=${cert} key=${key}" "ACME cert issued: cert=${cert} key=${key}")"
 }
 
