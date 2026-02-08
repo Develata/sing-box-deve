@@ -141,9 +141,17 @@ perform_script_self_update() {
           failed="true"; break
         fi
         expected="$(grep -E "[[:space:]]${rel}$" "$checksums_file" | awk '{print $1}' | head -n1)"
-        [[ -n "$expected" ]] || { failed="true"; break; }
+        if [[ -z "$expected" ]]; then
+          log_warn "$(msg "校验表缺少条目: ${rel}" "Checksum entry missing: ${rel}")"
+          failed="true"
+          break
+        fi
         actual="$(sha256sum "${tmp_dir}/${rel}" | awk '{print $1}')"
-        [[ "$expected" == "$actual" ]] || { failed="true"; break; }
+        if [[ "$expected" != "$actual" ]]; then
+          log_warn "$(msg "校验失败: ${rel} 期望=${expected} 实际=${actual}" "Checksum mismatch: ${rel} expected=${expected} actual=${actual}")"
+          failed="true"
+          break
+        fi
       done
     fi
 
