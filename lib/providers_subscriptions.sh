@@ -35,7 +35,8 @@ generate_client_artifacts() {
 provider_sub_rules_update() {
   ensure_root
   clash_rulesets_update_local true
-  log_success "$(msg "已从脚本内置规则集重新同步 clash 规则" "Clash rulesets re-synced from bundled repo files")"
+  sing_route_rulesets_update_local
+  log_success "$(msg "已从脚本内置规则集重新同步 clash 与 sing 路由规则" "Clash and sing route rulesets re-synced from bundled repo files")"
 }
 
 provider_sub_refresh() {
@@ -104,6 +105,9 @@ provider_sub_gitlab_push() {
   if [[ -d "${SBD_DATA_DIR}/clash-ruleset" ]]; then
     cp -r "${SBD_DATA_DIR}/clash-ruleset" "$tmp/${GITLAB_SUB_PATH:-subs}/clash-ruleset"
   fi
+  if [[ -d "${SBD_DATA_DIR}/sing-ruleset" ]]; then
+    cp -r "${SBD_DATA_DIR}/sing-ruleset" "$tmp/${GITLAB_SUB_PATH:-subs}/sing-ruleset"
+  fi
   cp "${SBD_DATA_DIR}/sfa_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sfa_client.json"
   cp "${SBD_DATA_DIR}/sfi_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sfi_client.json"
   cp "${SBD_DATA_DIR}/sfw_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sfw_client.json"
@@ -120,6 +124,8 @@ sing-box-client-json: ${raw}/sing_box_client.json
 clash-meta-yaml: ${raw}/clash_meta_client.yaml
 clash-ruleset-geosite-cn: ${raw}/clash-ruleset/geosite-cn.yaml
 clash-ruleset-geoip-cn: ${raw}/clash-ruleset/geoip-cn.yaml
+sing-ruleset-geosite-cn: ${raw}/sing-ruleset/geosite-cn.srs
+sing-ruleset-geoip-cn: ${raw}/sing-ruleset/geoip-cn.srs
 jh-raw: ${raw}/jhdy.txt
 jh-base64: ${raw}/jh_sub.txt
 group-v2rayn: ${raw}/share-groups/v2rayn.txt

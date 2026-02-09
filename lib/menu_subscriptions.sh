@@ -6,7 +6,7 @@ menu_subscriptions() {
     menu_title "$(msg "[订阅与分享]" "[Subscriptions]")"
     echo "1) $(msg "刷新订阅与分享产物（sub refresh）" "Refresh subscription artifacts (sub refresh)")"
     echo "2) $(msg "查看链接与二维码（sub show）" "Show links and QR (sub show)")"
-    echo "3) $(msg "用仓库内置规则重新同步（sub rules-update）" "Re-sync from bundled repo rules (sub rules-update)")"
+    echo "3) $(msg "重同步规则集（clash+服务端路由）（sub rules-update）" "Re-sync rulesets (clash+server route) (sub rules-update)")"
     echo "4) $(msg "配置 GitLab 推送目标（sub gitlab-set）" "Configure GitLab target (sub gitlab-set)")"
     echo "5) $(msg "推送订阅到 GitLab（sub gitlab-push）" "Push subs to GitLab (sub gitlab-push)")"
     echo "6) $(msg "配置 Telegram 推送（sub tg-set）" "Configure Telegram target (sub tg-set)")"

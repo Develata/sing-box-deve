@@ -147,6 +147,8 @@ sudo sb doctor
 - clash 自定义规则文件：`/etc/sing-box-deve/clash_custom_rules.list`
 - clash 本地规则集目录：`/opt/sing-box-deve/data/clash-ruleset/`
 - 仓库内置规则源：`rulesets/clash/geosite-cn.yaml`、`rulesets/clash/geoip-cn.yaml`
+- 服务端路由本地规则目录：`/opt/sing-box-deve/data/sing-ruleset/`
+- 服务端路由仓库规则源：`rulesets/sing/geosite-cn.srs`、`rulesets/sing/geoip-cn.srs`
 
 配置变更中心与系统工具（面板同样可操作）：
 
@@ -342,7 +344,8 @@ sb sub show
 - 如果执行 `sb sub gitlab-push`，会得到远程 raw 的 yaml 链接用于导入。
 - clash YAML 会内置一套规则（局域网直连、基础广告拦截、CN 规则直连）。
 - 规则文件随仓库一起提交；`sb sub refresh` 只会把仓库内置规则复制到本地运行目录，不依赖远端下载。
-- 当你更新仓库内规则文件后，执行 `sb sub rules-update` 可强制重新同步到运行目录。
+- 服务端 sing-box 路由的 `cn-direct/cn-proxy` 也已完全本地化，读取 `sing-ruleset/*.srs`，不依赖远端下载。
+- 当你更新仓库内规则文件后，执行 `sb sub rules-update` 可强制重新同步到运行目录（clash + 服务端路由）。
 - 你也可在 `/etc/sing-box-deve/clash_custom_rules.list` 每行追加一条规则，然后执行 `sb sub refresh` 重新生成。
 
 ### 8) 更新机制与正确操作

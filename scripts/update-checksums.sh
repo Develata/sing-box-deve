@@ -88,6 +88,8 @@ files=(
   "examples/sap-accounts.json"
   "rulesets/clash/geosite-cn.yaml"
   "rulesets/clash/geoip-cn.yaml"
+  "rulesets/sing/geosite-cn.srs"
+  "rulesets/sing/geoip-cn.srs"
   "web-generator/index.html"
   "providers/entry.sh"
   "providers/vps.sh"

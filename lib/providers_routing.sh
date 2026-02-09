@@ -105,6 +105,9 @@ build_singbox_warp_route_json() {
 build_singbox_route_json() {
   local primary_tag="$1" inbound_map="${2:-}" available_outbounds="${3:-direct}" mode="${ROUTE_MODE:-direct}" rules="" rule_set="" final="direct" custom port_rules
   validate_route_mode
+  if [[ "$mode" == "cn-direct" || "$mode" == "cn-proxy" ]]; then
+    ensure_sing_route_rulesets_local
+  fi
 
   if [[ "$mode" == "direct" && "$primary_tag" == "warp-out" ]] && warp_mode_targets_singbox "${WARP_MODE:-off}"; then
     port_rules="$(build_port_egress_rules_singbox "${PORT_EGRESS_MAP:-}" "$inbound_map" "$available_outbounds")"
@@ -143,13 +146,13 @@ build_singbox_route_json() {
       ;;
     cn-direct)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=cn-direct requires proxy or warp"
-      rule_set='"rule_set":[{"tag":"geosite-cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-cn.srs","download_detour":"direct","update_interval":"1d"},{"tag":"geoip-cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/cn.srs","download_detour":"direct","update_interval":"1d"}]'
+      rule_set="$(build_sing_route_rule_set_json)"
       rules='{"rule_set":["geosite-cn","geoip-cn"],"outbound":"direct"}'
       final="$primary_tag"
       ;;
     cn-proxy)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=cn-proxy requires proxy or warp"
-      rule_set='"rule_set":[{"tag":"geosite-cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-cn.srs","download_detour":"direct","update_interval":"1d"},{"tag":"geoip-cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/cn.srs","download_detour":"direct","update_interval":"1d"}]'
+      rule_set="$(build_sing_route_rule_set_json)"
       rules="{\"rule_set\":[\"geosite-cn\",\"geoip-cn\"],\"outbound\":\"${primary_tag}\"}"
       final="direct"
       ;;
