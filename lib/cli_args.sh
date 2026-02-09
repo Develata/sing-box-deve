@@ -2,10 +2,12 @@
 # shellcheck disable=SC2034
 
 parse_install_args() {
+  local protocols_default_seed="vless-reality"
+  local protocols_explicit="false"
   PROVIDER="vps"
   PROFILE="lite"
   ENGINE="sing-box"
-  PROTOCOLS="vless-reality"
+  PROTOCOLS="$protocols_default_seed"
   DRY_RUN="false"
   PORT_MODE="${PORT_MODE:-random}"
   MANUAL_PORT_MAP="${MANUAL_PORT_MAP:-}"
@@ -60,7 +62,7 @@ parse_install_args() {
       --provider) PROVIDER="$2"; shift 2 ;;
       --profile) PROFILE="$2"; shift 2 ;;
       --engine) ENGINE="$2"; shift 2 ;;
-      --protocols) PROTOCOLS="$2"; shift 2 ;;
+      --protocols) PROTOCOLS="$2"; protocols_explicit="true"; shift 2 ;;
       --dry-run) DRY_RUN="true"; shift ;;
       --port-mode) PORT_MODE="$2"; shift 2 ;;
       --port-map) MANUAL_PORT_MAP="$2"; shift 2 ;;
@@ -108,6 +110,14 @@ parse_install_args() {
       *) die "Unknown install argument: $1" ;;
     esac
   done
+
+  if [[ "$protocols_explicit" != "true" && "$PROTOCOLS" == "$protocols_default_seed" ]]; then
+    if [[ "$ENGINE" == "sing-box" ]]; then
+      PROTOCOLS="vless-reality,hysteria2"
+    else
+      PROTOCOLS="vless-reality,vmess-ws"
+    fi
+  fi
 
   [[ "$PORT_MODE" == "random" || "$PORT_MODE" == "manual" ]] || die "--port-mode must be random|manual"
   if [[ "$PORT_MODE" == "manual" ]]; then

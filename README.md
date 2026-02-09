@@ -40,7 +40,9 @@ sudo sb doctor
 
 ## 先看这里（90% 用户）
 
-- 推荐直接用 `wizard` 安装，默认选 `vps + lite + sing-box + vless-reality`
+- 推荐直接用 `wizard` 安装：
+  - `sing-box` 默认 `vless-reality,hysteria2`
+  - `xray` 默认 `vless-reality,vmess-ws`
 - 安装后常用就是 4 个命令：`panel`、`doctor`、`list --nodes`、`restart --core`
 - 需要交互控制台时直接输入 `sb`
 - 如果只想稳定使用，可先跳过 Serv00/SAP/Docker/Workers 等进阶章节

@@ -46,9 +46,15 @@ wizard() {
 
   echo
   printf '%s\n' "$(msg "协议选择" "Protocol selection")"
-  PROTOCOLS="vless-reality"
-  if prompt_yes_no "$(msg "保留默认协议 'vless-reality' 吗？" "Keep default protocol 'vless-reality'?")" "Y"; then
-    PROTOCOLS="vless-reality"
+  local default_protocols
+  if [[ "$ENGINE" == "sing-box" ]]; then
+    default_protocols="vless-reality,hysteria2"
+  else
+    default_protocols="vless-reality,vmess-ws"
+  fi
+  PROTOCOLS="$default_protocols"
+  if prompt_yes_no "$(msg "保留默认协议 '${default_protocols}' 吗？" "Keep default protocols '${default_protocols}'?")" "Y"; then
+    PROTOCOLS="$default_protocols"
   else
     PROTOCOLS=""
     local p
@@ -75,10 +81,10 @@ wizard() {
       fi
     done
     PROTOCOLS="$(echo "$PROTOCOLS" | tr -d ' ')"
-    [[ -n "$PROTOCOLS" ]] || PROTOCOLS="vless-reality"
+    [[ -n "$PROTOCOLS" ]] || PROTOCOLS="$default_protocols"
   fi
 
-  if [[ "$PROFILE" == "lite" ]] && prompt_yes_no "$(msg "Lite 模式：启用推荐第二协议 'hysteria2' 吗？" "Lite mode: enable recommended second protocol 'hysteria2'?")" "N"; then
+  if [[ "$ENGINE" == "sing-box" && "$PROFILE" == "lite" ]] && prompt_yes_no "$(msg "Lite 模式：启用推荐第二协议 'hysteria2' 吗？" "Lite mode: enable recommended second protocol 'hysteria2'?")" "N"; then
     if [[ "$PROTOCOLS" == "vless-reality" ]]; then
       PROTOCOLS="vless-reality,hysteria2"
     fi
