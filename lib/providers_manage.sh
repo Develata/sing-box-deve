@@ -148,7 +148,7 @@ provider_kernel_set() {
       sing-box) build_sing_box_config "${protocols:-vless-reality}" ;;
       xray) build_xray_config "${protocols:-vless-reality}" ;;
     esac
-    validate_generated_config "$target_engine"
+    validate_generated_config "$target_engine" "true"
     write_systemd_service "$target_engine"
     write_nodes_output "$target_engine" "${protocols:-vless-reality}"
     persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "${protocols:-vless-reality}"

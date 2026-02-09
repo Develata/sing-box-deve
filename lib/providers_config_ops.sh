@@ -62,8 +62,8 @@ provider_cfg_rebuild_runtime() {
   [[ -n "$target_protocols" ]] && protocols="$target_protocols"
   validate_feature_modes
   case "${engine:-sing-box}" in
-    sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" ;;
-    xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" ;;
+    sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" "true" ;;
+    xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" "true" ;;
     *) die "$(msg "运行时内核不受支持: ${engine:-unknown}" "Unsupported engine in runtime: ${engine:-unknown}")" ;;
   esac
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"

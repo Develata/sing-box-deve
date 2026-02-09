@@ -8,6 +8,7 @@ create_install_context() {
   local argo_mode="${ARGO_MODE:-off}"
   local argo_domain="${ARGO_DOMAIN:-}"
   local argo_token="${ARGO_TOKEN:-}"
+  local argo_cdn_endpoints="${ARGO_CDN_ENDPOINTS:-}"
   local warp_mode="${WARP_MODE:-off}"
   local route_mode="${ROUTE_MODE:-direct}"
   local ip_preference="${IP_PREFERENCE:-auto}"
@@ -59,6 +60,7 @@ protocols=${protocols_csv}
 argo_mode=${argo_mode}
 argo_domain=${argo_domain}
 argo_token_set=$([[ -n "${argo_token}" ]] && echo true || echo false)
+argo_cdn_endpoints=${argo_cdn_endpoints}
 warp_mode=${warp_mode}
 route_mode=${route_mode}
 ip_preference=${ip_preference}
@@ -126,6 +128,7 @@ features:
   argo_mode: ${argo_mode:-off}
   argo_domain: ${argo_domain:-""}
   argo_token_set: ${argo_token_set:-false}
+  argo_cdn_endpoints: ${argo_cdn_endpoints:-""}
   warp_mode: ${warp_mode:-off}
   route_mode: ${route_mode:-direct}
   ip_preference: ${ip_preference:-auto}

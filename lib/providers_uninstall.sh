@@ -73,6 +73,9 @@ provider_uninstall() {
     [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && cp "${SBD_DATA_DIR}/xray_private.key" /etc/sing-box-deve/backup/
     [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && cp "${SBD_DATA_DIR}/xray_public.key" /etc/sing-box-deve/backup/
     [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && cp "${SBD_DATA_DIR}/xray_short_id" /etc/sing-box-deve/backup/
+    # Set restrictive permissions on sensitive backup files (keys)
+    chmod 700 /etc/sing-box-deve/backup
+    chmod 600 /etc/sing-box-deve/backup/*_private.key /etc/sing-box-deve/backup/*_short_id /etc/sing-box-deve/backup/uuid 2>/dev/null || true
     rm -f /etc/sing-box-deve/runtime.env /etc/sing-box-deve/config.yaml /etc/sing-box-deve/config.json /etc/sing-box-deve/xray-config.json
     rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
     find /etc/sing-box-deve -maxdepth 1 -type f -delete 2>/dev/null || true

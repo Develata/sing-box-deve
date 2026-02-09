@@ -72,19 +72,23 @@ provider_set_port() {
     [[ -f "$cfg" ]] || die "Config file missing: $cfg"
     old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.listen_port // .port)' "$cfg" | head -n1)"
     [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
+    # Create backup before modification for rollback support
+    cp "$cfg" "${cfg}.bak"
     tmp_cfg="${SBD_RUNTIME_DIR}/config.json.tmp"
     jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .listen_port) = $p | (.inbounds[] | select(.tag==$t) |= del(.port))' "$cfg" > "$tmp_cfg"
     mv "$tmp_cfg" "$cfg"
-    validate_generated_config "sing-box"
+    validate_generated_config "sing-box" "true"
   else
     cfg="${SBD_CONFIG_DIR}/xray-config.json"
     [[ -f "$cfg" ]] || die "Config file missing: $cfg"
     old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | .port' "$cfg" | head -n1)"
     [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
+    # Create backup before modification for rollback support
+    cp "$cfg" "${cfg}.bak"
     tmp_cfg="${SBD_RUNTIME_DIR}/xray-config.json.tmp"
     jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .port) = $p' "$cfg" > "$tmp_cfg"
     mv "$tmp_cfg" "$cfg"
-    validate_generated_config "xray"
+    validate_generated_config "xray" "true"
   fi
 
   fw_detect_backend
@@ -168,8 +172,8 @@ provider_set_egress() {
 
   validate_feature_modes
   case "$runtime_engine" in
-    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" ;;
-    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" ;;
+    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
+    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
   esac
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
@@ -214,8 +218,8 @@ provider_set_route() {
 
   validate_feature_modes
   case "$runtime_engine" in
-    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" ;;
-    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" ;;
+    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
+    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
   esac
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
