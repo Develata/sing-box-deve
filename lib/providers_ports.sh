@@ -5,7 +5,6 @@ provider_set_port_info() {
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
   # shellcheck disable=SC1091
   source /etc/sing-box-deve/runtime.env
-
   local whitelist cfg
   case "${engine:-sing-box}" in
     sing-box)
@@ -24,7 +23,6 @@ provider_set_port_info() {
   log_info "$(msg "可管理协议白名单（engine=${engine}）: ${whitelist}" "Whitelist (engine=${engine}): ${whitelist}")"
   [[ -f "$cfg" ]] || die "Config file not found: $cfg"
   command -v jq >/dev/null 2>&1 || die "jq is required for set-port --list"
-
   log_info "$(msg "当前协议端口映射:" "Current protocol ports:")"
   if [[ "${engine}" == "sing-box" ]]; then
     jq -r '.inbounds[] | [.tag, (.listen_port // .port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
@@ -43,7 +41,6 @@ provider_set_port_info() {
       esac
     done
   fi
-
   log_info "$(msg "用法: ./sing-box-deve.sh set-port --protocol <协议名> --port <1-65535>" "Usage: ./sing-box-deve.sh set-port --protocol <name> --port <1-65535>")"
 }
 
@@ -97,10 +94,17 @@ provider_set_port() {
     log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
   fi
 
+  if [[ -n "${port_egress_map:-}" ]]; then
+    provider_cfg_load_runtime_exports
+    PORT_EGRESS_MAP="${port_egress_map:-}"
+    provider_cfg_rebuild_runtime
+    log_success "$(msg "协议端口已更新并重建端口出站策略: ${protocol} -> ${new_port}" "Protocol port updated and port egress policy rebuilt: ${protocol} -> ${new_port}")"
+    return 0
+  fi
+
   provider_restart core
   log_success "$(msg "协议端口已更新: ${protocol} -> ${new_port}" "Protocol port updated: ${protocol} -> ${new_port}")"
 }
-
 provider_set_egress() {
   ensure_root
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
@@ -136,6 +140,7 @@ provider_set_egress() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+  export PORT_EGRESS_MAP="${port_egress_map:-}"
   export ARGO_MODE="${argo_mode:-off}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
@@ -186,6 +191,7 @@ provider_set_route() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+  export PORT_EGRESS_MAP="${port_egress_map:-}"
 
   validate_feature_modes
   case "$runtime_engine" in
@@ -229,6 +235,7 @@ provider_set_share_endpoints() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+  export PORT_EGRESS_MAP="${port_egress_map:-}"
 
   case "$kind" in
     direct) DIRECT_SHARE_ENDPOINTS="$endpoints" ;;

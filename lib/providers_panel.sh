@@ -56,6 +56,7 @@ provider_status_header() {
     log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
     log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"
     log_info "$(msg "IP 优先级: $(provider_i18n_value "${ip_preference:-auto}") | TLS: $(provider_i18n_value "${tls_mode:-self-signed}") | CDN 主机: ${cdn_template_host:-$(provider_i18n_value auto)}" "IP preference: ${ip_preference:-auto} | TLS: ${tls_mode:-self-signed} | CDN host: ${cdn_template_host:-auto}")"
+    log_info "$(msg "端口出站映射: ${port_egress_map:-<未设置>}" "Port egress map: ${port_egress_map:-<empty>}")"
     provider_panel_tls_warning "${tls_mode:-self-signed}" "${acme_cert_path:-}" "${acme_key_path:-}"
     log_info "$(msg "分流域名: 直连='${domain_split_direct:-}' 代理='${domain_split_proxy:-}' 屏蔽='${domain_split_block:-}'" "Domain split: direct='${domain_split_direct:-}' proxy='${domain_split_proxy:-}' block='${domain_split_block:-}'")"
     log_info "$(msg "分享出口: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'" "Share endpoints: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'")"

@@ -4,7 +4,7 @@ usage() {
 Usage:
   sing-box-deve.sh wizard
   sing-box-deve.sh menu
-  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--port-mode random|manual] [--port-map proto:port[,proto:port...]] [--main-port PORT|--random-main-port] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--reality-sni SNI] [--reality-fp FP] [--tls-sni SNI] [--vmess-ws-path PATH] [--vless-ws-path PATH] [--vless-xhttp-path PATH] [--vless-xhttp-mode MODE] [--xray-vless-enc true|false] [--xray-xhttp-reality true|false] [--cdn-host-vmess HOST] [--cdn-host-vless-ws HOST] [--cdn-host-vless-xhttp HOST] [--proxyip-vmess IP] [--proxyip-vless-ws IP] [--proxyip-vless-xhttp IP] [--direct-share-endpoints CSV] [--proxy-share-endpoints CSV] [--warp-share-endpoints CSV] [--yes]
+  sing-box-deve.sh install [--provider vps|serv00|sap|docker] [--profile lite|full] [--engine sing-box|xray] [--protocols p1,p2] [--port-mode random|manual] [--port-map proto:port[,proto:port...]] [--main-port PORT|--random-main-port] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--port-egress-map <port:direct|proxy|warp,...>] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--reality-sni SNI] [--reality-fp FP] [--tls-sni SNI] [--vmess-ws-path PATH] [--vless-ws-path PATH] [--vless-xhttp-path PATH] [--vless-xhttp-mode MODE] [--xray-vless-enc true|false] [--xray-xhttp-reality true|false] [--cdn-host-vmess HOST] [--cdn-host-vless-ws HOST] [--cdn-host-vless-xhttp HOST] [--proxyip-vmess IP] [--proxyip-vless-ws IP] [--proxyip-vless-xhttp IP] [--direct-share-endpoints CSV] [--proxy-share-endpoints CSV] [--warp-share-endpoints CSV] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
@@ -13,6 +13,9 @@ Usage:
   sing-box-deve.sh logs [--core|--argo]
   sing-box-deve.sh set-port --list
   sing-box-deve.sh set-port --protocol <name> --port <1-65535>
+  sing-box-deve.sh set-port-egress --list
+  sing-box-deve.sh set-port-egress --map <port:direct|proxy|warp,...>
+  sing-box-deve.sh set-port-egress --clear
   sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS]
   sing-box-deve.sh set-route <direct|global-proxy|cn-direct|cn-proxy>
   sing-box-deve.sh set-share <direct|proxy|warp> <host:port[,host:port...]>
@@ -61,13 +64,11 @@ Usage:
   sing-box-deve.sh fw status
   sing-box-deve.sh fw rollback
   sing-box-deve.sh fw replay
-
 Examples:
   ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality
   ./sing-box-deve.sh apply -f ./config.env
 EOF
 }
-
 main() {
   local cmd="${1:-help}"
   if [[ "$cmd" == "help" ]] && declare -F legacy_env_detected >/dev/null 2>&1 && legacy_env_detected; then
@@ -127,6 +128,16 @@ main() {
       else
         provider_set_port "$SET_PORT_PROTOCOL" "$SET_PORT_VALUE"
       fi
+      ;;
+    set-port-egress)
+      shift
+      parse_set_port_egress_args "$@"
+      case "${SET_PORT_EGRESS_ACTION}" in
+        list) provider_set_port_egress_info ;;
+        clear) provider_set_port_egress_clear ;;
+        map) provider_set_port_egress_map "$SET_PORT_EGRESS_MAP" ;;
+        *) die "Usage: set-port-egress --list | --clear | --map <port:direct|proxy|warp,...>" ;;
+      esac
       ;;
     set-egress)
       shift

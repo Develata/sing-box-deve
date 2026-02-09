@@ -41,6 +41,7 @@ parse_install_args() {
   DOMAIN_SPLIT_DIRECT="${DOMAIN_SPLIT_DIRECT:-}"
   DOMAIN_SPLIT_PROXY="${DOMAIN_SPLIT_PROXY:-}"
   DOMAIN_SPLIT_BLOCK="${DOMAIN_SPLIT_BLOCK:-}"
+  PORT_EGRESS_MAP="${PORT_EGRESS_MAP:-}"
   OUTBOUND_PROXY_MODE="${OUTBOUND_PROXY_MODE:-direct}"
   OUTBOUND_PROXY_HOST="${OUTBOUND_PROXY_HOST:-}"
   OUTBOUND_PROXY_PORT="${OUTBOUND_PROXY_PORT:-}"
@@ -95,6 +96,7 @@ parse_install_args() {
       --domain-direct) DOMAIN_SPLIT_DIRECT="$2"; shift 2 ;;
       --domain-proxy) DOMAIN_SPLIT_PROXY="$2"; shift 2 ;;
       --domain-block) DOMAIN_SPLIT_BLOCK="$2"; shift 2 ;;
+      --port-egress-map) PORT_EGRESS_MAP="$2"; shift 2 ;;
       --outbound-proxy-mode) OUTBOUND_PROXY_MODE="$2"; shift 2 ;;
       --outbound-proxy-host) OUTBOUND_PROXY_HOST="$2"; shift 2 ;;
       --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2"; shift 2 ;;
@@ -235,3 +237,4 @@ parse_set_egress_args() {
 }
 
 source "${PROJECT_ROOT}/lib/cli_args_update.sh"
+source "${PROJECT_ROOT}/lib/cli_args_port_egress.sh"

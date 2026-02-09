@@ -145,6 +145,10 @@ validate_feature_modes() {
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" && "${WARP_MODE:-off}" == "global" ]]; then
     die "WARP_MODE=global conflicts with OUTBOUND_PROXY_MODE!=direct; choose one outbound strategy"
   fi
+
+  if [[ -n "${PORT_EGRESS_MAP:-}" ]] && declare -F normalize_port_egress_map >/dev/null 2>&1; then
+    PORT_EGRESS_MAP="$(normalize_port_egress_map "${PORT_EGRESS_MAP}")"
+  fi
 }
 
 get_tls_cert_path() {

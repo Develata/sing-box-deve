@@ -53,6 +53,7 @@ menu_egress() {
     echo "2) $(msg "配置上游代理出站（set-egress socks/http/https）" "Set upstream proxy egress (set-egress socks/http/https)")"
     echo "3) $(msg "设置分流路由模式（set-route ...）" "Set route mode (set-route ...)")"
     echo "4) $(msg "设置分享出口端点（set-share ...）" "Set share endpoints (set-share ...)")"
+    echo "5) $(msg "设置按端口出站策略（set-port-egress）" "Set port-based egress policy (set-port-egress)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -78,6 +79,25 @@ menu_egress() {
         read -r -p "$(msg "分享类别[direct/proxy/warp]" "share kind[direct/proxy/warp]"): " sk
         read -r -p "$(msg "出口列表(host:port,host:port...)" "endpoints(host:port,host:port...)"): " se
         provider_set_share_endpoints "$sk" "$se"
+        menu_pause
+        ;;
+      5)
+        read -r -p "$(msg "动作[list/set/clear]" "action[list/set/clear]"): " pa
+        case "${pa:-list}" in
+          list)
+            provider_set_port_egress_info
+            ;;
+          set)
+            read -r -p "$(msg "端口映射(port:direct|proxy|warp,...) " "map(port:direct|proxy|warp,...) "): " pm
+            provider_set_port_egress_map "$pm"
+            ;;
+          clear)
+            provider_set_port_egress_clear
+            ;;
+          *)
+            menu_invalid
+            ;;
+        esac
         menu_pause
         ;;
       0) return 0 ;;

@@ -34,6 +34,7 @@ create_install_context() {
   local domain_split_direct="${DOMAIN_SPLIT_DIRECT:-}"
   local domain_split_proxy="${DOMAIN_SPLIT_PROXY:-}"
   local domain_split_block="${DOMAIN_SPLIT_BLOCK:-}"
+  local port_egress_map="${PORT_EGRESS_MAP:-}"
   local outbound_proxy_mode="${OUTBOUND_PROXY_MODE:-direct}"
   local outbound_proxy_host="${OUTBOUND_PROXY_HOST:-}"
   local outbound_proxy_port="${OUTBOUND_PROXY_PORT:-}"
@@ -84,6 +85,7 @@ proxyip_vless_xhttp=${proxyip_vless_xhttp}
 domain_split_direct=${domain_split_direct}
 domain_split_proxy=${domain_split_proxy}
 domain_split_block=${domain_split_block}
+port_egress_map=${port_egress_map}
 outbound_proxy_mode=${outbound_proxy_mode}
 outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
@@ -150,6 +152,7 @@ features:
   domain_split_direct: ${domain_split_direct:-""}
   domain_split_proxy: ${domain_split_proxy:-""}
   domain_split_block: ${domain_split_block:-""}
+  port_egress_map: ${port_egress_map:-""}
   outbound_proxy_mode: ${outbound_proxy_mode:-direct}
   outbound_proxy_host: ${outbound_proxy_host:-""}
   outbound_proxy_port: ${outbound_proxy_port:-""}

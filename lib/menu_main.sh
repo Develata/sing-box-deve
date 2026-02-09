@@ -5,7 +5,7 @@ menu_main_descriptions() {
   printf '%s\n' "$(msg " 1 安装/重装：首次部署或按新参数重建配置" " 1 Install/Reinstall: first deploy or rebuild with new parameters")"
   printf '%s\n' "$(msg " 2 状态与节点查看：查看运行状态、节点、协议能力矩阵" " 2 Status & Nodes: inspect runtime, node links, protocol matrix")"
   printf '%s\n' "$(msg " 3 端口管理：查看/修改各协议监听端口并自动放行防火墙" " 3 Port Management: view/change protocol ports with firewall open")"
-  printf '%s\n' "$(msg " 4 出站策略管理：设置直连/上游代理/分流路由/分享出口" " 4 Egress: direct/upstream proxy/route/share endpoints")"
+  printf '%s\n' "$(msg " 4 出站策略管理：设置直连/上游代理/分流路由/按端口策略/分享出口" " 4 Egress: direct/upstream proxy/route/port-policy/share endpoints")"
   printf '%s\n' "$(msg " 5 服务管理：重启核心与 Argo、刷新节点、看日志" " 5 Service: restart core/argo, regenerate nodes, view logs")"
   printf '%s\n' "$(msg " 6 更新管理：更新脚本或内核，支持主源/备源" " 6 Update: script/core updates with primary/backup source")"
   printf '%s\n' "$(msg " 7 防火墙管理：查看托管规则、回滚、重放持久化规则" " 7 Firewall: managed rules, rollback, replay")"

@@ -12,14 +12,12 @@ build_sing_box_config() {
   private_key="$(<"${SBD_DATA_DIR}/reality_private.key")"
   public_key="$(<"${SBD_DATA_DIR}/reality_public.key")"
   short_id="$(<"${SBD_DATA_DIR}/reality_short_id")"
-
   local reality_server_name reality_port tls_server_name ws_path_vmess ws_path_vless
   reality_server_name="$(sbd_reality_server_name)"
   reality_port="$(sbd_reality_handshake_port)"
   tls_server_name="$(sbd_tls_server_name)"
   ws_path_vmess="$(sbd_vmess_ws_path)"
   ws_path_vless="$(sbd_vless_ws_path)"
-
   local port_vless_reality port_vmess_ws port_vless_ws port_ss2022 port_hysteria2
   local port_tuic port_trojan port_anytls port_anyreality port_wireguard
   port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")"
@@ -32,8 +30,8 @@ build_sing_box_config() {
   port_anytls="$(resolve_protocol_port_for_engine "sing-box" "anytls")"
   port_anyreality="$(resolve_protocol_port_for_engine "sing-box" "any-reality")"
   port_wireguard="$(resolve_protocol_port_for_engine "sing-box" "wireguard")"
-
   local inbounds=""
+  local inbound_map=""
   inbounds+=$'    {\n'
   inbounds+=$'      "type": "vless",\n'
   inbounds+=$'      "tag": "vless-reality",\n'
@@ -50,8 +48,7 @@ build_sing_box_config() {
   inbounds+=$'          "short_id": ["'"${short_id}"'"]\n'
   inbounds+=$'        }\n'
   inbounds+=$'      }\n'
-  inbounds+=$'    }'
-
+  inbounds+=$'    }'; inbound_map="vless-reality:${port_vless_reality}"
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
 
@@ -73,7 +70,7 @@ build_sing_box_config() {
     inbounds+="      \"listen_port\": ${port_vmess_ws},\n"
     inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
     inbounds+=$'      "transport": {"type": "ws", "path": "'"${ws_path_vmess}"'"}\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",vmess-ws:${port_vmess_ws}"
   fi
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
@@ -85,7 +82,7 @@ build_sing_box_config() {
     inbounds+="      \"listen_port\": ${port_vless_ws},\n"
     inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
     inbounds+=$'      "transport": {"type": "ws", "path": "'"${ws_path_vless}"'"}\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",vless-ws:${port_vless_ws}"
   fi
 
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
@@ -97,7 +94,7 @@ build_sing_box_config() {
     inbounds+="      \"listen_port\": ${port_ss2022},\n"
     inbounds+=$'      "method": "2022-blake3-aes-128-gcm",\n'
     inbounds+=$'      "password": "'"${uuid}"'"\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",ss-2022:${port_ss2022}"
   fi
 
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
@@ -114,7 +111,7 @@ build_sing_box_config() {
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",hy2:${port_hysteria2}"
   fi
 
   if protocol_enabled "tuic" "${protocols[@]}"; then
@@ -132,7 +129,7 @@ build_sing_box_config() {
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",tuic:${port_tuic}"
   fi
 
   if protocol_enabled "trojan" "${protocols[@]}"; then
@@ -149,7 +146,7 @@ build_sing_box_config() {
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",trojan:${port_trojan}"
   fi
 
   if protocol_enabled "anytls" "${protocols[@]}"; then
@@ -166,7 +163,7 @@ build_sing_box_config() {
     inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
     inbounds+=$'        "key_path": "'"${key_file}"'"\n'
     inbounds+=$'      }\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",anytls:${port_anytls}"
   fi
 
   if protocol_enabled "any-reality" "${protocols[@]}"; then
@@ -188,7 +185,7 @@ build_sing_box_config() {
     inbounds+=$'          "short_id": ["'"${short_id}"'"]\n'
     inbounds+=$'        }\n'
     inbounds+=$'      }\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",any-reality:${port_anyreality}"
   fi
 
   if protocol_enabled "wireguard" "${protocols[@]}"; then
@@ -209,11 +206,12 @@ build_sing_box_config() {
     inbounds+=$'      "address": ["10.66.66.1/24"],\n'
     inbounds+=$'      "private_key": "'"${wg_private}"'",\n'
     inbounds+=$'      "peers": []\n'
-    inbounds+=$'    }'
+    inbounds+=$'    }'; inbound_map+=",wireguard:${port_wireguard}"
   fi
 
-  local outbounds final_tag upstream_mode
+  local outbounds final_tag upstream_mode available_outbounds
   final_tag="direct"
+  available_outbounds="direct"
   outbounds=$'    {"type": "direct", "tag": "direct"},\n'
   outbounds+=$'    {"type": "block", "tag": "block"}'
   upstream_mode="${OUTBOUND_PROXY_MODE:-direct}"
@@ -221,17 +219,19 @@ build_sing_box_config() {
     outbounds+=$',\n'
     outbounds+="$(build_upstream_outbound_singbox)"
     final_tag="proxy-out"
+    available_outbounds+=",proxy-out"
   fi
   if [[ "$has_warp" == "true" ]]; then
     outbounds+=$',\n'
     outbounds+="$(build_warp_outbound_singbox)"
     [[ "$upstream_mode" == "direct" ]] && final_tag="warp-out"
+    available_outbounds+=",warp-out"
   fi
 
   inbounds="${inbounds//\\n/$'\n'}"
   outbounds="${outbounds//\\n/$'\n'}"
   local route_json
-  route_json="$(build_singbox_route_json "$final_tag")"
+  route_json="$(build_singbox_route_json "$final_tag" "$inbound_map" "$available_outbounds")"
 
   cat > "$config_file" <<EOF_JSON
 {

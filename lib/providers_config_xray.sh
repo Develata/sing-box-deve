@@ -44,6 +44,7 @@ build_xray_config() {
   short_id="$(<"${SBD_DATA_DIR}/xray_short_id")"
 
   local inbounds=""
+  local inbound_map=""
   inbounds+=$'    {\n'
   inbounds+=$'      "tag": "vless-reality",\n'
   inbounds+=$'      "listen": "::",\n'
@@ -52,6 +53,7 @@ build_xray_config() {
   inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
   inbounds+=$'      "streamSettings": {"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "'"${reality_server_name}:${reality_port}"'", "xver": 0, "serverNames": ["'"${reality_server_name}"'"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}}\n'
   inbounds+=$'    }'
+  inbound_map="vless-reality:${port_vless_reality}"
 
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
@@ -74,6 +76,7 @@ build_xray_config() {
     inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}]},\n'
     inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "'"${ws_path_vmess}"'"}}\n'
     inbounds+=$'    }'
+    inbound_map+=",vmess-ws:${port_vmess_ws}"
   fi
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
@@ -86,6 +89,7 @@ build_xray_config() {
     inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}], "decryption": "'"${vless_decryption}"'"},\n'
     inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "'"${ws_path_vless}"'"}}\n'
     inbounds+=$'    }'
+    inbound_map+=",vless-ws:${port_vless_ws}"
   fi
 
   if protocol_enabled "vless-xhttp" "${protocols[@]}"; then
@@ -102,6 +106,7 @@ build_xray_config() {
       inbounds+=$'      "streamSettings": {"network": "xhttp", "xhttpSettings": {"path": "'"${xhttp_path}"'", "mode": "'"${xhttp_mode}"'"}}\n'
     fi
     inbounds+=$'    }'
+    inbound_map+=",vless-xhttp:${port_vless_xhttp}"
   fi
 
   if protocol_enabled "trojan" "${protocols[@]}"; then
@@ -114,6 +119,7 @@ build_xray_config() {
     inbounds+=$'      "settings": {"clients": [{"password": "'"${uuid}"'"}]},\n'
     inbounds+=$'      "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": "'"${cert_file}"'", "keyFile": "'"${key_file}"'"}]}}\n'
     inbounds+=$'    }'
+    inbound_map+=",trojan:${port_trojan}"
   fi
 
   if protocol_enabled "socks5" "${protocols[@]}"; then
@@ -125,10 +131,12 @@ build_xray_config() {
     inbounds+=$'      "protocol": "socks",\n'
     inbounds+=$'      "settings": {"auth": "password", "accounts": [{"user": "'"${uuid}"'", "pass": "'"${uuid}"'"}], "udp": true}\n'
     inbounds+=$'    }'
+    inbound_map+=",socks5:${port_socks5}"
   fi
 
-  local xray_outbounds xray_routing primary_tag
+  local xray_outbounds xray_routing primary_tag available_outbounds
   primary_tag="direct"
+  available_outbounds="direct"
   xray_outbounds=$'    {"protocol": "freedom", "tag": "direct"},\n'
   xray_outbounds+=$'    {"protocol": "blackhole", "tag": "block"}'
   xray_routing=""
@@ -136,13 +144,15 @@ build_xray_config() {
     xray_outbounds+=$',\n'
     xray_outbounds+="$(build_warp_outbound_xray)"
     primary_tag="warp-out"
+    available_outbounds+=",warp-out"
   fi
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     xray_outbounds+=$',\n'
     xray_outbounds+="$(build_upstream_outbound_xray)"
     primary_tag="proxy-out"
+    available_outbounds+=",proxy-out"
   fi
-  xray_routing="$(build_xray_routing_fragment "$primary_tag")"
+  xray_routing="$(build_xray_routing_fragment "$primary_tag" "$inbound_map" "$available_outbounds")"
 
   inbounds="${inbounds//\\n/$'\n'}"
   xray_outbounds="${xray_outbounds//\\n/$'\n'}"

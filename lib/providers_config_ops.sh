@@ -47,6 +47,7 @@ provider_cfg_load_runtime_exports() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+  export PORT_EGRESS_MAP="${port_egress_map:-}"
   CFG_RUNTIME_LOADED="true"
 }
 
