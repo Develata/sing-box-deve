@@ -25,8 +25,7 @@ Usage:
   sing-box-deve.sh jump set <protocol> <main_port> <extra_csv>
   sing-box-deve.sh jump clear
   sing-box-deve.sh jump replay
-  sing-box-deve.sh sub refresh
-  sing-box-deve.sh sub show
+  sing-box-deve.sh sub refresh|show|rules-update
   sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
   sing-box-deve.sh sub gitlab-push
   sing-box-deve.sh sub tg-set <bot_token> <chat_id>

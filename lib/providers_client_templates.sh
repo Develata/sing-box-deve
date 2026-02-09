@@ -74,11 +74,46 @@ render_singbox_client_json() {
 EOF
 }
 
+clash_custom_rules_file() {
+  echo "${SBD_CONFIG_DIR}/clash_custom_rules.list"
+}
+
+ensure_clash_custom_rules_file() {
+  local custom_file
+  custom_file="$(clash_custom_rules_file)"
+  [[ -f "$custom_file" ]] && return 0
+
+  mkdir -p "${SBD_CONFIG_DIR}"
+  cat > "$custom_file" <<'EOF'
+# 每行写一条 clash 规则，格式示例：
+# DOMAIN-SUFFIX,openai.com,PROXY
+# DOMAIN-KEYWORD,github,DIRECT
+# IP-CIDR,1.1.1.1/32,PROXY,no-resolve
+EOF
+}
+
+append_clash_custom_rules() {
+  local out_file="$1" custom_file line rule
+  custom_file="$(clash_custom_rules_file)"
+  [[ -f "$custom_file" ]] || return 0
+
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -n "$line" && "${line#\#}" == "$line" ]] || continue
+    rule="${line#- }"
+    printf '  - %s\n' "$rule" >> "$out_file"
+  done < "$custom_file"
+}
+
 render_clash_meta_yaml() {
   local out_file="$1"
+  ensure_clash_custom_rules_file
   cat > "$out_file" <<EOF
 # sing-box-deve clash-meta template
 # generated_at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+# ruleset_mode: local-snapshot
+# ruleset_source: bundled repo files (rulesets/clash/*.yaml)
 mixed-port: 7890
 allow-lan: false
 mode: rule
@@ -107,9 +142,31 @@ proxy-groups:
     proxies:
       - DIRECT
 
+rule-providers:
+  geosite-cn:
+    type: file
+    behavior: domain
+    path: ./clash-ruleset/geosite-cn.yaml
+  geoip-cn:
+    type: file
+    behavior: ipcidr
+    path: ./clash-ruleset/geoip-cn.yaml
+
 rules:
-  - GEOSITE,cn,DIRECT
-  - GEOIP,cn,DIRECT
+  - DOMAIN-SUFFIX,lan,DIRECT
+  - DOMAIN-SUFFIX,local,DIRECT
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - DOMAIN-SUFFIX,doubleclick.net,REJECT
+  - DOMAIN-SUFFIX,googlesyndication.com,REJECT
+  - DOMAIN-KEYWORD,adservice,REJECT
+  - RULE-SET,geosite-cn,DIRECT
+  - RULE-SET,geoip-cn,DIRECT,no-resolve
+EOF
+  append_clash_custom_rules "$out_file"
+  cat >> "$out_file" <<EOF
   - MATCH,PROXY
 
 # aggregate_base64:

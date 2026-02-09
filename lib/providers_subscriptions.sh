@@ -23,12 +23,19 @@ EOF
 generate_client_artifacts() {
   mkdir -p "$SBD_DATA_DIR"
   [[ -f "$SBD_NODES_FILE" ]] || die "nodes file not found"
+  ensure_clash_rulesets_local
   render_singbox_client_json "${SBD_DATA_DIR}/sing_box_client.json"
   render_clash_meta_yaml "${SBD_DATA_DIR}/clash_meta_client.yaml"
   render_sfa_sfi_sfw "SFA" "${SBD_DATA_DIR}/sfa_client.json"
   render_sfa_sfi_sfw "SFI" "${SBD_DATA_DIR}/sfi_client.json"
   render_sfa_sfi_sfw "SFW" "${SBD_DATA_DIR}/sfw_client.json"
   share_generate_bundle "$SBD_NODES_FILE"
+}
+
+provider_sub_rules_update() {
+  ensure_root
+  clash_rulesets_update_local true
+  log_success "$(msg "已从脚本内置规则集重新同步 clash 规则" "Clash rulesets re-synced from bundled repo files")"
 }
 
 provider_sub_refresh() {
@@ -94,6 +101,9 @@ provider_sub_gitlab_push() {
   fi
   cp "${SBD_DATA_DIR}/sing_box_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sing_box_client.json"
   cp "${SBD_DATA_DIR}/clash_meta_client.yaml" "$tmp/${GITLAB_SUB_PATH:-subs}/clash_meta_client.yaml"
+  if [[ -d "${SBD_DATA_DIR}/clash-ruleset" ]]; then
+    cp -r "${SBD_DATA_DIR}/clash-ruleset" "$tmp/${GITLAB_SUB_PATH:-subs}/clash-ruleset"
+  fi
   cp "${SBD_DATA_DIR}/sfa_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sfa_client.json"
   cp "${SBD_DATA_DIR}/sfi_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sfi_client.json"
   cp "${SBD_DATA_DIR}/sfw_client.json" "$tmp/${GITLAB_SUB_PATH:-subs}/sfw_client.json"
@@ -108,6 +118,8 @@ sing-box-sub: ${raw}/nodes-sub.txt
 nodes-list: ${raw}/nodes.txt
 sing-box-client-json: ${raw}/sing_box_client.json
 clash-meta-yaml: ${raw}/clash_meta_client.yaml
+clash-ruleset-geosite-cn: ${raw}/clash-ruleset/geosite-cn.yaml
+clash-ruleset-geoip-cn: ${raw}/clash-ruleset/geoip-cn.yaml
 jh-raw: ${raw}/jhdy.txt
 jh-base64: ${raw}/jh_sub.txt
 group-v2rayn: ${raw}/share-groups/v2rayn.txt
@@ -177,12 +189,13 @@ provider_sub_command() {
   case "$action" in
     refresh) provider_sub_refresh ;;
     show) provider_sub_show ;;
+    rules-update) provider_sub_rules_update ;;
     gitlab-set) provider_sub_gitlab_set "$@" ;;
     gitlab-push) provider_sub_gitlab_push ;;
     tg-set) provider_sub_tg_set "$@" ;;
     tg-push) provider_sub_tg_push ;;
     *)
-      die "Usage: sub [refresh|show|gitlab-set <token> <group/project> [branch] [path]|gitlab-push|tg-set <bot_token> <chat_id>|tg-push]"
+      die "Usage: sub [refresh|show|rules-update|gitlab-set <token> <group/project> [branch] [path]|gitlab-push|tg-set <bot_token> <chat_id>|tg-push]"
       ;;
   esac
 }

@@ -129,6 +129,7 @@ sudo sb doctor
 ```bash
 ./sing-box-deve.sh sub refresh
 ./sing-box-deve.sh sub show
+./sing-box-deve.sh sub rules-update
 ./sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
 ./sing-box-deve.sh sub gitlab-push
 ./sing-box-deve.sh sub tg-set <bot_token> <chat_id>
@@ -143,6 +144,9 @@ sudo sb doctor
 - 四合一聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
 - 客户端分组链接：`/opt/sing-box-deve/data/share-groups/*.txt`（v2rayn/v2rayng/nekobox/shadowrocket/singbox）
 - clash-meta 建议使用：`/opt/sing-box-deve/data/clash_meta_client.yaml`
+- clash 自定义规则文件：`/etc/sing-box-deve/clash_custom_rules.list`
+- clash 本地规则集目录：`/opt/sing-box-deve/data/clash-ruleset/`
+- 仓库内置规则源：`rulesets/clash/geosite-cn.yaml`、`rulesets/clash/geoip-cn.yaml`
 
 配置变更中心与系统工具（面板同样可操作）：
 
@@ -336,6 +340,10 @@ sb sub show
 - `clash-meta` 默认是 **YAML 文件**，不是通用节点 URL。
 - `share-groups/clash-meta.txt` 里保存的是 yaml 路径提示。
 - 如果执行 `sb sub gitlab-push`，会得到远程 raw 的 yaml 链接用于导入。
+- clash YAML 会内置一套规则（局域网直连、基础广告拦截、CN 规则直连）。
+- 规则文件随仓库一起提交；`sb sub refresh` 只会把仓库内置规则复制到本地运行目录，不依赖远端下载。
+- 当你更新仓库内规则文件后，执行 `sb sub rules-update` 可强制重新同步到运行目录。
+- 你也可在 `/etc/sing-box-deve/clash_custom_rules.list` 每行追加一条规则，然后执行 `sb sub refresh` 重新生成。
 
 ### 8) 更新机制与正确操作
 
