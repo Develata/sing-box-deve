@@ -1,5 +1,68 @@
 #!/usr/bin/env bash
 
+# Persist script files to a fixed location for reliable sb command access
+# This is critical when running via bash <(curl ...) from a temporary directory
+persist_script_installation() {
+  local persist_dir="/opt/sing-box-deve/script"
+  local source_dir="${PROJECT_ROOT}"
+  
+  # Skip if already running from persist_dir
+  if [[ "$source_dir" == "$persist_dir" ]]; then
+    log_info "$(msg "脚本已在持久化目录中运行" "Script already running from persistent directory")"
+    return 0
+  fi
+  
+  # Check if source directory has the required files
+  if [[ ! -f "$source_dir/sing-box-deve.sh" ]]; then
+    log_warn "$(msg "无法找到脚本源文件，跳过持久化" "Cannot find script source files, skipping persistence")"
+    return 0
+  fi
+  
+  log_info "$(msg "正在将脚本安装到 ${persist_dir}" "Installing script to ${persist_dir}")"
+  
+  # Create target directory
+  mkdir -p "$persist_dir"
+  
+  # Copy main script and version
+  cp -f "$source_dir/sing-box-deve.sh" "$persist_dir/"
+  [[ -f "$source_dir/version" ]] && cp -f "$source_dir/version" "$persist_dir/"
+  [[ -f "$source_dir/checksums.txt" ]] && cp -f "$source_dir/checksums.txt" "$persist_dir/"
+  
+  # Copy lib directory
+  if [[ -d "$source_dir/lib" ]]; then
+    mkdir -p "$persist_dir/lib"
+    cp -rf "$source_dir/lib/"* "$persist_dir/lib/"
+  fi
+  
+  # Copy providers directory
+  if [[ -d "$source_dir/providers" ]]; then
+    mkdir -p "$persist_dir/providers"
+    cp -rf "$source_dir/providers/"* "$persist_dir/providers/"
+  fi
+  
+  # Copy scripts directory
+  if [[ -d "$source_dir/scripts" ]]; then
+    mkdir -p "$persist_dir/scripts"
+    cp -rf "$source_dir/scripts/"* "$persist_dir/scripts/"
+  fi
+  
+  # Copy docs and examples for reference
+  [[ -d "$source_dir/docs" ]] && { mkdir -p "$persist_dir/docs"; cp -rf "$source_dir/docs/"* "$persist_dir/docs/"; }
+  [[ -d "$source_dir/examples" ]] && { mkdir -p "$persist_dir/examples"; cp -rf "$source_dir/examples/"* "$persist_dir/examples/"; }
+  [[ -d "$source_dir/rulesets" ]] && { mkdir -p "$persist_dir/rulesets"; cp -rf "$source_dir/rulesets/"* "$persist_dir/rulesets/"; }
+  
+  # Set executable permissions
+  chmod +x "$persist_dir/sing-box-deve.sh"
+  chmod +x "$persist_dir/lib/"*.sh 2>/dev/null || true
+  chmod +x "$persist_dir/providers/"*.sh 2>/dev/null || true
+  chmod +x "$persist_dir/scripts/"*.sh 2>/dev/null || true
+  
+  # Update PROJECT_ROOT for runtime.env
+  PROJECT_ROOT="$persist_dir"
+  
+  log_success "$(msg "脚本已安装到 ${persist_dir}" "Script installed to ${persist_dir}")"
+}
+
 provider_install() {
   local provider="$1"
   local profile="$2"
@@ -55,12 +118,17 @@ provider_vps_install() {
     xray) build_xray_config "$protocols_csv" ;;
   esac
 
-  validate_generated_config "$engine"
+  validate_generated_config "$engine" "true"
   write_systemd_service "$engine"
   configure_argo_tunnel "$protocols_csv" "$engine"
   write_nodes_output "$engine" "$protocols_csv"
 
   mkdir -p /etc/sing-box-deve
+  
+  # Persist script to fixed location before saving runtime state
+  # This ensures sb command works even after temp directory is cleaned
+  persist_script_installation
+  
   persist_runtime_state "vps" "$profile" "$engine" "$protocols_csv"
 
   cat > /usr/local/bin/sb <<'EOF'
