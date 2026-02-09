@@ -149,6 +149,7 @@ sudo sb doctor
 - 仓库内置规则源：`rulesets/clash/geosite-cn.yaml`、`rulesets/clash/geoip-cn.yaml`
 - 服务端路由本地规则目录：`/opt/sing-box-deve/data/sing-ruleset/`
 - 服务端路由仓库规则源：`rulesets/sing/geosite-cn.srs`、`rulesets/sing/geoip-cn.srs`
+- `sing_box_client.json` 使用本地规则路径：`./sing-ruleset/geosite-cn.srs`、`./sing-ruleset/geoip-cn.srs`
 
 配置变更中心与系统工具（面板同样可操作）：
 
@@ -170,6 +171,11 @@ sudo sb doctor
 ./sing-box-deve.sh kernel show
 ./sing-box-deve.sh kernel set sing-box v1.12.20
 ./sing-box-deve.sh warp status
+./sing-box-deve.sh warp register
+./sing-box-deve.sh warp unlock
+./sing-box-deve.sh warp socks5-start [port]
+./sing-box-deve.sh warp socks5-status
+./sing-box-deve.sh warp socks5-stop
 ./sing-box-deve.sh sys bbr-enable
 ./sing-box-deve.sh protocol matrix
 ./sing-box-deve.sh protocol matrix --enabled
@@ -232,7 +238,7 @@ sb
 10. `卸载管理`：保留设置卸载或完全卸载。
 11. `订阅与分享`：刷新订阅、显示分组、生成二维码、推送 GitLab/TG。
 12. `配置变更中心`：`preview/apply/rollback/snapshots` 闭环运维。
-13. `内核与WARP`：内核切换、WARP、BBR、证书工具链。
+13. `内核与WARP`：内核切换、WARP 状态/解锁检测、WARP Socks5（启动/停止/状态）、BBR、证书工具链。
 
 ### 3) 端口与协议管理
 
@@ -345,6 +351,7 @@ sb sub show
 - clash YAML 会内置一套规则（局域网直连、基础广告拦截、CN 规则直连）。
 - 规则文件随仓库一起提交；`sb sub refresh` 只会把仓库内置规则复制到本地运行目录，不依赖远端下载。
 - 服务端 sing-box 路由的 `cn-direct/cn-proxy` 也已完全本地化，读取 `sing-ruleset/*.srs`，不依赖远端下载。
+- 客户端 `sing_box_client.json` 也使用本地 `sing-ruleset/*.srs`，导入后请确保同目录有 `sing-ruleset/` 目录。
 - 当你更新仓库内规则文件后，执行 `sb sub rules-update` 可强制重新同步到运行目录（clash + 服务端路由）。
 - 你也可在 `/etc/sing-box-deve/clash_custom_rules.list` 每行追加一条规则，然后执行 `sb sub refresh` 重新生成。
 
@@ -413,6 +420,7 @@ sb uninstall
 - 已实现 VPS 运行时安装：`sing-box` / `xray` 内核、配置生成、systemd 管理、节点输出
 - 已实现 Argo sidecar（临时/固定隧道）
 - 已实现 WARP 出站（global 模式）
+- 已实现 WARP 工具链：状态、解锁检测、WARP Socks5 本地代理（start/stop/status）
 - 已实现脚本版本显示与更新（脚本自身 + 核心）
 - 已实现校验清单驱动的脚本安全更新（`checksums.txt`）
 - 已完成脚本模块化重构：`lib/common.sh`、`lib/providers.sh`、`lib/menu.sh`、`sing-box-deve.sh` 均为聚合入口
@@ -539,6 +547,22 @@ PROXYIP_VLESS_XHTTP=203.0.113.10 \
 2. `sb doctor`
 3. `sb cfg snapshots list`
 4. `sb fw status`
+
+WARP 常用命令：
+
+```bash
+sb warp status
+sb warp unlock
+sb warp socks5-start 40000
+sb warp socks5-status
+sb warp socks5-stop
+```
+
+说明：
+
+- `warp unlock` 会输出出口地区，并探测 Netflix / ChatGPT 连通性。
+- `warp socks5-start` 会在 `127.0.0.1:<port>` 启动本地 WARP Socks5（默认端口 `40000`）。
+- `warp socks5-*` 依赖 `warp register` 生成的账户文件：`/opt/sing-box-deve/data/warp-account.env`。
 
 常见问题与处理：
 
