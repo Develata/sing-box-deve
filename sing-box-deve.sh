@@ -37,7 +37,7 @@ bootstrap_remote_tree() {
 
   target_script="${remote_root}/sing-box-deve.sh"
   chmod +x "$target_script"
-  exec "$target_script" "$@"
+  exec bash "$target_script" "$@"
 }
 
 if [[ ! -f "${PROJECT_ROOT}/lib/common.sh" ]]; then
