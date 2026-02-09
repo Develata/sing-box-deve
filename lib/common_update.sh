@@ -43,131 +43,44 @@ perform_script_self_update() {
   local mode="${UPDATE_SOURCE:-auto}" base_url ok="false" cb
   cb="$(date +%s)"
 
-  local files=(
-    "sing-box-deve.sh"
-    "version"
-    "README.md"
-    "CHANGELOG.md"
-    "CONTRIBUTING.md"
-    "LICENSE"
-    "config.env.example"
-    "lib/common.sh"
-    "lib/common_base.sh"
-    "lib/common_settings.sh"
-    "lib/common_update_sources.sh"
-    "lib/common_update.sh"
-    "lib/common_context.sh"
-    "lib/common_doctor.sh"
-    "lib/protocols.sh"
-    "lib/security.sh"
-    "lib/legacy_compat.sh"
-    "lib/providers.sh"
-    "lib/providers_base.sh"
-    "lib/providers_params.sh"
-    "lib/providers_release.sh"
-    "lib/providers_outbound.sh"
-    "lib/providers_routing_port_egress.sh"
-    "lib/providers_routing.sh"
-    "lib/providers_argo.sh"
-    "lib/providers_share.sh"
-    "lib/providers_config_shared.sh"
-    "lib/providers_config_singbox.sh"
-    "lib/providers_config_xray.sh"
-    "lib/providers_nodes.sh"
-    "lib/providers_clash_rulesets.sh"
-    "lib/providers_client_templates.sh"
-    "lib/providers_install.sh"
-    "lib/providers_serv00.sh"
-    "lib/providers_sap.sh"
-    "lib/providers_docker.sh"
-    "lib/providers_manage.sh"
-    "lib/providers_warp_tools.sh"
-    "lib/providers_port_seed.sh"
-    "lib/providers_ports.sh"
-    "lib/providers_port_egress.sh"
-    "lib/providers_config_ops.sh"
-    "lib/providers_protocol_ops.sh"
-    "lib/providers_config_lock.sh"
-    "lib/providers_config_flow.sh"
-    "lib/providers_split3.sh"
-    "lib/providers_jump_ports.sh"
-    "lib/providers_system_tools.sh"
-    "lib/providers_subscriptions.sh"
-    "lib/providers_panel.sh"
-    "lib/providers_doctor.sh"
-    "lib/providers_uninstall.sh"
-    "lib/output.sh"
-    "lib/menu.sh"
-    "lib/menu_base.sh"
-    "lib/menu_sections.sh"
-    "lib/menu_subscriptions.sh"
-    "lib/menu_config_center.sh"
-    "lib/menu_ops.sh"
-    "lib/menu_main.sh"
-    "lib/cli_args.sh"
-    "lib/cli_args_port_egress.sh"
-    "lib/cli_args_update.sh"
-    "lib/cli_commands.sh"
-    "lib/cli_wizard.sh"
-    "lib/cli_main_handlers.sh"
-    "lib/cli_main.sh"
-    "docs/README.md"
-    "docs/V1-SPEC.md"
-    "docs/CONVENTIONS.md"
-    "docs/ACCEPTANCE-MATRIX.md"
-    "docs/PANEL-TEMPLATE.md"
-    "docs/REAL-WORLD-VALIDATION.md"
-    "docs/Serv00.md"
-    "docs/SAP.md"
-    "docs/Docker.md"
-    "examples/vps-lite.env"
-    "examples/vps-full-argo.env"
-    "examples/docker.env"
-    "examples/settings.conf"
-    "examples/serv00-accounts.json"
-    "examples/sap-accounts.json"
-    "rulesets/clash/geosite-cn.yaml"
-    "rulesets/clash/geoip-cn.yaml"
-    "rulesets/sing/geosite-cn.srs"
-    "rulesets/sing/geoip-cn.srs"
-    "web-generator/index.html"
-    "providers/entry.sh"
-    "providers/vps.sh"
-    "providers/serv00.sh"
-    "providers/sap.sh"
-    "providers/docker.sh"
-    "scripts/acceptance-matrix.sh"
-    "scripts/integration-smoke.sh"
-    "scripts/consistency-check.sh"
-    "scripts/regression-docker.sh"
-    "scripts/update-checksums.sh"
-    ".github/workflows/main.yml"
-    ".github/workflows/mainh.yml"
-    ".github/workflows/ci.yml"
-    "workers/_worker.js"
-    "workers/workers_keep.js"
-  )
+  # Source the unified file manifest
+  # shellcheck source=lib/update_manifest.sh
+  source "${PROJECT_ROOT}/lib/update_manifest.sh"
+
+  local tmp_dir=""
+  local _update_cleanup_done="false"
+
+  _update_cleanup() {
+    [[ "$_update_cleanup_done" == "true" ]] && return 0
+    _update_cleanup_done="true"
+    if [[ -n "${tmp_dir:-}" && -d "${tmp_dir}" ]]; then
+      rm -rf "$tmp_dir"
+    fi
+  }
+  trap _update_cleanup EXIT INT TERM
 
   while IFS= read -r base_url; do
     [[ -n "$base_url" ]] || continue
-    local tmp_dir checksums_file failed rel expected actual
+    local checksums_file failed rel expected actual
     tmp_dir="$(mktemp -d)"
     checksums_file="${tmp_dir}/checksums.txt"
     failed="false"
     log_info "$(msg "尝试更新源" "Trying update source"): ${base_url}"
     if ! download_file "$(update_url_with_cache_bust "${base_url}/checksums.txt" "$cb")" "$checksums_file"; then
+      log_warn "$(msg "无法下载校验文件: ${base_url}/checksums.txt" "Failed to download checksum file: ${base_url}/checksums.txt")"
       failed="true"
     fi
 
     if [[ "$failed" == "false" ]]; then
-      for rel in "${files[@]}"; do
+      for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
         mkdir -p "${tmp_dir}/$(dirname "$rel")"
         if ! download_file "$(update_url_with_cache_bust "${base_url}/${rel}" "$cb")" "${tmp_dir}/${rel}"; then
+          log_warn "$(msg "下载失败: ${rel}" "Download failed: ${rel}")"
           failed="true"; break
         fi
         expected="$(awk -v r="$rel" '$2==r {print $1; exit}' "$checksums_file")"
         if [[ -z "$expected" ]]; then
-          log_warn "$(msg "校验表缺少条目: ${rel}" "Checksum entry missing: ${rel}")"
+          log_warn "$(msg "校验表缺少条目: ${rel} (更新源: ${base_url})" "Checksum entry missing: ${rel} (source: ${base_url})")"
           failed="true"
           break
         fi
@@ -181,22 +94,26 @@ perform_script_self_update() {
     fi
 
     if [[ "$failed" == "false" ]]; then
-      for rel in "${files[@]}"; do
+      for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
         install -D -m 0644 "${tmp_dir}/${rel}" "${PROJECT_ROOT}/${rel}"
       done
       install -D -m 0644 "$checksums_file" "${PROJECT_ROOT}/checksums.txt"
-      chmod +x "${PROJECT_ROOT}/sing-box-deve.sh" \
-        "${PROJECT_ROOT}/lib/common.sh" "${PROJECT_ROOT}/lib/protocols.sh" "${PROJECT_ROOT}/lib/security.sh" "${PROJECT_ROOT}/lib/providers.sh" "${PROJECT_ROOT}/lib/output.sh" \
-        "${PROJECT_ROOT}/providers/entry.sh" "${PROJECT_ROOT}/providers/vps.sh" "${PROJECT_ROOT}/providers/serv00.sh" "${PROJECT_ROOT}/providers/sap.sh" "${PROJECT_ROOT}/providers/docker.sh" \
-        "${PROJECT_ROOT}/scripts/acceptance-matrix.sh" "${PROJECT_ROOT}/scripts/integration-smoke.sh" "${PROJECT_ROOT}/scripts/consistency-check.sh" "${PROJECT_ROOT}/scripts/regression-docker.sh" "${PROJECT_ROOT}/scripts/update-checksums.sh" || true
+      # Set executable permissions using the manifest
+      for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
+        chmod +x "${PROJECT_ROOT}/${rel}" 2>/dev/null || true
+      done
       rm -rf "$tmp_dir"
+      tmp_dir=""
       SBD_ACTIVE_UPDATE_BASE_URL="$base_url"
       ok="true"
       break
     fi
     rm -rf "$tmp_dir"
+    tmp_dir=""
     log_warn "$(msg "该更新源失败，尝试下一个" "Update source failed, trying next one")"
   done < <(update_base_candidates "$mode")
+
+  trap - EXIT INT TERM
 
   [[ "$ok" == "true" ]] || die "$(msg "安全更新失败：所有更新源不可用或校验失败" "Secure update failed: all update sources unavailable or checksum verification failed")"
 }

@@ -22,9 +22,17 @@ update_command() {
     local_ver="$(current_script_version)"
     remote_ver="$(fetch_remote_script_version "${UPDATE_SOURCE:-auto}" 2>/dev/null || true)"
 
-    if [[ -n "$remote_ver" && "$remote_ver" == "$local_ver" ]]; then
+    if [[ -z "$remote_ver" ]]; then
+      log_warn "$(msg "无法获取远程版本，跳过脚本更新" "Unable to fetch remote version, skipping script update")"
+    elif [[ "$remote_ver" == "$local_ver" ]]; then
       log_info "$(msg "脚本已是最新版本" "Script is already up to date") (${local_ver})"
     else
+      log_info "$(msg "本地版本" "Local version"): ${local_ver}"
+      log_info "$(msg "远程版本" "Remote version"): ${remote_ver}"
+      # Warn if remote version appears older (simple string comparison)
+      if [[ "$remote_ver" < "$local_ver" ]]; then
+        log_warn "$(msg "远程版本低于本地版本，可能是切换了分支或更新源" "Remote version is older than local, possibly due to branch/source change")"
+      fi
       if prompt_yes_no "$(msg "更新脚本本体与模块文件吗？" "Update script and module files?")" "Y"; then
         [[ -n "${SBD_ACTIVE_UPDATE_BASE_URL:-}" ]] && log_info "$(msg "更新源" "Update source"): ${SBD_ACTIVE_UPDATE_BASE_URL}"
         perform_script_self_update
