@@ -42,6 +42,21 @@ fetch_remote_script_version() {
   return 1
 }
 
+# Check if PROJECT_ROOT is a git repository
+is_git_repo() {
+  [[ -d "${PROJECT_ROOT}/.git" ]] && command -v git >/dev/null 2>&1
+}
+
+# Get current git branch
+get_git_branch() {
+  git -C "$PROJECT_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main"
+}
+
+# Get git remote URL
+get_git_remote() {
+  git -C "$PROJECT_ROOT" config --get remote.origin.url 2>/dev/null || true
+}
+
 # Priority 1.2: Validate PROJECT_ROOT before update
 validate_project_root() {
   if [[ -z "${PROJECT_ROOT:-}" ]]; then
@@ -203,18 +218,61 @@ verify_installed_files() {
   return 0
 }
 
-perform_script_self_update() {
+# Update via git pull for git repositories
+perform_git_update() {
+  local branch old_commit new_commit
+  branch="$(get_git_branch)"
+  old_commit="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+  
+  log_info "$(msg "检测到 Git 仓库，使用 git pull 更新" "Git repository detected, updating via git pull")"
+  log_info "$(msg "当前分支" "Current branch"): ${branch}"
+  log_info "$(msg "当前提交" "Current commit"): ${old_commit}"
+  
+  # Check for local modifications
+  if ! git -C "$PROJECT_ROOT" diff --quiet 2>/dev/null; then
+    log_warn "$(msg "检测到本地修改，将尝试 stash 保存" "Local modifications detected, will stash changes")"
+    if ! git -C "$PROJECT_ROOT" stash push -m "sing-box-deve auto-stash before update" 2>/dev/null; then
+      die "$(msg "无法 stash 本地修改，请手动处理后重试" "Failed to stash local changes, please handle manually")"
+    fi
+    log_info "$(msg "本地修改已暂存" "Local changes stashed")"
+  fi
+  
+  # Fetch and pull
+  log_info "$(msg "正在从远程拉取更新..." "Fetching updates from remote...")"
+  if ! git -C "$PROJECT_ROOT" fetch origin "$branch" 2>&1; then
+    die "$(msg "git fetch 失败" "git fetch failed")"
+  fi
+  
+  if ! git -C "$PROJECT_ROOT" pull --ff-only origin "$branch" 2>&1; then
+    # Try rebase if fast-forward fails
+    log_warn "$(msg "快进合并失败，尝试 rebase" "Fast-forward failed, trying rebase")"
+    if ! git -C "$PROJECT_ROOT" pull --rebase origin "$branch" 2>&1; then
+      die "$(msg "git pull 失败，请手动解决冲突" "git pull failed, please resolve conflicts manually")"
+    fi
+  fi
+  
+  new_commit="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+  
+  if [[ "$old_commit" == "$new_commit" ]]; then
+    log_info "$(msg "已是最新版本" "Already up to date") (${new_commit})"
+  else
+    log_success "$(msg "Git 更新完成" "Git update complete"): ${old_commit} -> ${new_commit}"
+  fi
+  
+  # Set executable permissions
+  # shellcheck source=lib/update_manifest.sh
+  source "${PROJECT_ROOT}/lib/update_manifest.sh"
+  for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
+    chmod +x "${PROJECT_ROOT}/${rel}" 2>/dev/null || true
+  done
+  
+  return 0
+}
+
+# Download-based update for non-git installations
+perform_download_update() {
   local mode="${UPDATE_SOURCE:-auto}" base_url ok="false" cb
   cb="$(date +%s)"
-
-  # Priority 1.2: Validate PROJECT_ROOT
-  validate_project_root
-  
-  # Priority 3.1: Check disk space (require at least 10MB free)
-  check_update_disk_space 10
-  
-  # Priority 1.1: Acquire lock to prevent concurrent updates
-  acquire_update_lock
 
   # Source the unified file manifest
   # shellcheck source=lib/update_manifest.sh
@@ -229,7 +287,6 @@ perform_script_self_update() {
     if [[ -n "${tmp_dir:-}" && -d "${tmp_dir}" ]]; then
       rm -rf "$tmp_dir"
     fi
-    release_update_lock
   }
   trap _update_cleanup EXIT INT TERM
 
@@ -308,7 +365,27 @@ perform_script_self_update() {
   done < <(update_base_candidates "$mode")
 
   trap - EXIT INT TERM
-  release_update_lock
 
   [[ "$ok" == "true" ]] || die "$(msg "安全更新失败：所有更新源不可用或校验失败。可使用 'sb update --rollback' 恢复" "Secure update failed: all sources unavailable or verification failed. Use 'sb update --rollback' to restore")"
+}
+
+# Main update entry point - automatically detects git vs download
+perform_script_self_update() {
+  # Priority 1.2: Validate PROJECT_ROOT
+  validate_project_root
+  
+  # Priority 3.1: Check disk space (require at least 10MB free)
+  check_update_disk_space 10
+  
+  # Priority 1.1: Acquire lock to prevent concurrent updates
+  acquire_update_lock
+
+  # Detect update method and execute
+  if is_git_repo; then
+    perform_git_update
+  else
+    perform_download_update
+  fi
+
+  release_update_lock
 }

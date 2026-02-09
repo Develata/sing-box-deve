@@ -106,6 +106,9 @@ verify_uninstall() {
   # Check for remaining directories (only if not keeping settings)
   [[ -d "$SBD_INSTALL_DIR" ]] && remaining+=("$SBD_INSTALL_DIR")
   
+  # Check for persisted script directory
+  [[ -d "/opt/sing-box-deve/script" ]] && remaining+=("/opt/sing-box-deve/script")
+  
   # Check for remaining binaries
   [[ -f /usr/local/bin/sb ]] && remaining+=("/usr/local/bin/sb")
   
