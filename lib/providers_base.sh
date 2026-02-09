@@ -195,6 +195,7 @@ ensure_uuid() {
     else
       die "$(msg "缺少 uuid 生成依赖（uuidgen/openssl）" "Missing UUID generator dependency (uuidgen/openssl)")"
     fi
+    secure_file "$uuid_file"
   fi
   cat "$uuid_file"
 }
@@ -209,7 +210,19 @@ ensure_self_signed_cert() {
     fi
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
       -keyout "$key_file" -out "$cert_file" -subj "/CN=www.bing.com" >/dev/null 2>&1
+    secure_file "$key_file"
+    secure_file "$cert_file"
   fi
+}
+
+secure_file() {
+  local file="$1"
+  [[ -f "$file" ]] && chmod 600 "$file"
+}
+
+secure_directory() {
+  local dir="$1"
+  [[ -d "$dir" ]] && chmod 700 "$dir"
 }
 
 engine_supports_protocol() {

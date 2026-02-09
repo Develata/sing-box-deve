@@ -64,9 +64,19 @@ provider_uninstall() {
   fw_detect_backend
   fw_clear_managed_rules
   if [[ "$keep_settings" == "true" ]]; then
+    mkdir -p /etc/sing-box-deve/backup
+    [[ -f "$SBD_SETTINGS_FILE" ]] && cp "$SBD_SETTINGS_FILE" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/uuid" ]] && cp "${SBD_DATA_DIR}/uuid" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/reality_private.key" ]] && cp "${SBD_DATA_DIR}/reality_private.key" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/reality_public.key" ]] && cp "${SBD_DATA_DIR}/reality_public.key" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/reality_short_id" ]] && cp "${SBD_DATA_DIR}/reality_short_id" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && cp "${SBD_DATA_DIR}/xray_private.key" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && cp "${SBD_DATA_DIR}/xray_public.key" /etc/sing-box-deve/backup/
+    [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && cp "${SBD_DATA_DIR}/xray_short_id" /etc/sing-box-deve/backup/
     rm -f /etc/sing-box-deve/runtime.env /etc/sing-box-deve/config.yaml /etc/sing-box-deve/config.json /etc/sing-box-deve/xray-config.json
     rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
-    log_info "$(msg "保留持久化设置文件: /etc/sing-box-deve/settings.conf" "Kept persistent settings file: /etc/sing-box-deve/settings.conf")"
+    find /etc/sing-box-deve -maxdepth 1 -type f -delete 2>/dev/null || true
+    log_info "$(msg "已保留备份: /etc/sing-box-deve/backup/ (settings, uuid, keys)" "Backup preserved: /etc/sing-box-deve/backup/ (settings, uuid, keys)")"
   else
     rm -rf /etc/sing-box-deve "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
   fi

@@ -7,8 +7,13 @@ append_argo_cdn_templates() {
   vl_host="$(sbd_cdn_host_vless_ws)"; [[ -n "$vl_host" ]] || vl_host="$domain"
   vm_path="$(sbd_vmess_ws_path)"
   vl_path="$(uri_encode "$(sbd_vless_ws_path)")"
+  local cdn_endpoints="${ARGO_CDN_ENDPOINTS:-}"
+  if [[ -z "$cdn_endpoints" ]]; then
+    return 0
+  fi
+
   local ep host port tls
-  for ep in "deve1.devekkk.dpdns.org:443:tls" "deve2.devekkk.dpdns.org:8443:tls" "deve3.devekkk.dpdns.org:2053:tls" "deve4.devekkk.dpdns.org:2083:tls" "deve5.devekkk.dpdns.org:2087:tls" "[2606:4700::0]:2096:tls" "deve6.devekkk.dpdns.org:80:none" "deve7.devekkk.dpdns.org:8080:none" "deve8.devekkk.dpdns.org:8880:none" "deve9.devekkk.dpdns.org:2052:none"; do
+  for ep in ${cdn_endpoints//,/ }; do
     if [[ "$ep" =~ ^(\[[^]]+\]|[^:]+):([0-9]+):(tls|none)$ ]]; then
       host="${BASH_REMATCH[1]}"; port="${BASH_REMATCH[2]}"; tls="${BASH_REMATCH[3]}"
     else

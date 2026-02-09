@@ -196,6 +196,7 @@ build_sing_box_config() {
       wg_public="$(printf '%s' "$wg_private" | wg pubkey)"
       echo "$wg_private" > "${SBD_DATA_DIR}/wg_private.key"
       echo "$wg_public" > "${SBD_DATA_DIR}/wg_public.key"
+      chmod 600 "${SBD_DATA_DIR}/wg_private.key" "${SBD_DATA_DIR}/wg_public.key"
     fi
     wg_private="$(<"${SBD_DATA_DIR}/wg_private.key")"
     inbounds+=$',\n'
@@ -232,6 +233,11 @@ build_sing_box_config() {
   outbounds="${outbounds//\\n/$'\n'}"
   local route_json
   route_json="$(build_singbox_route_json "$final_tag" "$inbound_map" "$available_outbounds")"
+
+  local config_backup="${config_file}.bak"
+  if [[ -f "$config_file" ]]; then
+    cp "$config_file" "$config_backup"
+  fi
 
   cat > "$config_file" <<EOF_JSON
 {

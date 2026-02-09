@@ -87,6 +87,20 @@ provider_update() {
   source /etc/sing-box-deve/runtime.env
   install_engine_binary "$engine"
   safe_service_restart
+
+  if [[ -f "$SBD_SERVICE_FILE" ]]; then
+    local wait_count=0
+    while ! systemctl is-active --quiet sing-box-deve.service && (( wait_count < 15 )); do
+      sleep 1
+      ((wait_count++))
+    done
+    if (( wait_count >= 15 )); then
+      log_warn "$(msg "核心服务启动超时" "Core service start timeout")"
+    else
+      log_info "$(msg "核心服务已就绪" "Core service ready")"
+    fi
+  fi
+
   if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
     systemctl restart sing-box-deve-argo.service
   fi
@@ -174,5 +188,6 @@ WARP_PRIVATE_KEY=${private_key}
 WARP_PEER_PUBLIC_KEY=bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
 WARP_RESERVED=${reserved_dec:-[0,0,0]}
 EOF
+  chmod 600 "${SBD_DATA_DIR}/warp-account.env"
   log_success "$(msg "WARP 账户已生成: ${SBD_DATA_DIR}/warp-account.env" "WARP account generated: ${SBD_DATA_DIR}/warp-account.env")"
 }

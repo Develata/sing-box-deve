@@ -33,6 +33,7 @@ build_xray_config() {
     echo "$out" | awk '/Private key/{print $3}' > "${SBD_DATA_DIR}/xray_private.key"
     echo "$out" | awk '/Public key/{print $3}' > "${SBD_DATA_DIR}/xray_public.key"
     openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id"
+    chmod 600 "${SBD_DATA_DIR}/xray_private.key" "${SBD_DATA_DIR}/xray_public.key" "${SBD_DATA_DIR}/xray_short_id"
   fi
 
   local private_key public_key short_id
@@ -157,6 +158,11 @@ build_xray_config() {
   inbounds="${inbounds//\\n/$'\n'}"
   xray_outbounds="${xray_outbounds//\\n/$'\n'}"
   xray_routing="${xray_routing//\\n/$'\n'}"
+
+  local config_backup="${config_file}.bak"
+  if [[ -f "$config_file" ]]; then
+    cp "$config_file" "$config_backup"
+  fi
 
   cat > "$config_file" <<EOF
 {

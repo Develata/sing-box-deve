@@ -104,6 +104,8 @@ detect_os() {
 init_runtime_layout() {
   mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR"
   touch "$SBD_RULES_FILE"
+  chmod 700 "$SBD_DATA_DIR" 2>/dev/null || true
+  chmod 700 "$SBD_STATE_DIR" 2>/dev/null || true
 }
 
 get_arch() {

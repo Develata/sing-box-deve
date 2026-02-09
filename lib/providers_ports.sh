@@ -91,7 +91,26 @@ provider_set_port() {
   load_install_context || true
   fw_apply_rule "$fw_proto" "$new_port"
   if [[ -n "$old_port" && "$old_port" != "$new_port" ]]; then
-    log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
+    local old_tag
+    old_tag="$(fw_tag "core" "$fw_proto" "$old_port")"
+    if fw_rule_exists_record "$old_tag"; then
+      local answer
+      if [[ "${AUTO_YES:-false}" == "true" ]]; then
+        answer="Y"
+      else
+        read -r -p "$(msg "是否移除旧端口的防火墙规则 ${fw_proto}/${old_port}? [Y/n]: " "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: ")" answer
+        answer="${answer:-Y}"
+      fi
+      if [[ "$answer" =~ ^[Yy]$ ]]; then
+        fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag"
+        grep -v "|${old_tag}|" "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" 2>/dev/null && mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE"
+        log_success "$(msg "已移除旧防火墙规则: ${fw_proto}/${old_port}" "Removed old firewall rule: ${fw_proto}/${old_port}")"
+      else
+        log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
+      fi
+    else
+      log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
+    fi
   fi
 
   if [[ -n "${port_egress_map:-}" ]]; then

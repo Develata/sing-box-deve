@@ -23,6 +23,20 @@ provider_warp_load_account() {
 provider_warp_socks5_write_config() {
   local port="$1"
   provider_warp_load_account
+
+  local client_ipv4 client_ipv6
+  if [[ -f "${SBD_DATA_DIR}/warp-client-id" ]]; then
+    local client_id
+    client_id="$(tr -d '[:space:]' < "${SBD_DATA_DIR}/warp-client-id" 2>/dev/null || true)"
+    if [[ -n "$client_id" ]]; then
+      local hash
+      hash="$(printf '%s' "$client_id" | sha256sum | cut -c1-4)"
+      client_ipv4="172.16.$((0x${hash:0:2} % 256)).$((0x${hash:2:2} % 256))/32"
+    fi
+  fi
+  [[ -n "$client_ipv4" ]] || client_ipv4="172.16.0.2/32"
+  client_ipv6="${WARP_CLIENT_IPV6:-fd01:5ca1:ab1e::2/128}"
+
   mkdir -p /etc/sing-box-deve
   cat > "$SBD_WARP_SOCKS_CONFIG_FILE" <<EOF
 {
@@ -31,7 +45,7 @@ provider_warp_socks5_write_config() {
     {"type":"socks","tag":"socks-in","listen":"127.0.0.1","listen_port":${port}}
   ],
   "outbounds": [
-    {"type":"wireguard","tag":"warp-out","server":"engage.cloudflareclient.com","server_port":2408,"local_address":["172.16.0.2/32","2606:4700:110:876d:4d3c:4206:c90c:6bd0/128"],"private_key":"${WARP_PRIVATE_KEY}","peer_public_key":"${WARP_PEER_PUBLIC_KEY}","reserved":${WARP_RESERVED},"mtu":1280},
+    {"type":"wireguard","tag":"warp-out","server":"engage.cloudflareclient.com","server_port":2408,"local_address":["${client_ipv4}","${client_ipv6}"],"private_key":"${WARP_PRIVATE_KEY}","peer_public_key":"${WARP_PEER_PUBLIC_KEY}","reserved":${WARP_RESERVED},"mtu":1280},
     {"type":"direct","tag":"direct"}
   ],
   "route": {"final":"warp-out"}

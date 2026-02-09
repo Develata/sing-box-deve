@@ -17,6 +17,7 @@ parse_install_args() {
   ARGO_MODE="${ARGO_MODE:-off}"
   ARGO_DOMAIN="${ARGO_DOMAIN:-}"
   ARGO_TOKEN="${ARGO_TOKEN:-}"
+  ARGO_CDN_ENDPOINTS="${ARGO_CDN_ENDPOINTS:-}"
   WARP_MODE="${WARP_MODE:-off}"
   ROUTE_MODE="${ROUTE_MODE:-direct}"
   IP_PREFERENCE="${IP_PREFERENCE:-auto}"
@@ -72,6 +73,7 @@ parse_install_args() {
       --argo) ARGO_MODE="$2"; shift 2 ;;
       --argo-domain) ARGO_DOMAIN="$2"; shift 2 ;;
       --argo-token) ARGO_TOKEN="$2"; shift 2 ;;
+      --cdn-endpoints) ARGO_CDN_ENDPOINTS="$2"; shift 2 ;;
       --warp-mode) WARP_MODE="$2"; shift 2 ;;
       --route-mode) ROUTE_MODE="$2"; shift 2 ;;
       --ip-preference) IP_PREFERENCE="$2"; shift 2 ;;
