@@ -187,6 +187,195 @@ sudo sb doctor
 - `primary`：只使用主源
 - `backup`：只使用备源
 
+## 详细使用指南（按实际运维流程）
+
+下面这套流程按“首次安装 -> 日常维护 -> 故障处理”编排，直接照做即可。
+
+### 1) 首次安装（推荐走向导）
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
+```
+
+安装完成后：
+
+```bash
+sb
+```
+
+进入面板后，建议先看：
+
+1. `2 状态与节点查看`
+2. `3 端口管理`
+3. `11 订阅与分享`
+4. `12 配置变更中心`
+
+### 2) 主菜单 1-13 的实际用途
+
+1. `安装/重装`：首次安装或按新参数整体重建。
+2. `状态与节点查看`：看运行状态、节点、协议能力矩阵。
+3. `端口管理`：查看或修改协议端口，自动加放行规则（不删历史规则）。
+4. `出站策略管理`：配置 `direct/socks/http/https`、路由模式、分享出口、按端口出站策略。
+5. `服务管理`：重启核心/Argo、重建节点、看日志。
+6. `更新管理`：更新脚本和核心，支持主源/备源切换。
+7. `防火墙管理`：看托管规则、回滚快照、重放规则。
+8. `设置管理`：语言和自动确认。
+9. `日志查看`：核心日志/Argo 日志。
+10. `卸载管理`：保留设置卸载或完全卸载。
+11. `订阅与分享`：刷新订阅、显示分组、生成二维码、推送 GitLab/TG。
+12. `配置变更中心`：`preview/apply/rollback/snapshots` 闭环运维。
+13. `内核与WARP`：内核切换、WARP、BBR、证书工具链。
+
+### 3) 端口与协议管理
+
+先看当前端口：
+
+```bash
+sb set-port --list
+```
+
+修改协议端口：
+
+```bash
+sb set-port --protocol vless-reality --port 52440
+```
+
+说明：
+
+- 会自动校验端口范围与协议合法性。
+- 会自动放行新端口对应防火墙规则。
+- 不会粗暴删除历史防火墙规则。
+
+### 4) 出站策略管理（普通出站）
+
+切换到直连：
+
+```bash
+sb set-egress --mode direct
+```
+
+切到上游 socks：
+
+```bash
+sb set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
+```
+
+路由模式：
+
+```bash
+sb set-route direct
+sb set-route global-proxy
+sb set-route cn-direct
+sb set-route cn-proxy
+```
+
+### 5) 按端口走不同出站策略（新功能）
+
+查看当前映射：
+
+```bash
+sb set-port-egress --list
+```
+
+设置映射（格式：`端口:direct|proxy|warp`）：
+
+```bash
+sb set-port-egress --map 443:direct,8443:proxy,9443:warp
+```
+
+清空映射：
+
+```bash
+sb set-port-egress --clear
+```
+
+规则说明：
+
+- 仅允许映射到当前已存在的入站端口。
+- `proxy` 需要当前配置里存在 `proxy-out`。
+- `warp` 需要当前配置里存在 `warp-out`。
+- 端口映射规则优先于常规路由/域名分流规则。
+
+### 6) 配置中心闭环（推荐日常变更都走这里）
+
+先预览再应用：
+
+```bash
+sb cfg preview protocol-add vmess-ws random
+sb cfg apply protocol-add vmess-ws random
+```
+
+快照查看与回滚：
+
+```bash
+sb cfg snapshots list
+sb cfg rollback latest
+sb cfg snapshots prune 10
+```
+
+### 7) 订阅与分享产物怎么用
+
+刷新产物：
+
+```bash
+sb sub refresh
+sb sub show
+```
+
+关键文件：
+
+- 聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
+- 原始聚合：`/opt/sing-box-deve/data/jhdy.txt`
+- 客户端分组：`/opt/sing-box-deve/data/share-groups/*.txt`
+- `clash-meta` 配置：`/opt/sing-box-deve/data/clash_meta_client.yaml`
+
+重要说明：
+
+- `clash-meta` 默认是 **YAML 文件**，不是通用节点 URL。
+- `share-groups/clash-meta.txt` 里保存的是 yaml 路径提示。
+- 如果执行 `sb sub gitlab-push`，会得到远程 raw 的 yaml 链接用于导入。
+
+### 8) 更新机制与正确操作
+
+先看版本：
+
+```bash
+sb version
+```
+
+更新脚本：
+
+```bash
+sb update --script --source primary
+```
+
+更新失败排查顺序：
+
+1. 先试主源：`sb update --script --source primary`
+2. 再试备源：`sb update --script --source backup`
+3. 若报 `Checksum mismatch`，优先检查仓库 `checksums.txt` 是否已随最新改动更新并推送
+4. 若刚推送仓库，建议稍等再更新（CDN 缓存短暂不一致时会失败）
+
+### 9) 卸载与重装
+
+保留设置卸载：
+
+```bash
+sb uninstall --keep-settings
+```
+
+完全卸载：
+
+```bash
+sb uninstall
+```
+
+若你要“干净重装”，建议顺序：
+
+1. `sb uninstall`
+2. 重新执行 `wizard`
+3. `sb panel --full` 检查状态
+
 ## 示例文件
 
 可直接参考并复制修改：
