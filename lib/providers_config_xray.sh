@@ -62,7 +62,7 @@ build_xray_config() {
     if warp_mode_targets_xray "${WARP_MODE:-off}"; then
       has_warp="true"
     else
-      log_warn "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-xray path"
+      log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 xray 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-xray path")"
     fi
   fi
 

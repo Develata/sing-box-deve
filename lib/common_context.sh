@@ -165,5 +165,5 @@ resources:
   default_profile: ${profile}
 EOF
 
-  log_info "Auto-generated config snapshot: ${file_path}"
+  log_info "$(msg "已自动生成配置快照: ${file_path}" "Auto-generated config snapshot: ${file_path}")"
 }

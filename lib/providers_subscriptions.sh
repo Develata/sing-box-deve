@@ -24,6 +24,7 @@ generate_client_artifacts() {
   mkdir -p "$SBD_DATA_DIR"
   [[ -f "$SBD_NODES_FILE" ]] || die "nodes file not found"
   ensure_clash_rulesets_local
+  ensure_sing_route_rulesets_local
   render_singbox_client_json "${SBD_DATA_DIR}/sing_box_client.json"
   render_clash_meta_yaml "${SBD_DATA_DIR}/clash_meta_client.yaml"
   render_sfa_sfi_sfw "SFA" "${SBD_DATA_DIR}/sfa_client.json"

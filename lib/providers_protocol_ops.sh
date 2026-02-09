@@ -84,7 +84,7 @@ provider_cfg_protocol_add() {
   local current_csv="${protocols:-vless-reality}" target_csv added_csv
   target_csv="$(provider_cfg_protocol_csv_merge "$current_csv" "$add_csv")"
   [[ "$target_csv" != "$current_csv" ]] || {
-    log_info "No new protocols to add"
+    log_info "$(msg "没有可新增的协议" "No new protocols to add")"
     return 0
   }
 
@@ -97,7 +97,7 @@ provider_cfg_protocol_add() {
   protocols="$target_csv"
   provider_cfg_protocol_sync_argo_service "$target_csv"
   provider_cfg_rebuild_runtime "$target_csv"
-  log_success "Protocols added: ${added_csv}"
+  log_success "$(msg "已新增协议: ${added_csv}" "Protocols added: ${added_csv}")"
 }
 
 provider_cfg_protocol_remove() {
@@ -110,7 +110,7 @@ provider_cfg_protocol_remove() {
   local current_csv="${protocols:-vless-reality}" target_csv
   target_csv="$(provider_cfg_protocol_csv_remove "$current_csv" "$drop_csv")"
   [[ "$target_csv" != "$current_csv" ]] || {
-    log_info "No protocols removed"
+    log_info "$(msg "没有协议被移除" "No protocols removed")"
     return 0
   }
   [[ -n "$target_csv" ]] || die "At least one protocol must remain enabled"
@@ -120,5 +120,5 @@ provider_cfg_protocol_remove() {
   protocols="$target_csv"
   provider_cfg_protocol_sync_argo_service "$target_csv"
   provider_cfg_rebuild_runtime "$target_csv"
-  log_success "Protocols removed: ${drop_csv}"
+  log_success "$(msg "已移除协议: ${drop_csv}" "Protocols removed: ${drop_csv}")"
 }

@@ -74,12 +74,14 @@ perform_script_self_update() {
     "lib/providers_config_singbox.sh"
     "lib/providers_config_xray.sh"
     "lib/providers_nodes.sh"
+    "lib/providers_clash_rulesets.sh"
     "lib/providers_client_templates.sh"
     "lib/providers_install.sh"
     "lib/providers_serv00.sh"
     "lib/providers_sap.sh"
     "lib/providers_docker.sh"
     "lib/providers_manage.sh"
+    "lib/providers_warp_tools.sh"
     "lib/providers_port_seed.sh"
     "lib/providers_ports.sh"
     "lib/providers_port_egress.sh"
@@ -124,6 +126,10 @@ perform_script_self_update() {
     "examples/settings.conf"
     "examples/serv00-accounts.json"
     "examples/sap-accounts.json"
+    "rulesets/clash/geosite-cn.yaml"
+    "rulesets/clash/geoip-cn.yaml"
+    "rulesets/sing/geosite-cn.srs"
+    "rulesets/sing/geoip-cn.srs"
     "web-generator/index.html"
     "providers/entry.sh"
     "providers/vps.sh"
@@ -159,7 +165,7 @@ perform_script_self_update() {
         if ! download_file "$(update_url_with_cache_bust "${base_url}/${rel}" "$cb")" "${tmp_dir}/${rel}"; then
           failed="true"; break
         fi
-        expected="$(grep -E "[[:space:]]${rel}$" "$checksums_file" | awk '{print $1}' | head -n1)"
+        expected="$(awk -v r="$rel" '$2==r {print $1; exit}' "$checksums_file")"
         if [[ -z "$expected" ]]; then
           log_warn "$(msg "校验表缺少条目: ${rel}" "Checksum entry missing: ${rel}")"
           failed="true"

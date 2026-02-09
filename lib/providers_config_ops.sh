@@ -7,7 +7,7 @@ provider_cfg_runtime_file() {
 provider_cfg_load_runtime_exports() {
   local runtime_file
   runtime_file="$(provider_cfg_runtime_file)"
-  [[ -f "$runtime_file" ]] || die "No runtime state found"
+  [[ -f "$runtime_file" ]] || die "$(msg "未找到运行时状态" "No runtime state found")"
   # shellcheck disable=SC1090
   source "$runtime_file"
   export ARGO_MODE="${argo_mode:-off}"
@@ -63,7 +63,7 @@ provider_cfg_rebuild_runtime() {
   case "${engine:-sing-box}" in
     sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" ;;
     xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" ;;
-    *) die "Unsupported engine in runtime: ${engine:-unknown}" ;;
+    *) die "$(msg "运行时内核不受支持: ${engine:-unknown}" "Unsupported engine in runtime: ${engine:-unknown}")" ;;
   esac
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
@@ -73,18 +73,23 @@ provider_cfg_rebuild_runtime() {
 provider_cfg_rotate_identity() {
   ensure_root
   provider_cfg_load_runtime_exports
-  uuidgen > "${SBD_DATA_DIR}/uuid"
-  openssl rand -hex 4 > "${SBD_DATA_DIR}/reality_short_id" 2>/dev/null || true
-  openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id" 2>/dev/null || true
+  ensure_uuid > "${SBD_DATA_DIR}/uuid"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 4 > "${SBD_DATA_DIR}/reality_short_id" 2>/dev/null || true
+    openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id" 2>/dev/null || true
+  else
+    rand_hex_8 > "${SBD_DATA_DIR}/reality_short_id"
+    rand_hex_8 > "${SBD_DATA_DIR}/xray_short_id"
+  fi
   provider_cfg_rebuild_runtime
-  log_success "Identity rotated (UUID/short-id)"
+  log_success "$(msg "身份标识已轮换（UUID/short-id）" "Identity rotated (UUID/short-id)")"
 }
 
 provider_cfg_set_argo() {
   ensure_root
   local mode="$1" token="${2:-}" domain="${3:-}"
   case "$mode" in off|temp|fixed) ;;
-    *) die "Usage: cfg argo <off|temp|fixed> [token] [domain]" ;;
+    *) die "$(msg "用法: cfg argo <off|temp|fixed> [token] [domain]" "Usage: cfg argo <off|temp|fixed> [token] [domain]")" ;;
   esac
   provider_cfg_load_runtime_exports
   ARGO_MODE="$mode"; ARGO_TOKEN="$token"; ARGO_DOMAIN="$domain"
@@ -98,30 +103,30 @@ provider_cfg_set_argo() {
   fi
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
-  log_success "Argo mode updated: ${mode}"
+  log_success "$(msg "Argo 模式已更新: ${mode}" "Argo mode updated: ${mode}")"
 }
 
 provider_cfg_set_ip_preference() {
   ensure_root
   local pref="$1"
   case "$pref" in auto|v4|v6) ;;
-    *) die "Usage: cfg ip-pref <auto|v4|v6>" ;;
+    *) die "$(msg "用法: cfg ip-pref <auto|v4|v6>" "Usage: cfg ip-pref <auto|v4|v6>")" ;;
   esac
   provider_cfg_load_runtime_exports
   IP_PREFERENCE="$pref"
   provider_cfg_rebuild_runtime
-  log_success "IP preference updated: ${pref}"
+  log_success "$(msg "IP 优先级已更新: ${pref}" "IP preference updated: ${pref}")"
 }
 
 provider_cfg_set_cdn_host() {
   ensure_root
   local host="$1"
-  [[ -n "$host" ]] || die "Usage: cfg cdn-host <domain>"
+  [[ -n "$host" ]] || die "$(msg "用法: cfg cdn-host <domain>" "Usage: cfg cdn-host <domain>")"
   provider_cfg_load_runtime_exports
   CDN_TEMPLATE_HOST="$host"
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
-  log_success "CDN host template updated: ${host}"
+  log_success "$(msg "CDN 主机模板已更新: ${host}" "CDN host template updated: ${host}")"
 }
 
 provider_cfg_set_domain_split() {
@@ -132,26 +137,26 @@ provider_cfg_set_domain_split() {
   DOMAIN_SPLIT_PROXY="$proxy"
   DOMAIN_SPLIT_BLOCK="$block"
   provider_cfg_rebuild_runtime
-  log_success "Domain split updated"
+  log_success "$(msg "域名分流规则已更新" "Domain split updated")"
 }
 
 provider_cfg_set_tls() {
   ensure_root
   local mode="$1" cert="${2:-}" key="${3:-}" dns_provider="${4:-${ACME_DNS_PROVIDER:-}}"
   case "$mode" in self-signed|acme|acme-auto) ;;
-    *) die "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" ;;
+    *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]")" ;;
   esac
   provider_cfg_load_runtime_exports
   if [[ "$mode" == "acme-auto" ]]; then
     local domain="$cert" email="$key"
-    [[ -n "$domain" && -n "$email" ]] || die "Usage: cfg tls acme-auto <domain> <email> [dns_provider]"
+    [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: cfg tls acme-auto <domain> <email> [dns_provider]" "Usage: cfg tls acme-auto <domain> <email> [dns_provider]")"
     provider_sys_acme_issue "$domain" "$email" "$dns_provider"
     cert="${SBD_LAST_ACME_CERT_PATH:-}"
     key="${SBD_LAST_ACME_KEY_PATH:-}"
     if [[ -z "$cert" || -z "$key" ]]; then
       acme_resolve_existing_cert "$domain" cert key || true
     fi
-    [[ -f "$cert" && -f "$key" ]] || die "ACME auto issue succeeded but cert files missing"
+    [[ -f "$cert" && -f "$key" ]] || die "$(msg "ACME 自动签发完成但证书文件缺失" "ACME auto issue succeeded but cert files missing")"
     mode="acme"
   fi
 
@@ -164,7 +169,7 @@ provider_cfg_set_tls() {
     ACME_KEY_PATH=""
   fi
   provider_cfg_rebuild_runtime
-  log_success "TLS mode updated: ${mode}"
+  log_success "$(msg "TLS 模式已更新: ${mode}" "TLS mode updated: ${mode}")"
 }
 
 provider_cfg_apply_dispatch() {
@@ -180,6 +185,6 @@ provider_cfg_apply_dispatch() {
     protocol-add) provider_cfg_protocol_add "${1:-}" "${2:-random}" "${3:-}" ;;
     protocol-remove) provider_cfg_protocol_remove "${1:-}" ;;
     rebuild) provider_cfg_rebuild_runtime ;;
-    *) die "Usage: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..." ;;
+    *) die "$(msg "用法: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..." "Usage: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ...")" ;;
   esac
 }

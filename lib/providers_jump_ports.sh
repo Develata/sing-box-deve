@@ -101,7 +101,7 @@ apply_jump_rules() {
           iptables -t nat -A PREROUTING -p "$proto" --dport "$p" -m comment --comment "$tag" -j REDIRECT --to-ports "$main_port"
         ;;
       *)
-        die "Unsupported firewall backend for jump: ${backend}"
+        die "$(msg "跳跃复用不支持该防火墙后端: ${backend}" "Unsupported firewall backend for jump: ${backend}")"
         ;;
     esac
 
@@ -113,35 +113,35 @@ apply_jump_rules() {
 provider_jump_show() {
   ensure_root
   if load_jump_ports; then
-    log_info "jump protocol=${JUMP_PROTOCOL:-}"
-    log_info "jump main_port=${JUMP_MAIN_PORT:-}"
-    log_info "jump extra_ports=${JUMP_EXTRA_PORTS:-}"
+    log_info "$(msg "jump 协议=${JUMP_PROTOCOL:-}" "jump protocol=${JUMP_PROTOCOL:-}")"
+    log_info "$(msg "jump 主端口=${JUMP_MAIN_PORT:-}" "jump main_port=${JUMP_MAIN_PORT:-}")"
+    log_info "$(msg "jump 附加端口=${JUMP_EXTRA_PORTS:-}" "jump extra_ports=${JUMP_EXTRA_PORTS:-}")"
   else
-    log_info "jump not configured"
+    log_info "$(msg "jump 尚未配置" "jump not configured")"
   fi
 }
 
 provider_jump_replay() {
   ensure_root
   load_jump_ports || {
-    log_info "jump not configured, replay skipped"
+    log_info "$(msg "jump 尚未配置，跳过重放" "jump not configured, replay skipped")"
     return 0
   }
-  [[ -n "${JUMP_PROTOCOL:-}" && -n "${JUMP_MAIN_PORT:-}" && -n "${JUMP_EXTRA_PORTS:-}" ]] || die "jump config is incomplete"
+  [[ -n "${JUMP_PROTOCOL:-}" && -n "${JUMP_MAIN_PORT:-}" && -n "${JUMP_EXTRA_PORTS:-}" ]] || die "$(msg "jump 配置不完整" "jump config is incomplete")"
   fw_detect_backend
   local map proto
   map="$(protocol_port_map "$JUMP_PROTOCOL")"
   proto="${map%%:*}"
   clear_jump_rules
   apply_jump_rules "$FW_BACKEND" "$proto" "$JUMP_MAIN_PORT" "$JUMP_EXTRA_PORTS"
-  log_success "jump rules replayed"
+  log_success "$(msg "jump 规则已重放" "jump rules replayed")"
 }
 
 provider_jump_set() {
   ensure_root
   local protocol="$1" main_port="$2" extra_ports="$3"
-  [[ "$main_port" =~ ^[0-9]+$ ]] || die "main port must be numeric"
-  (( main_port >= 1 && main_port <= 65535 )) || die "main port out of range"
+  [[ "$main_port" =~ ^[0-9]+$ ]] || die "$(msg "主端口必须为数字" "main port must be numeric")"
+  (( main_port >= 1 && main_port <= 65535 )) || die "$(msg "主端口超出范围" "main port out of range")"
   fw_detect_backend
 
   local map proto
@@ -175,7 +175,7 @@ EOF_JUMP
     source /etc/sing-box-deve/runtime.env
     write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
-  log_success "jump ports configured"
+  log_success "$(msg "jump 端口复用已配置" "jump ports configured")"
 }
 
 provider_jump_clear() {
@@ -188,5 +188,5 @@ provider_jump_clear() {
     source /etc/sing-box-deve/runtime.env
     write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
-  log_success "jump ports cleared"
+  log_success "$(msg "jump 端口复用已清除" "jump ports cleared")"
 }

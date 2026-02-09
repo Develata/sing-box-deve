@@ -44,17 +44,17 @@ EOF
       else
         log_warn "$(msg "用户已跳过 docker compose 启动" "Docker compose start skipped by user")"
       fi
-      log_success "Docker provider deployed via docker compose"
+      log_success "$(msg "已通过 docker compose 完成 Docker 场景部署" "Docker provider deployed via docker compose")"
     else
       if prompt_yes_no "$(msg "现在通过 docker run 启动容器吗？" "Start docker container now (docker run)?")" "Y"; then
         docker run -d --name sing-box-deve --restart unless-stopped --network host --env-file /etc/sing-box-deve/docker.env "${docker_image}" || \
-          log_warn "Docker run failed; verify image and env values"
+          log_warn "$(msg "docker run 启动失败，请检查镜像与环境变量" "Docker run failed; verify image and env values")"
       else
         log_warn "$(msg "用户已跳过 docker run 启动" "Docker run skipped by user")"
       fi
     fi
   else
-    log_warn "Docker not installed; generated compose/env files only"
+    log_warn "$(msg "未安装 Docker；仅生成 compose/env 文件" "Docker not installed; generated compose/env files only")"
   fi
 
   cat > /etc/sing-box-deve/docker-run.sh <<'EOF'
@@ -90,6 +90,6 @@ echo "sing-box-deve container is running"
 EOF
   chmod +x /etc/sing-box-deve/docker-healthcheck.sh
 
-  log_success "Docker deployment bundle generated at /etc/sing-box-deve/docker.env and docker-compose.yml"
+  log_success "$(msg "Docker 部署清单已生成: /etc/sing-box-deve/docker.env 与 docker-compose.yml" "Docker deployment bundle generated at /etc/sing-box-deve/docker.env and docker-compose.yml")"
   return 0
 }

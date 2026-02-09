@@ -186,7 +186,15 @@ detect_public_ip() {
 ensure_uuid() {
   local uuid_file="${SBD_DATA_DIR}/uuid"
   if [[ ! -f "$uuid_file" ]]; then
-    uuidgen > "$uuid_file"
+    if command -v uuidgen >/dev/null 2>&1; then
+      uuidgen > "$uuid_file"
+    elif [[ -r /proc/sys/kernel/random/uuid ]]; then
+      cat /proc/sys/kernel/random/uuid > "$uuid_file"
+    elif command -v openssl >/dev/null 2>&1; then
+      openssl rand -hex 16 | sed -E 's/^(.{8})(.{4})(.{4})(.{4})(.{12}).*$/\1-\2-\3-\4-\5/' > "$uuid_file"
+    else
+      die "$(msg "缺少 uuid 生成依赖（uuidgen/openssl）" "Missing UUID generator dependency (uuidgen/openssl)")"
+    fi
   fi
   cat "$uuid_file"
 }
@@ -195,6 +203,10 @@ ensure_self_signed_cert() {
   local cert_file="${SBD_DATA_DIR}/cert.pem"
   local key_file="${SBD_DATA_DIR}/private.key"
   if [[ ! -f "$cert_file" || ! -f "$key_file" ]]; then
+    if ! command -v openssl >/dev/null 2>&1; then
+      log_warn "$(msg "缺少 openssl，跳过自签名证书生成" "openssl missing, skip self-signed certificate generation")"
+      return 0
+    fi
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
       -keyout "$key_file" -out "$cert_file" -subj "/CN=www.bing.com" >/dev/null 2>&1
   fi

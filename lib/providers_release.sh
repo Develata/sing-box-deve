@@ -67,10 +67,10 @@ install_sing_box_binary() {
   arch="$(get_arch)"
   if sbd_offline_mode_enabled; then
     if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
-      log_warn "SBD_OFFLINE_MODE=true; using existing local sing-box binary"
+      log_warn "$(msg "SBD_OFFLINE_MODE=true；使用本地已有 sing-box 二进制" "SBD_OFFLINE_MODE=true; using existing local sing-box binary")"
       return 0
     fi
-    die "SBD_OFFLINE_MODE=true but local sing-box binary not found"
+    die "$(msg "SBD_OFFLINE_MODE=true，但未找到本地 sing-box 二进制" "SBD_OFFLINE_MODE=true but local sing-box binary not found")"
   fi
   local tag
   if [[ "$input_tag" == "latest" ]]; then
@@ -79,14 +79,14 @@ install_sing_box_binary() {
     tag="$input_tag"
     [[ "$tag" == v* ]] || tag="v${tag}"
   fi
-  [[ -n "$tag" && "$tag" != "null" ]] || die "Unable to fetch latest sing-box release"
+  [[ -n "$tag" && "$tag" != "null" ]] || die "$(msg "无法获取最新 sing-box 发布版本" "Unable to fetch latest sing-box release")"
 
   local version="${tag#v}"
   local filename="sing-box-${version}-linux-${arch}.tar.gz"
   local url digest expected
   url="$(fetch_release_asset_url "SagerNet/sing-box" "$tag" "$filename")"
   digest="$(fetch_release_asset_digest "SagerNet/sing-box" "$tag" "$filename")"
-  [[ -n "$url" ]] || die "Unable to locate sing-box asset: ${filename}"
+  [[ -n "$url" ]] || die "$(msg "找不到 sing-box 资产文件: ${filename}" "Unable to locate sing-box asset: ${filename}")"
   expected=""
   if [[ "$digest" == sha256:* ]]; then
     expected="${digest#sha256:}"
@@ -94,12 +94,12 @@ install_sing_box_binary() {
   local archive="${SBD_RUNTIME_DIR}/${filename}"
   local sums_file="${SBD_RUNTIME_DIR}/sing-box-${version}-checksums.txt"
 
-  log_info "Installing sing-box ${tag}"
+  log_info "$(msg "正在安装 sing-box ${tag}" "Installing sing-box ${tag}")"
   if download_file "$url" "$archive"; then
     if [[ -n "$expected" ]]; then
       verify_sha256_expected "$archive" "$expected"
     else
-      log_warn "Release digest metadata missing; fallback to checksums file"
+      log_warn "$(msg "发布摘要缺失，回退到 checksums 文件校验" "Release digest metadata missing; fallback to checksums file")"
       download_file "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-checksums.txt" "$sums_file"
       verify_sha256_from_checksums_file "$archive" "$sums_file"
     fi
@@ -107,10 +107,10 @@ install_sing_box_binary() {
     install -m 0755 "${SBD_RUNTIME_DIR}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box"
   else
     if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
-      log_warn "Failed to download sing-box ${tag}; reusing existing local binary"
+      log_warn "$(msg "下载 sing-box ${tag} 失败，复用本地已有二进制" "Failed to download sing-box ${tag}; reusing existing local binary")"
       return 0
     fi
-    die "Unable to download sing-box and no local binary available"
+    die "$(msg "无法下载 sing-box，且本地不存在可用二进制" "Unable to download sing-box and no local binary available")"
   fi
 
   echo "$tag" > "${SBD_DATA_DIR}/engine-version"
@@ -122,10 +122,10 @@ install_xray_binary() {
   arch="$(get_arch)"
   if sbd_offline_mode_enabled; then
     if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
-      log_warn "SBD_OFFLINE_MODE=true; using existing local xray binary"
+      log_warn "$(msg "SBD_OFFLINE_MODE=true；使用本地已有 xray 二进制" "SBD_OFFLINE_MODE=true; using existing local xray binary")"
       return 0
     fi
-    die "SBD_OFFLINE_MODE=true but local xray binary not found"
+    die "$(msg "SBD_OFFLINE_MODE=true，但未找到本地 xray 二进制" "SBD_OFFLINE_MODE=true but local xray binary not found")"
   fi
   local x_arch="64"
   [[ "$arch" == "arm64" ]] && x_arch="arm64-v8a"
@@ -137,14 +137,14 @@ install_xray_binary() {
     tag="$input_tag"
     [[ "$tag" == v* ]] || tag="v${tag}"
   fi
-  [[ -n "$tag" && "$tag" != "null" ]] || die "Unable to fetch latest xray release"
+  [[ -n "$tag" && "$tag" != "null" ]] || die "$(msg "无法获取最新 xray 发布版本" "Unable to fetch latest xray release")"
 
   local filename="Xray-linux-${x_arch}.zip"
   local url="https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}"
   local archive="${SBD_RUNTIME_DIR}/${filename}"
   local dgst="${SBD_RUNTIME_DIR}/${filename}.dgst"
 
-  log_info "Installing xray ${tag}"
+  log_info "$(msg "正在安装 xray ${tag}" "Installing xray ${tag}")"
   if download_file "$url" "$archive"; then
     download_file "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}.dgst" "$dgst"
     verify_sha256_from_xray_dgst "$archive" "$dgst"
@@ -155,10 +155,10 @@ install_xray_binary() {
     install -m 0755 "${SBD_RUNTIME_DIR}/xray" "${SBD_BIN_DIR}/xray"
   else
     if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
-      log_warn "Failed to download xray ${tag}; reusing existing local binary"
+      log_warn "$(msg "下载 xray ${tag} 失败，复用本地已有二进制" "Failed to download xray ${tag}; reusing existing local binary")"
       return 0
     fi
-    die "Unable to download xray and no local binary available"
+    die "$(msg "无法下载 xray，且本地不存在可用二进制" "Unable to download xray and no local binary available")"
   fi
 
   echo "$tag" > "${SBD_DATA_DIR}/engine-version"
@@ -170,6 +170,6 @@ install_engine_binary() {
   case "$engine" in
     sing-box) install_sing_box_binary "$tag" ;;
     xray) install_xray_binary "$tag" ;;
-    *) die "Unsupported engine: $engine" ;;
+    *) die "$(msg "不支持的内核: $engine" "Unsupported engine: $engine")" ;;
   esac
 }

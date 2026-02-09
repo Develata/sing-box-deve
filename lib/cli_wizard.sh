@@ -186,7 +186,7 @@ wizard() {
 
   print_plan_summary "$PROVIDER" "$PROFILE" "$ENGINE" "$PROTOCOLS"
   if ! prompt_yes_no "$(msg "现在开始安装吗？" "Proceed with installation now?")" "Y"; then
-    log_warn "Installation aborted by user"
+    log_warn "$(msg "用户取消安装流程" "Installation aborted by user")"
     exit 0
   fi
 

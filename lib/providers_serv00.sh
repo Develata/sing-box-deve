@@ -64,7 +64,7 @@ EOF
       cmd="$(echo "$item" | jq -r '.cmd // empty')"
       [[ -n "$cmd" ]] || cmd="$remote_cmd"
       count=$((count + 1))
-      log_info "Executing remote Serv00 bootstrap for account #${count} (${user}@${host})"
+      log_info "$(msg "正在执行 Serv00 远程引导: 账号 #${count} (${user}@${host})" "Executing remote Serv00 bootstrap for account #${count} (${user}@${host})")"
       if ! prompt_yes_no "$(msg "确认为 ${user}@${host} 执行远程 Serv00 引导吗？" "Confirm remote bootstrap for ${user}@${host}?")" "Y"; then
         log_warn "$(msg "用户已跳过 ${user}@${host}" "Skipped ${user}@${host} by user choice")"
         skipped=$((skipped + 1))
@@ -77,7 +77,7 @@ EOF
           ok=true
           break
         fi
-        log_warn "Serv00 bootstrap retry ${attempt}/${retries} failed for ${user}@${host}"
+        log_warn "$(msg "Serv00 远程引导重试失败 ${attempt}/${retries}: ${user}@${host}" "Serv00 bootstrap retry ${attempt}/${retries} failed for ${user}@${host}")"
       done
       if [[ "$ok" == "true" ]]; then
         success=$((success + 1))
@@ -85,20 +85,20 @@ EOF
         failed=$((failed + 1))
       fi
     done < <(echo "$SERV00_ACCOUNTS_JSON" | jq -c '.[]')
-    log_info "Serv00 batch summary: total=${count} success=${success} failed=${failed} skipped=${skipped}"
-    (( failed == 0 )) || die "Serv00 batch finished with failures"
-    log_success "Serv00 remote bootstrap completed for ${success} account(s)"
+    log_info "$(msg "Serv00 批量汇总: total=${count} success=${success} failed=${failed} skipped=${skipped}" "Serv00 batch summary: total=${count} success=${success} failed=${failed} skipped=${skipped}")"
+    (( failed == 0 )) || die "$(msg "Serv00 批量执行存在失败项" "Serv00 batch finished with failures")"
+    log_success "$(msg "Serv00 批量远程引导完成，成功 ${success} 个账号" "Serv00 remote bootstrap completed for ${success} account(s)")"
   elif [[ -n "${SERV00_HOST:-}" && -n "${SERV00_USER:-}" && -n "${SERV00_PASS:-}" ]]; then
-    log_info "Executing remote Serv00 bootstrap on ${SERV00_HOST}"
+    log_info "$(msg "正在执行 Serv00 远程引导: ${SERV00_HOST}" "Executing remote Serv00 bootstrap on ${SERV00_HOST}")"
     if ! prompt_yes_no "$(msg "确认为 ${SERV00_USER}@${SERV00_HOST} 执行远程 Serv00 引导吗？" "Confirm remote bootstrap for ${SERV00_USER}@${SERV00_HOST}?")" "Y"; then
       log_warn "$(msg "用户取消了 Serv00 远程引导" "Serv00 remote bootstrap cancelled by user")"
       return 0
     fi
     sshpass -p "${SERV00_PASS}" ssh -o StrictHostKeyChecking=no "${SERV00_USER}@${SERV00_HOST}" "$remote_cmd" || \
-      die "Remote Serv00 bootstrap failed"
-    log_success "Serv00 remote bootstrap completed"
+      die "$(msg "Serv00 远程引导失败" "Remote Serv00 bootstrap failed")"
+    log_success "$(msg "Serv00 远程引导完成" "Serv00 remote bootstrap completed")"
   else
-    log_warn "SERV00 credentials not set; generated local bundle only"
+    log_warn "$(msg "SERV00 凭据未设置；仅生成本地部署包" "SERV00 credentials not set; generated local bundle only")"
   fi
 
   cat > /etc/sing-box-deve/serv00-run.sh <<'EOF'
@@ -113,6 +113,6 @@ cmd="${SERV00_BOOTSTRAP_CMD:-bash <(curl -Ls https://raw.githubusercontent.com/y
 sshpass -p "${SERV00_PASS}" ssh -o StrictHostKeyChecking=no "${SERV00_USER}@${SERV00_HOST}" "${cmd}"
 EOF
   chmod +x /etc/sing-box-deve/serv00-run.sh
-  log_success "Serv00 deployment bundle generated at /etc/sing-box-deve/serv00.env and /etc/sing-box-deve/serv00-run.sh"
+  log_success "$(msg "Serv00 部署包已生成: /etc/sing-box-deve/serv00.env 与 /etc/sing-box-deve/serv00-run.sh" "Serv00 deployment bundle generated at /etc/sing-box-deve/serv00.env and /etc/sing-box-deve/serv00-run.sh")"
   return 0
 }

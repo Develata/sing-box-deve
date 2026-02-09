@@ -2,12 +2,12 @@
 
 provider_split3_show() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  [[ -f /etc/sing-box-deve/runtime.env ]] || die "$(msg "未找到运行时状态" "No runtime state found")"
   # shellcheck disable=SC1091
   source /etc/sing-box-deve/runtime.env
-  log_info "split3 direct=${domain_split_direct:-}"
-  log_info "split3 proxy=${domain_split_proxy:-}"
-  log_info "split3 block=${domain_split_block:-}"
+  log_info "$(msg "split3 直连=${domain_split_direct:-}" "split3 direct=${domain_split_direct:-}")"
+  log_info "$(msg "split3 代理=${domain_split_proxy:-}" "split3 proxy=${domain_split_proxy:-}")"
+  log_info "$(msg "split3 屏蔽=${domain_split_block:-}" "split3 block=${domain_split_block:-}")"
 }
 
 provider_split3_set() {

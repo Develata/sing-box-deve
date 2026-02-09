@@ -45,7 +45,7 @@ prompt_yes_no() {
   local answer
 
   if [[ "${AUTO_YES:-false}" == "true" ]]; then
-    log_info "Auto-accepted: ${prompt}"
+    log_info "$(msg "已自动确认: ${prompt}" "Auto-accepted: ${prompt}")"
     return 0
   fi
 
@@ -90,14 +90,14 @@ detect_os() {
     OS_VERSION_ID="${VERSION_ID:-unknown}"
     case "$OS_ID" in
       ubuntu|debian)
-        log_info "Detected supported OS: ${OS_ID} ${OS_VERSION_ID}"
+        log_info "$(msg "检测到受支持系统: ${OS_ID} ${OS_VERSION_ID}" "Detected supported OS: ${OS_ID} ${OS_VERSION_ID}")"
         ;;
       *)
-        log_warn "Detected non-primary OS: ${OS_ID} ${OS_VERSION_ID}"
+        log_warn "$(msg "检测到非主支持系统: ${OS_ID} ${OS_VERSION_ID}" "Detected non-primary OS: ${OS_ID} ${OS_VERSION_ID}")"
         ;;
     esac
   else
-    die "Unable to detect OS from /etc/os-release"
+    die "$(msg "无法从 /etc/os-release 检测系统信息" "Unable to detect OS from /etc/os-release")"
   fi
 }
 
@@ -110,13 +110,13 @@ get_arch() {
   case "$(uname -m)" in
     x86_64|amd64) echo "amd64" ;;
     aarch64|arm64) echo "arm64" ;;
-    *) die "Unsupported architecture: $(uname -m)" ;;
+    *) die "$(msg "不支持的架构: $(uname -m)" "Unsupported architecture: $(uname -m)")" ;;
   esac
 }
 
 install_apt_dependencies() {
   if [[ "$OS_ID" != "ubuntu" && "$OS_ID" != "debian" ]]; then
-    log_warn "Skipping apt dependency install on ${OS_ID}"
+    log_warn "$(msg "在 ${OS_ID} 上跳过 apt 依赖安装" "Skipping apt dependency install on ${OS_ID}")"
     return 0
   fi
 
@@ -127,11 +127,11 @@ install_apt_dependencies() {
     "-o" "Acquire::https::Timeout=15"
   )
   if command -v timeout >/dev/null 2>&1; then
-    timeout 90s apt-get "${apt_opts[@]}" update -y >/dev/null || die "apt-get update timed out/failed"
-    timeout 120s apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "apt-get install timed out/failed"
+    timeout 90s apt-get "${apt_opts[@]}" update -y >/dev/null || die "$(msg "apt-get update 超时或失败" "apt-get update timed out/failed")"
+    timeout 120s apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "$(msg "apt-get install 超时或失败" "apt-get install timed out/failed")"
   else
-    apt-get "${apt_opts[@]}" update -y >/dev/null || die "apt-get update failed"
-    apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "apt-get install failed"
+    apt-get "${apt_opts[@]}" update -y >/dev/null || die "$(msg "apt-get update 失败" "apt-get update failed")"
+    apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "$(msg "apt-get install 失败" "apt-get install failed")"
   fi
 }
 

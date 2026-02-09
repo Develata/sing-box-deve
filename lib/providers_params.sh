@@ -16,7 +16,35 @@ normalize_path() {
 }
 
 uri_encode() {
-  printf '%s' "$1" | jq -sRr @uri
+  local input="$1"
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$input" | jq -sRr @uri
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$input" <<'PY'
+import sys
+from urllib.parse import quote
+print(quote(sys.argv[1], safe=''))
+PY
+    return 0
+  fi
+
+  local out="" i ch code
+  LC_ALL=C
+  for (( i=0; i<${#input}; i++ )); do
+    ch="${input:i:1}"
+    case "$ch" in
+      [a-zA-Z0-9.~_-])
+        out+="$ch"
+        ;;
+      *)
+        code="$(printf '%s' "$ch" | od -An -tx1 | tr -d ' \n' | tr '[:lower:]' '[:upper:]')"
+        out+="%${code}"
+        ;;
+    esac
+  done
+  printf '%s\n' "$out"
 }
 
 sbd_reality_server_name() {

@@ -102,7 +102,7 @@ run_install() {
   fw_snapshot_create
 
   if [[ "$dry_run" == "true" ]]; then
-    log_info "Dry-run enabled; no system changes applied"
+    log_info "$(msg "已启用 Dry-run；不会执行系统修改" "Dry-run enabled; no system changes applied")"
     print_plan_summary "$provider" "$profile" "$engine" "$protocols_csv"
     return 0
   fi
@@ -110,18 +110,18 @@ run_install() {
   if [[ "${AUTO_YES:-false}" != "true" ]]; then
     print_plan_summary "$provider" "$profile" "$engine" "$protocols_csv"
     if ! prompt_yes_no "$(msg "确认执行该安装计划吗？" "Apply this plan?")" "Y"; then
-      log_warn "Installation aborted by user"
+      log_warn "$(msg "用户取消安装流程" "Installation aborted by user")"
       exit 0
     fi
   fi
 
   if ! provider_install "$provider" "$profile" "$engine" "$protocols_csv"; then
-    log_error "Install failed; rolling back firewall changes"
+    log_error "$(msg "安装失败，正在回滚防火墙变更" "Install failed; rolling back firewall changes")"
     fw_rollback
     exit 1
   fi
 
-  log_success "Installation flow completed"
+  log_success "$(msg "安装流程完成" "Installation flow completed")"
   print_post_install_info "$provider" "$profile" "$engine" "$protocols_csv"
 }
 
@@ -232,7 +232,7 @@ doctor() {
   ensure_root
   detect_os
   init_runtime_layout
-  log_info "Running diagnostics"
+  log_info "$(msg "开始执行诊断检查" "Running diagnostics")"
   doctor_system
   fw_detect_backend
   fw_status

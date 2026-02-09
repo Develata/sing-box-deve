@@ -17,11 +17,11 @@ uninstall_remove_legacy_engine_units() {
       exec_bin="${exec_cmd%% *}"
       if [[ "$exec_bin" == "/usr/local/bin/sing-box" || "$exec_bin" == "/usr/local/bin/xray" ]]; then
         rm -f "$exec_bin"
-        log_info "Removed legacy managed binary: ${exec_bin}"
+        log_info "$(msg "已移除旧托管二进制: ${exec_bin}" "Removed legacy managed binary: ${exec_bin}")"
       fi
       uninstall_disable_unit "$unit"
       rm -f "$file"
-      log_info "Removed legacy managed unit: ${unit}"
+      log_info "$(msg "已移除旧托管服务单元: ${unit}" "Removed legacy managed unit: ${unit}")"
     fi
   done
 }
@@ -34,12 +34,12 @@ uninstall_remove_managed_global_bins() {
     case "$p" in
       /usr/local/bin/sb)
         rm -f "$p"
-        log_info "Removed command entry: ${p}"
+        log_info "$(msg "已移除命令入口: ${p}" "Removed command entry: ${p}")"
         ;;
       /usr/local/bin/sing-box|/usr/local/bin/xray)
         if [[ "$real" == "${SBD_INSTALL_DIR}/"* ]]; then
           rm -f "$p"
-          log_info "Removed managed binary link: ${p}"
+          log_info "$(msg "已移除托管二进制链接: ${p}" "Removed managed binary link: ${p}")"
         fi
         ;;
     esac
@@ -49,7 +49,7 @@ uninstall_remove_managed_global_bins() {
 provider_uninstall() {
   local keep_settings="${1:-false}"
   ensure_root
-  log_warn "Uninstall requested; removing only managed firewall rules and sing-box-deve state"
+  log_warn "$(msg "开始卸载：仅移除脚本托管的防火墙规则与 sing-box-deve 状态" "Uninstall requested; removing only managed firewall rules and sing-box-deve state")"
   uninstall_disable_unit "sing-box-deve.service"
   uninstall_disable_unit "sing-box-deve-argo.service"
   uninstall_disable_unit "sing-box-deve-jump.service"
@@ -66,9 +66,9 @@ provider_uninstall() {
   if [[ "$keep_settings" == "true" ]]; then
     rm -f /etc/sing-box-deve/runtime.env /etc/sing-box-deve/config.yaml /etc/sing-box-deve/config.json /etc/sing-box-deve/xray-config.json
     rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
-    log_info "Kept persistent settings file: /etc/sing-box-deve/settings.conf"
+    log_info "$(msg "保留持久化设置文件: /etc/sing-box-deve/settings.conf" "Kept persistent settings file: /etc/sing-box-deve/settings.conf")"
   else
     rm -rf /etc/sing-box-deve "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
   fi
-  log_success "Uninstall complete"
+  log_success "$(msg "卸载完成" "Uninstall complete")"
 }

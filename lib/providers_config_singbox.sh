@@ -57,7 +57,7 @@ build_sing_box_config() {
     if warp_mode_targets_singbox "${WARP_MODE:-off}"; then
       has_warp="true"
     else
-      log_warn "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-sing-box path"
+      log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 sing-box 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-sing-box path")"
     fi
   fi
 

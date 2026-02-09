@@ -12,21 +12,21 @@ fw_detect_backend() {
   elif command -v iptables >/dev/null 2>&1; then
     FW_BACKEND="iptables"
   else
-    die "No supported firewall backend found"
+    die "$(msg "未找到受支持的防火墙后端" "No supported firewall backend found")"
   fi
-  log_info "Firewall backend: ${FW_BACKEND}"
+  log_info "$(msg "防火墙后端: ${FW_BACKEND}" "Firewall backend: ${FW_BACKEND}")"
 }
 
 fw_snapshot_create() {
   cp -f "$SBD_RULES_FILE" "$SBD_FW_SNAPSHOT_FILE"
-  log_info "Firewall snapshot created: $SBD_FW_SNAPSHOT_FILE"
+  log_info "$(msg "已创建防火墙快照: $SBD_FW_SNAPSHOT_FILE" "Firewall snapshot created: $SBD_FW_SNAPSHOT_FILE")"
 }
 
 fw_tag() {
   local service="$1"
   local proto="$2"
   local port="$3"
-  load_install_context || die "Install context missing for firewall tagging"
+  load_install_context || die "$(msg "防火墙标记缺少安装上下文" "Install context missing for firewall tagging")"
   echo "MYBOX:${install_id:-unknown}:${service}:${proto}:${port}"
 }
 
@@ -72,7 +72,7 @@ fw_apply_rule() {
   tag="$(fw_tag "$service" "$proto" "$port")"
 
   if fw_rule_exists_record "$tag"; then
-    log_info "Firewall rule already tracked: $tag"
+    log_info "$(msg "防火墙规则已存在记录: $tag" "Firewall rule already tracked: $tag")"
     return 0
   fi
 
@@ -95,17 +95,17 @@ fw_apply_rule() {
       iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || \
         iptables -A SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT
       ;;
-    *) die "Unsupported firewall backend: $FW_BACKEND" ;;
+    *) die "$(msg "不支持的防火墙后端: $FW_BACKEND" "Unsupported firewall backend: $FW_BACKEND")" ;;
   esac
 
   fw_record_rule "$FW_BACKEND" "$proto" "$port" "$tag"
   fw_enable_replay_service
-  log_success "Firewall rule applied: ${proto}/${port}"
+  log_success "$(msg "已应用防火墙规则: ${proto}/${port}" "Firewall rule applied: ${proto}/${port}")"
 }
 
 fw_replay() {
   [[ -s "$SBD_RULES_FILE" ]] || {
-    log_info "No managed firewall rules to replay"
+    log_info "$(msg "没有可重放的托管防火墙规则" "No managed firewall rules to replay")"
     return 0
   }
 
@@ -134,7 +134,7 @@ fw_replay() {
         ;;
     esac
   done < "$SBD_RULES_FILE"
-  log_success "Managed firewall rules replayed"
+  log_success "$(msg "托管防火墙规则重放完成" "Managed firewall rules replayed")"
 }
 
 fw_remove_rule_by_record() {
@@ -180,7 +180,7 @@ fw_remove_rule_by_record() {
       done
       ;;
     *)
-      log_warn "Skipping unknown backend during remove: $backend"
+      log_warn "$(msg "移除时跳过未知后端: $backend" "Skipping unknown backend during remove: $backend")"
       ;;
   esac
 }
@@ -201,10 +201,10 @@ fw_clear_managed_rules() {
 
 fw_rollback() {
   if [[ ! -f "$SBD_FW_SNAPSHOT_FILE" ]]; then
-    die "No firewall snapshot found"
+    die "$(msg "未找到防火墙快照" "No firewall snapshot found")"
   fi
 
-  log_warn "Rolling back managed firewall rules"
+  log_warn "$(msg "正在回滚托管防火墙规则" "Rolling back managed firewall rules")"
   fw_clear_managed_rules
 
   if [[ -s "$SBD_FW_SNAPSHOT_FILE" ]]; then
@@ -236,13 +236,13 @@ fw_rollback() {
     done < "$SBD_FW_SNAPSHOT_FILE"
   fi
 
-  log_success "Firewall rollback complete"
+  log_success "$(msg "防火墙回滚完成" "Firewall rollback complete")"
 }
 
 fw_status() {
-  log_info "Managed firewall rules file: $SBD_RULES_FILE"
+  log_info "$(msg "托管防火墙规则文件: $SBD_RULES_FILE" "Managed firewall rules file: $SBD_RULES_FILE")"
   if [[ ! -s "$SBD_RULES_FILE" ]]; then
-    log_info "No managed firewall rules"
+    log_info "$(msg "当前没有托管防火墙规则" "No managed firewall rules")"
     return 0
   fi
 

@@ -118,8 +118,8 @@ share_show_bundle() {
   local with_qr="${1:-false}"
   [[ -f "$SBD_SHARE_RAW_FILE" ]] || return 0
 
-  log_info "four-in-one raw: $SBD_SHARE_RAW_FILE"
-  log_info "four-in-one base64: $SBD_SHARE_BASE64_FILE"
+  log_info "$(msg "四合一原始链接文件: $SBD_SHARE_RAW_FILE" "four-in-one raw: $SBD_SHARE_RAW_FILE")"
+  log_info "$(msg "四合一 base64 文件: $SBD_SHARE_BASE64_FILE" "four-in-one base64: $SBD_SHARE_BASE64_FILE")"
   if [[ -f "$SBD_SHARE_BASE64_FILE" ]]; then
     local b64
     b64="$(cat "$SBD_SHARE_BASE64_FILE")"

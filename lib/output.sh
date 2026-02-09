@@ -55,7 +55,7 @@ print_post_install_info() {
 
 print_nodes_with_qr() {
   if [[ ! -f "$SBD_NODES_FILE" ]]; then
-    log_warn "Nodes file not found: $SBD_NODES_FILE"
+    log_warn "$(msg "节点文件不存在: $SBD_NODES_FILE" "Nodes file not found: $SBD_NODES_FILE")"
     return 0
   fi
 

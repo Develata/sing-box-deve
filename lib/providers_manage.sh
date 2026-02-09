@@ -51,18 +51,18 @@ provider_logs() {
   case "$target" in
     core)
       if [[ ! -f "$SBD_SERVICE_FILE" ]]; then
-        die "Core service is not installed"
+        die "$(msg "核心服务未安装" "Core service is not installed")"
       fi
       journalctl -u sing-box-deve.service -n 120 --no-pager
       ;;
     argo)
       if [[ ! -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-        die "Argo service is not installed"
+        die "$(msg "Argo 服务未安装" "Argo service is not installed")"
       fi
       journalctl -u sing-box-deve-argo.service -n 120 --no-pager
       ;;
     *)
-      die "Unsupported logs target: $target"
+      die "$(msg "不支持的日志目标: $target" "Unsupported logs target: $target")"
       ;;
   esac
 }
@@ -80,7 +80,7 @@ provider_regen_nodes() {
 
 provider_update() {
   if [[ ! -f /etc/sing-box-deve/runtime.env ]]; then
-    die "No installed runtime found"
+    die "$(msg "未检测到已安装运行时" "No installed runtime found")"
   fi
 
   # shellcheck disable=SC1091

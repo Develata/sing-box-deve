@@ -54,9 +54,8 @@ render_singbox_client_json() {
   ],
   "route": {
     "rule_set": [
-      {"tag":"geosite-geolocation-!cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-!cn.srs","download_detour":"direct","update_interval":"1d"},
-      {"tag":"geosite-cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-cn.srs","download_detour":"direct","update_interval":"1d"},
-      {"tag":"geoip-cn","type":"remote","format":"binary","url":"https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/cn.srs","download_detour":"direct","update_interval":"1d"}
+      {"tag":"geosite-cn","type":"local","format":"binary","path":"./sing-ruleset/geosite-cn.srs"},
+      {"tag":"geoip-cn","type":"local","format":"binary","path":"./sing-ruleset/geoip-cn.srs"}
     ],
     "rules": [
       {"rule_set":["geosite-cn","geoip-cn"],"outbound":"direct"},

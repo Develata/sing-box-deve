@@ -13,18 +13,13 @@ Usage:
   sing-box-deve.sh logs [--core|--argo]
   sing-box-deve.sh set-port --list
   sing-box-deve.sh set-port --protocol <name> --port <1-65535>
-  sing-box-deve.sh set-port-egress --list
-  sing-box-deve.sh set-port-egress --map <port:direct|proxy|warp,...>
-  sing-box-deve.sh set-port-egress --clear
+  sing-box-deve.sh set-port-egress --list|--clear|--map <port:direct|proxy|warp,...>
   sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS]
   sing-box-deve.sh set-route <direct|global-proxy|cn-direct|cn-proxy>
   sing-box-deve.sh set-share <direct|proxy|warp> <host:port[,host:port...]>
   sing-box-deve.sh split3 show
   sing-box-deve.sh split3 set <direct_csv> <proxy_csv> <block_csv>
-  sing-box-deve.sh jump show
-  sing-box-deve.sh jump set <protocol> <main_port> <extra_csv>
-  sing-box-deve.sh jump clear
-  sing-box-deve.sh jump replay
+  sing-box-deve.sh jump show|clear|replay|set <protocol> <main_port> <extra_csv>
   sing-box-deve.sh sub refresh|show|rules-update
   sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
   sing-box-deve.sh sub gitlab-push
@@ -44,8 +39,7 @@ Usage:
   sing-box-deve.sh cfg rebuild
   sing-box-deve.sh kernel show
   sing-box-deve.sh kernel set <sing-box|xray> [tag|latest]
-  sing-box-deve.sh warp status
-  sing-box-deve.sh warp register
+  sing-box-deve.sh warp status|register|unlock|socks5-start [port]|socks5-stop|socks5-status
   sing-box-deve.sh sys bbr-status
   sing-box-deve.sh sys bbr-enable
   sing-box-deve.sh sys acme-install
@@ -198,7 +192,11 @@ main() {
       case "${1:-status}" in
         status) provider_warp_status ;;
         register) provider_warp_register ;;
-        *) die "Usage: warp [status|register]" ;;
+        unlock) provider_warp_unlock_check ;;
+        socks5-start) provider_warp_socks5_start "${2:-}" ;;
+        socks5-stop) provider_warp_socks5_stop ;;
+        socks5-status) provider_warp_socks5_status ;;
+        *) die "Usage: warp [status|register|unlock|socks5-start [port]|socks5-stop|socks5-status]" ;;
       esac
       ;;
     sys)

@@ -30,7 +30,7 @@ provider_vps_install() {
   local engine="$2"
   local protocols_csv="$3"
 
-  log_info "Installing for provider=vps profile=${profile} engine=${engine}"
+  log_info "$(msg "开始安装: provider=vps profile=${profile} engine=${engine}" "Installing for provider=vps profile=${profile} engine=${engine}")"
   install_apt_dependencies
   validate_feature_modes
   assert_engine_protocol_compatibility "$engine" "$protocols_csv"
@@ -99,7 +99,7 @@ exec "$script_root/sing-box-deve.sh" "$@"
 EOF
   chmod +x /usr/local/bin/sb
 
-  log_success "VPS provider setup complete"
+  log_success "$(msg "VPS 场景部署完成" "VPS provider setup complete")"
 }
 
 persist_runtime_state() {

@@ -92,7 +92,7 @@ EOF
       agn="$(echo "$item" | jq -r '.agn // empty')"
       agk="$(echo "$item" | jq -r '.agk // empty')"
       idx=$((idx + 1))
-      log_info "Deploying SAP account #${idx}: app=${app}"
+      log_info "$(msg "正在部署 SAP 账号 #${idx}: app=${app}" "Deploying SAP account #${idx}: app=${app}")"
       if ! prompt_yes_no "$(msg "确认部署 SAP 应用 '${app}'（账号 #${idx}）吗？" "Confirm SAP deploy for app '${app}' (account #${idx})?")" "Y"; then
         log_warn "$(msg "用户已跳过 SAP 应用 ${app}" "Skipped SAP app ${app} by user choice")"
         skipped=$((skipped + 1))
@@ -105,7 +105,7 @@ EOF
           ok=true
           break
         fi
-        log_warn "SAP deploy retry ${attempt}/${retries} failed for app=${app}"
+        log_warn "$(msg "SAP 部署重试失败 ${attempt}/${retries}: app=${app}" "SAP deploy retry ${attempt}/${retries} failed for app=${app}")"
       done
       if [[ "$ok" == "true" ]]; then
         success=$((success + 1))
@@ -113,20 +113,20 @@ EOF
         failed=$((failed + 1))
       fi
     done < <(echo "$SAP_ACCOUNTS_JSON" | jq -c '.[]')
-    log_info "SAP batch summary: total=${idx} success=${success} failed=${failed} skipped=${skipped}"
-    (( failed == 0 )) || die "SAP batch finished with failures"
-    log_success "SAP deployment completed for ${success} account(s)"
+    log_info "$(msg "SAP 批量汇总: total=${idx} success=${success} failed=${failed} skipped=${skipped}" "SAP batch summary: total=${idx} success=${success} failed=${failed} skipped=${skipped}")"
+    (( failed == 0 )) || die "$(msg "SAP 批量部署存在失败项" "SAP batch finished with failures")"
+    log_success "$(msg "SAP 批量部署完成，成功 ${success} 个账号" "SAP deployment completed for ${success} account(s)")"
   elif [[ -n "${SAP_CF_API:-}" && -n "${SAP_CF_USERNAME:-}" && -n "${SAP_CF_PASSWORD:-}" && -n "${SAP_CF_ORG:-}" && -n "${SAP_CF_SPACE:-}" && -n "${SAP_APP_NAME:-}" ]]; then
     ensure_cf_cli
-    log_info "Deploying single SAP app: ${SAP_APP_NAME}"
+    log_info "$(msg "正在部署单个 SAP 应用: ${SAP_APP_NAME}" "Deploying single SAP app: ${SAP_APP_NAME}")"
     if ! prompt_yes_no "$(msg "确认部署 SAP 应用 '${SAP_APP_NAME}' 吗？" "Confirm SAP deploy for app '${SAP_APP_NAME}'?")" "Y"; then
       log_warn "$(msg "用户取消了 SAP 部署" "SAP deployment cancelled by user")"
       return 0
     fi
     deploy_single_sap "${SAP_CF_API}" "${SAP_CF_USERNAME}" "${SAP_CF_PASSWORD}" "${SAP_CF_ORG}" "${SAP_CF_SPACE}" "${SAP_APP_NAME}" "${SAP_APP_MEMORY:-512M}" "${sap_image}" "${SAP_UUID:-}" "${ARGO_DOMAIN:-}" "${ARGO_TOKEN:-}"
-    log_success "SAP deployment completed"
+    log_success "$(msg "SAP 部署完成" "SAP deployment completed")"
   else
-    log_warn "SAP credentials not fully set; generated templates only"
+    log_warn "$(msg "SAP 凭据未完整设置；仅生成模板文件" "SAP credentials not fully set; generated templates only")"
   fi
 
   cat > /etc/sing-box-deve/sap-github-workflow.yml <<'EOF'
@@ -155,6 +155,6 @@ jobs:
           cf login -a "$SAP_CF_API" -u "$SAP_CF_USERNAME" -p "$SAP_CF_PASSWORD" -o "$SAP_CF_ORG" -s "$SAP_CF_SPACE"
           cf push "$SAP_APP_NAME" --docker-image ${SAP_DOCKER_IMAGE:-ygkkk/argosbx} -m 512M --health-check-type port
 EOF
-  log_success "SAP deployment templates generated under /etc/sing-box-deve"
+  log_success "$(msg "SAP 部署模板已生成到 /etc/sing-box-deve" "SAP deployment templates generated under /etc/sing-box-deve")"
   return 0
 }
