@@ -73,9 +73,12 @@ provider_uninstall() {
     [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && cp "${SBD_DATA_DIR}/xray_private.key" /etc/sing-box-deve/backup/
     [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && cp "${SBD_DATA_DIR}/xray_public.key" /etc/sing-box-deve/backup/
     [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && cp "${SBD_DATA_DIR}/xray_short_id" /etc/sing-box-deve/backup/
-    # Set restrictive permissions on sensitive backup files (keys)
+    # Priority 2.4: Set restrictive permissions on sensitive backup files (explicit list, no glob)
     chmod 700 /etc/sing-box-deve/backup
-    chmod 600 /etc/sing-box-deve/backup/*_private.key /etc/sing-box-deve/backup/*_short_id /etc/sing-box-deve/backup/uuid 2>/dev/null || true
+    local sensitive_file
+    for sensitive_file in uuid reality_private.key reality_short_id xray_private.key xray_short_id; do
+      [[ -f "/etc/sing-box-deve/backup/${sensitive_file}" ]] && chmod 600 "/etc/sing-box-deve/backup/${sensitive_file}"
+    done
     rm -f /etc/sing-box-deve/runtime.env /etc/sing-box-deve/config.yaml /etc/sing-box-deve/config.json /etc/sing-box-deve/xray-config.json
     rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
     find /etc/sing-box-deve -maxdepth 1 -type f -delete 2>/dev/null || true
@@ -83,5 +86,38 @@ provider_uninstall() {
   else
     rm -rf /etc/sing-box-deve "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
   fi
+  
+  # Priority 3.4: Verify uninstall completed successfully
+  verify_uninstall
+  
   log_success "$(msg "卸载完成" "Uninstall complete")"
+}
+
+# Priority 3.4: Verify that uninstall removed critical files
+verify_uninstall() {
+  local remaining=()
+  
+  # Check for remaining service files
+  [[ -f "$SBD_SERVICE_FILE" ]] && remaining+=("$SBD_SERVICE_FILE")
+  [[ -f "$SBD_ARGO_SERVICE_FILE" ]] && remaining+=("$SBD_ARGO_SERVICE_FILE")
+  [[ -f /etc/systemd/system/sing-box-deve-jump.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-jump.service")
+  [[ -f /etc/systemd/system/sing-box-deve-fw-replay.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-fw-replay.service")
+  
+  # Check for remaining directories (only if not keeping settings)
+  [[ -d "$SBD_INSTALL_DIR" ]] && remaining+=("$SBD_INSTALL_DIR")
+  
+  # Check for remaining binaries
+  [[ -f /usr/local/bin/sb ]] && remaining+=("/usr/local/bin/sb")
+  
+  # Check if services are still active
+  if systemctl is-active sing-box-deve.service >/dev/null 2>&1; then
+    remaining+=("sing-box-deve.service (still active)")
+  fi
+  
+  if [[ ${#remaining[@]} -gt 0 ]]; then
+    log_warn "$(msg "以下项目未能完全移除:" "Following items were not fully removed:")"
+    printf '  - %s\n' "${remaining[@]}"
+  else
+    log_info "$(msg "卸载验证通过：所有托管文件已移除" "Uninstall verification passed: all managed files removed")"
+  fi
 }

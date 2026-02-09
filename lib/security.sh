@@ -2,6 +2,31 @@
 FW_BACKEND=""
 SBD_FW_REPLAY_SERVICE_FILE="/etc/systemd/system/sing-box-deve-fw-replay.service"
 
+# Priority 1.3: Validate port and protocol to prevent injection attacks
+fw_validate_port_proto() {
+  local port="$1" proto="$2"
+  # Validate port is numeric
+  if [[ ! "$port" =~ ^[0-9]+$ ]]; then
+    die "$(msg "无效端口: $port (必须是数字)" "Invalid port: $port (must be numeric)")"
+  fi
+  # Validate port range
+  if [[ "$port" -lt 1 || "$port" -gt 65535 ]]; then
+    die "$(msg "端口超出范围: $port (1-65535)" "Port out of range: $port (1-65535)")"
+  fi
+  # Validate protocol
+  if [[ "$proto" != "tcp" && "$proto" != "udp" ]]; then
+    die "$(msg "无效协议: $proto (必须是 tcp 或 udp)" "Invalid protocol: $proto (must be tcp or udp)")"
+  fi
+}
+
+# Validate tag to prevent command injection (alphanumeric, colon, dash, underscore only)
+fw_validate_tag() {
+  local tag="$1"
+  if [[ ! "$tag" =~ ^[a-zA-Z0-9:_-]+$ ]]; then
+    die "$(msg "无效标签格式: $tag" "Invalid tag format: $tag")"
+  fi
+}
+
 fw_detect_backend() {
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     FW_BACKEND="ufw"
@@ -35,9 +60,21 @@ fw_record_rule() {
   local proto="$2"
   local port="$3"
   local tag="$4"
-  local created_at
+  local created_at tmp_rules
+
+  # Priority 1.3: Validate before recording
+  fw_validate_port_proto "$port" "$proto"
+  fw_validate_tag "$tag"
+
   created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-  printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "$created_at" >> "$SBD_RULES_FILE"
+  
+  # Priority 3.3: Use atomic write pattern (write to temp, then rename)
+  tmp_rules="${SBD_RULES_FILE}.tmp.$$"
+  {
+    [[ -f "$SBD_RULES_FILE" ]] && cat "$SBD_RULES_FILE"
+    printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "$created_at"
+  } > "$tmp_rules"
+  mv "$tmp_rules" "$SBD_RULES_FILE"
 }
 
 fw_enable_replay_service() {
@@ -69,7 +106,12 @@ fw_apply_rule() {
   local port="$2"
   local service="core"
   local tag
+
+  # Priority 1.3: Validate inputs before any firewall operation
+  fw_validate_port_proto "$port" "$proto"
+
   tag="$(fw_tag "$service" "$proto" "$port")"
+  fw_validate_tag "$tag"
 
   if fw_rule_exists_record "$tag"; then
     log_info "$(msg "防火墙规则已存在记录: $tag" "Firewall rule already tracked: $tag")"
@@ -187,16 +229,34 @@ fw_remove_rule_by_record() {
 
 fw_clear_managed_rules() {
   if [[ ! -s "$SBD_RULES_FILE" ]]; then
+    # Still try to clean up nftables table if it exists
+    fw_cleanup_nftables_table
     return 0
   fi
 
-  local backend proto port tag _created
+  local backend proto port tag _created last_backend=""
   while IFS='|' read -r backend proto port tag _created; do
     [[ -z "$backend" ]] && continue
     fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag"
+    last_backend="$backend"
   done < "$SBD_RULES_FILE"
 
   : > "$SBD_RULES_FILE"
+
+  # Priority 2.3: Clean up nftables table after clearing all rules
+  if [[ "$last_backend" == "nftables" ]]; then
+    fw_cleanup_nftables_table
+  fi
+}
+
+# Priority 2.3: Clean up nftables table and chain
+fw_cleanup_nftables_table() {
+  if command -v nft >/dev/null 2>&1; then
+    # Delete chain first (must be empty or this will fail, which is fine)
+    nft delete chain inet sing_box_deve input 2>/dev/null || true
+    # Then delete the table
+    nft delete table inet sing_box_deve 2>/dev/null || true
+  fi
 }
 
 fw_rollback() {

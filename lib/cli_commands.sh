@@ -17,6 +17,14 @@ show_version() {
 update_command() {
   parse_update_args "$@"
 
+  # Handle rollback request
+  if [[ "${UPDATE_ROLLBACK:-false}" == "true" ]]; then
+    log_warn "$(msg "正在执行脚本回滚..." "Performing script rollback...")"
+    perform_script_rollback
+    log_success "$(msg "回滚完成，请重新执行命令验证" "Rollback completed, please rerun command to verify")"
+    return 0
+  fi
+
   if [[ "$UPDATE_SCRIPT" == "true" ]]; then
     local local_ver remote_ver
     local_ver="$(current_script_version)"
