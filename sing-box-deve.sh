@@ -9,13 +9,15 @@ bootstrap_remote_tree() {
   local repo_slug="${SBD_REPO_SLUG:-Develata/sing-box-deve}"
   local repo_ref="${SBD_REPO_REF:-main}"
   local archive_url="${SBD_ARCHIVE_URL:-https://codeload.github.com/${repo_slug}/tar.gz/refs/heads/${repo_ref}}"
-  local tmp_dir archive top_dir remote_root
+  local tmp_dir="" archive top_dir remote_root target_script
 
   tmp_dir="$(mktemp -d)"
   archive="${tmp_dir}/repo.tar.gz"
 
   cleanup_bootstrap() {
-    rm -rf "$tmp_dir"
+    if [[ -n "${tmp_dir:-}" && -d "${tmp_dir}" ]]; then
+      rm -rf "$tmp_dir"
+    fi
   }
   trap cleanup_bootstrap EXIT
 
@@ -33,8 +35,9 @@ bootstrap_remote_tree() {
     exit 1
   fi
 
-  chmod +x "${remote_root}/sing-box-deve.sh"
-  exec "${remote_root}/sing-box-deve.sh" "$@"
+  target_script="${remote_root}/sing-box-deve.sh"
+  chmod +x "$target_script"
+  exec "$target_script" "$@"
 }
 
 if [[ ! -f "${PROJECT_ROOT}/lib/common.sh" ]]; then
