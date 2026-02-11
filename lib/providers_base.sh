@@ -115,6 +115,22 @@ validate_feature_modes() {
     *) die "Invalid IP_PREFERENCE: ${IP_PREFERENCE}" ;;
   esac
 
+  case "${PSIPHON_ENABLE:-off}" in
+    on|off|true|false|yes|no|1|0|enabled|disabled) ;;
+    *) die "Invalid PSIPHON_ENABLE: ${PSIPHON_ENABLE}" ;;
+  esac
+
+  case "${PSIPHON_MODE:-off}" in
+    off|proxy|global) ;;
+    *) die "Invalid PSIPHON_MODE: ${PSIPHON_MODE}" ;;
+  esac
+
+  case "${PSIPHON_REGION:-auto}" in
+    auto) ;;
+    [a-z][a-z]|[A-Z][A-Z]) ;;
+    *) die "Invalid PSIPHON_REGION: ${PSIPHON_REGION} (expected auto or 2-letter code)" ;;
+  esac
+
   case "${TLS_MODE:-self-signed}" in
     self-signed|acme) ;;
     *) die "Invalid TLS_MODE: ${TLS_MODE}" ;;

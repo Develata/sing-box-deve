@@ -43,6 +43,13 @@ provider_restart() {
       log_warn "$(msg "未找到 Argo 服务文件" "Argo service file not found")"
     fi
   fi
+
+  if [[ "$target" == "all" ]]; then
+    if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
+      systemctl restart sing-box-deve-psiphon.service
+      log_success "$(msg "sing-box-deve psiphon 服务已重启" "sing-box-deve psiphon service restarted")"
+    fi
+  fi
 }
 
 provider_logs() {
@@ -104,6 +111,7 @@ provider_update() {
   if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
     systemctl restart sing-box-deve-argo.service
   fi
+  provider_psiphon_sync_service
   log_success "$(msg "内核已更新并重启服务" "Engine updated and service restarted")"
   provider_panel
 }

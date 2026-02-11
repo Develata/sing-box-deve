@@ -12,15 +12,15 @@ normalize_port_egress_map() {
   for item in "${_items[@]}"; do
     pair="${item//[[:space:]]/}"
     [[ -n "$pair" ]] || continue
-    [[ "$pair" == *:* ]] || die "Invalid PORT_EGRESS_MAP item: ${pair} (expected port:direct|proxy|warp)"
+    [[ "$pair" == *:* ]] || die "Invalid PORT_EGRESS_MAP item: ${pair} (expected port:direct|proxy|warp|psiphon)"
     port="${pair%%:*}"
     mode="${pair#*:}"
     mode="${mode,,}"
     [[ "$port" =~ ^[0-9]+$ ]] || die "Invalid PORT_EGRESS_MAP port: ${port}"
     (( port >= 1 && port <= 65535 )) || die "PORT_EGRESS_MAP port out of range: ${port}"
     case "$mode" in
-      direct|proxy|warp) ;;
-      *) die "Invalid PORT_EGRESS_MAP mode for ${port}: ${mode} (expected direct|proxy|warp)" ;;
+      direct|proxy|warp|psiphon) ;;
+      *) die "Invalid PORT_EGRESS_MAP mode for ${port}: ${mode} (expected direct|proxy|warp|psiphon)" ;;
     esac
     if [[ -z "${mode_by_port[$port]+x}" ]]; then
       order+=("$port")
@@ -38,6 +38,7 @@ port_egress_mode_to_outbound() {
     direct) echo "direct" ;;
     proxy) echo "proxy-out" ;;
     warp) echo "warp-out" ;;
+    psiphon) echo "psiphon-out" ;;
     *) return 1 ;;
   esac
 }

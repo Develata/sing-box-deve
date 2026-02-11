@@ -161,6 +161,7 @@ sudo sb doctor
 ./sing-box-deve.sh cfg snapshots prune [keep_count]
 ./sing-box-deve.sh cfg rotate-id
 ./sing-box-deve.sh cfg argo off|temp|fixed [token] [domain]
+./sing-box-deve.sh cfg psiphon off|on [off|proxy|global] [auto|cc]
 ./sing-box-deve.sh cfg ip-pref auto|v4|v6
 ./sing-box-deve.sh cfg cdn-host <domain>
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
@@ -176,6 +177,10 @@ sudo sb doctor
 ./sing-box-deve.sh warp socks5-start [port]
 ./sing-box-deve.sh warp socks5-status
 ./sing-box-deve.sh warp socks5-stop
+./sing-box-deve.sh psiphon status
+./sing-box-deve.sh psiphon start
+./sing-box-deve.sh psiphon stop
+./sing-box-deve.sh psiphon set-region <auto|cc>
 ./sing-box-deve.sh sys bbr-enable
 ./sing-box-deve.sh protocol matrix
 ./sing-box-deve.sh protocol matrix --enabled
@@ -292,7 +297,7 @@ sb set-route cn-proxy
 sb set-port-egress --list
 ```
 
-设置映射（格式：`端口:direct|proxy|warp`）：
+设置映射（格式：`端口:direct|proxy|warp|psiphon`）：
 
 ```bash
 sb set-port-egress --map 443:direct,8443:proxy,9443:warp
@@ -309,6 +314,7 @@ sb set-port-egress --clear
 - 仅允许映射到当前已存在的入站端口。
 - `proxy` 需要当前配置里存在 `proxy-out`。
 - `warp` 需要当前配置里存在 `warp-out`。
+- `psiphon` 需要当前配置里存在 `psiphon-out`（即已启用 Psiphon）。
 - 端口映射规则优先于常规路由/域名分流规则。
 
 ### 6) 配置中心闭环（推荐日常变更都走这里）
@@ -420,6 +426,7 @@ sb uninstall
 
 - 已实现 VPS 运行时安装：`sing-box` / `xray` 内核、配置生成、systemd 管理、节点输出
 - 已实现 Argo sidecar（临时/固定隧道）
+- 已实现 Psiphon sidecar（状态/启停/地区切换、路由联动）
 - 已实现 WARP 出站（global 模式）
 - 已实现 WARP 工具链：状态、解锁检测、WARP Socks5 本地代理（start/stop/status）
 - 已实现脚本版本显示与更新（脚本自身 + 核心）

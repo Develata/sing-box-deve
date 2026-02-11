@@ -105,6 +105,14 @@ build_xray_config() {
     primary_tag="proxy-out"
     available_outbounds+=",proxy-out"
   fi
+  if provider_psiphon_enabled; then
+    xray_outbounds+=$',\n'
+    xray_outbounds+="$(build_psiphon_outbound_xray)"
+    available_outbounds+=",psiphon-out"
+    if provider_psiphon_use_as_primary; then
+      primary_tag="psiphon-out"
+    fi
+  fi
   xray_routing="$(build_xray_routing_fragment "$primary_tag" "$inbound_map" "$available_outbounds")"
 
   inbounds="${inbounds//\\n/$'\n'}"

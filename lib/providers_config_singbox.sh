@@ -119,6 +119,14 @@ build_sing_box_config() {
     [[ "$upstream_mode" == "direct" ]] && final_tag="warp-out"
     available_outbounds+=",warp-out"
   fi
+  if provider_psiphon_enabled; then
+    outbounds+=$',\n'
+    outbounds+="$(build_psiphon_outbound_singbox)"
+    available_outbounds+=",psiphon-out"
+    if provider_psiphon_use_as_primary; then
+      final_tag="psiphon-out"
+    fi
+  fi
 
   inbounds="${inbounds//\\n/$'\n'}"
   outbounds="${outbounds//\\n/$'\n'}"

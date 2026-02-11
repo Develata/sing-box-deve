@@ -77,7 +77,7 @@ provider_set_port_egress_info() {
   log_info "$(msg "端口出站策略(当前): ${normalized:-<未设置>}" "Port egress map(current): ${normalized:-<empty>}")"
   log_info "$(msg "当前入站端口: ${ports_csv:-<无>}" "Current inbound ports: ${ports_csv:-<none>}")"
   log_info "$(msg "当前可用出站: ${outbounds_csv:-<无>}" "Current available outbounds: ${outbounds_csv:-<none>}")"
-  log_info "$(msg "用法: set-port-egress --map <port:direct|proxy|warp,...> | --clear" "Usage: set-port-egress --map <port:direct|proxy|warp,...> | --clear")"
+  log_info "$(msg "用法: set-port-egress --map <port:direct|proxy|warp|psiphon,...> | --clear" "Usage: set-port-egress --map <port:direct|proxy|warp|psiphon,...> | --clear")"
 }
 
 provider_set_port_egress_map() {

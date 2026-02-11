@@ -121,6 +121,7 @@ provider_vps_install() {
   validate_generated_config "$engine" "true"
   write_systemd_service "$engine"
   configure_argo_tunnel "$protocols_csv" "$engine"
+  provider_psiphon_sync_service
   write_nodes_output "$engine" "$protocols_csv"
 
   mkdir -p /etc/sing-box-deve
@@ -184,6 +185,9 @@ argo_mode=${ARGO_MODE:-off}
 argo_domain=${ARGO_DOMAIN:-}
 argo_token=${ARGO_TOKEN:-}
 argo_cdn_endpoints=${ARGO_CDN_ENDPOINTS:-}
+psiphon_enable=${PSIPHON_ENABLE:-off}
+psiphon_mode=${PSIPHON_MODE:-off}
+psiphon_region=${PSIPHON_REGION:-auto}
 warp_mode=${WARP_MODE:-off}
 route_mode=${ROUTE_MODE:-direct}
 ip_preference=${IP_PREFERENCE:-auto}

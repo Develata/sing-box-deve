@@ -9,6 +9,9 @@ create_install_context() {
   local argo_domain="${ARGO_DOMAIN:-}"
   local argo_token="${ARGO_TOKEN:-}"
   local argo_cdn_endpoints="${ARGO_CDN_ENDPOINTS:-}"
+  local psiphon_enable="${PSIPHON_ENABLE:-off}"
+  local psiphon_mode="${PSIPHON_MODE:-off}"
+  local psiphon_region="${PSIPHON_REGION:-auto}"
   local warp_mode="${WARP_MODE:-off}"
   local route_mode="${ROUTE_MODE:-direct}"
   local ip_preference="${IP_PREFERENCE:-auto}"
@@ -61,6 +64,9 @@ argo_mode=${argo_mode}
 argo_domain=${argo_domain}
 argo_token_set=$([[ -n "${argo_token}" ]] && echo true || echo false)
 argo_cdn_endpoints=${argo_cdn_endpoints}
+psiphon_enable=${psiphon_enable}
+psiphon_mode=${psiphon_mode}
+psiphon_region=${psiphon_region}
 warp_mode=${warp_mode}
 route_mode=${route_mode}
 ip_preference=${ip_preference}
@@ -129,6 +135,9 @@ features:
   argo_domain: ${argo_domain:-""}
   argo_token_set: ${argo_token_set:-false}
   argo_cdn_endpoints: ${argo_cdn_endpoints:-""}
+  psiphon_enable: ${psiphon_enable:-off}
+  psiphon_mode: ${psiphon_mode:-off}
+  psiphon_region: ${psiphon_region:-auto}
   warp_mode: ${warp_mode:-off}
   route_mode: ${route_mode:-direct}
   ip_preference: ${ip_preference:-auto}

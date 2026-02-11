@@ -49,6 +49,15 @@ EOF
   esac
 }
 
+build_psiphon_outbound_singbox() {
+  local host="127.0.0.1"
+  local port
+  port="$(provider_psiphon_default_socks_port)"
+  cat <<EOF
+    {"type": "socks", "tag": "psiphon-out", "server": "${host}", "server_port": ${port}}
+EOF
+}
+
 build_upstream_outbound_xray() {
   local mode="${OUTBOUND_PROXY_MODE:-direct}"
   [[ "$mode" != "direct" ]] || return 0
@@ -81,6 +90,15 @@ build_upstream_outbound_xray() {
 
   cat <<EOF
     {"protocol":"${protocol}","tag":"proxy-out","settings":{"servers":[{"address":"${host}","port":${port},"users":${users_json}}]}${stream_tls}}
+EOF
+}
+
+build_psiphon_outbound_xray() {
+  local host="127.0.0.1"
+  local port
+  port="$(provider_psiphon_default_socks_port)"
+  cat <<EOF
+    {"protocol":"socks","tag":"psiphon-out","settings":{"servers":[{"address":"${host}","port":${port},"users":[]}]}}
 EOF
 }
 

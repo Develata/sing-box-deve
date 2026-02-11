@@ -185,6 +185,7 @@ provider_doctor() {
   provider_doctor_check_nodes
   provider_doctor_check_tls_cert
   provider_doctor_check_acme_renew
+  provider_psiphon_doctor_check
   provider_doctor_check_cfg_snapshots
   provider_doctor_check_firewall_persistence
   provider_doctor_check_update_source

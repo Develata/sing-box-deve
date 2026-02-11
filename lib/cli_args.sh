@@ -18,6 +18,9 @@ parse_install_args() {
   ARGO_DOMAIN="${ARGO_DOMAIN:-}"
   ARGO_TOKEN="${ARGO_TOKEN:-}"
   ARGO_CDN_ENDPOINTS="${ARGO_CDN_ENDPOINTS:-}"
+  PSIPHON_ENABLE="${PSIPHON_ENABLE:-off}"
+  PSIPHON_MODE="${PSIPHON_MODE:-off}"
+  PSIPHON_REGION="${PSIPHON_REGION:-auto}"
   WARP_MODE="${WARP_MODE:-off}"
   ROUTE_MODE="${ROUTE_MODE:-direct}"
   IP_PREFERENCE="${IP_PREFERENCE:-auto}"
@@ -74,6 +77,9 @@ parse_install_args() {
       --argo-domain) ARGO_DOMAIN="$2"; shift 2 ;;
       --argo-token) ARGO_TOKEN="$2"; shift 2 ;;
       --cdn-endpoints) ARGO_CDN_ENDPOINTS="$2"; shift 2 ;;
+      --psiphon-enable) PSIPHON_ENABLE="$2"; shift 2 ;;
+      --psiphon-mode) PSIPHON_MODE="$2"; shift 2 ;;
+      --psiphon-region) PSIPHON_REGION="$2"; shift 2 ;;
       --warp-mode) WARP_MODE="$2"; shift 2 ;;
       --route-mode) ROUTE_MODE="$2"; shift 2 ;;
       --ip-preference) IP_PREFERENCE="$2"; shift 2 ;;
@@ -136,6 +142,11 @@ parse_install_args() {
   if [[ "$RANDOM_MAIN_PORT" == "true" && "$PORT_MODE" == "manual" ]]; then
     die "--random-main-port conflicts with --port-mode manual"
   fi
+  case "${PSIPHON_ENABLE,,}" in
+    1|true|yes|on|enabled)
+      [[ "${PSIPHON_MODE:-off}" == "off" ]] && PSIPHON_MODE="proxy"
+      ;;
+  esac
   return 0
 }
 

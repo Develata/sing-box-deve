@@ -16,6 +16,6 @@ parse_set_port_egress_args() {
     esac
   done
   if [[ "$SET_PORT_EGRESS_ACTION" == "map" && -z "$SET_PORT_EGRESS_MAP" ]]; then
-    die "Usage: set-port-egress --list | --clear | --map <port:direct|proxy|warp,...>"
+    die "Usage: set-port-egress --list | --clear | --map <port:direct|proxy|warp|psiphon,...>"
   fi
 }

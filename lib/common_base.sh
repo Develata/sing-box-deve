@@ -18,6 +18,7 @@ SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
 SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
 SBD_SERVICE_FILE="/etc/systemd/system/sing-box-deve.service"
 SBD_ARGO_SERVICE_FILE="/etc/systemd/system/sing-box-deve-argo.service"
+SBD_PSIPHON_SERVICE_FILE="/etc/systemd/system/sing-box-deve-psiphon.service"
 
 log_info() { printf '[INFO] %s\n' "$*"; }
 log_warn() { printf '[WARN] %s\n' "$*"; }

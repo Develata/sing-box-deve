@@ -149,7 +149,7 @@ menu_egress() {
             provider_set_port_egress_info
             ;;
           set)
-            read -r -p "$(msg "端口映射(port:direct|proxy|warp,...) " "map(port:direct|proxy|warp,...) "): " pm
+            read -r -p "$(msg "端口映射(port:direct|proxy|warp|psiphon,...) " "map(port:direct|proxy|warp|psiphon,...) "): " pm
             provider_set_port_egress_map "$pm"
             ;;
           clear)
