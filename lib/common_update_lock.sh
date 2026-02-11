@@ -22,7 +22,7 @@ acquire_update_lock() {
   local lock_file="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/update.lock"
   mkdir -p "$(dirname "$lock_file")" 2>/dev/null || true
   eval "exec ${UPDATE_LOCK_FD}>\"$lock_file\""
-  if ! flock -n -w 30 "$UPDATE_LOCK_FD" 2>/dev/null; then
+  if ! flock -w 30 "$UPDATE_LOCK_FD" 2>/dev/null; then
     die "$(msg "另一个更新进程正在运行 (锁文件: $lock_file)" "Another update is in progress (lock: $lock_file)")"
   fi
   log_info "$(msg "已获取更新锁" "Update lock acquired")"

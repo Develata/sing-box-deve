@@ -63,58 +63,64 @@ parse_install_args() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --provider) PROVIDER="$2"; shift 2 ;;
-      --profile) PROFILE="$2"; shift 2 ;;
-      --engine) ENGINE="$2"; shift 2 ;;
-      --protocols) PROTOCOLS="$2"; protocols_explicit="true"; shift 2 ;;
       --dry-run) DRY_RUN="true"; shift ;;
-      --port-mode) PORT_MODE="$2"; shift 2 ;;
-      --port-map) MANUAL_PORT_MAP="$2"; shift 2 ;;
-      --main-port) INSTALL_MAIN_PORT="$2"; shift 2 ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --argo) ARGO_MODE="$2"; shift 2 ;;
-      --argo-domain) ARGO_DOMAIN="$2"; shift 2 ;;
-      --argo-token) ARGO_TOKEN="$2"; shift 2 ;;
-      --cdn-endpoints) ARGO_CDN_ENDPOINTS="$2"; shift 2 ;;
-      --psiphon-enable) PSIPHON_ENABLE="$2"; shift 2 ;;
-      --psiphon-mode) PSIPHON_MODE="$2"; shift 2 ;;
-      --psiphon-region) PSIPHON_REGION="$2"; shift 2 ;;
-      --warp-mode) WARP_MODE="$2"; shift 2 ;;
-      --route-mode) ROUTE_MODE="$2"; shift 2 ;;
-      --ip-preference) IP_PREFERENCE="$2"; shift 2 ;;
-      --cdn-host) CDN_TEMPLATE_HOST="$2"; shift 2 ;;
-      --tls-mode) TLS_MODE="$2"; shift 2 ;;
-      --acme-cert-path) ACME_CERT_PATH="$2"; shift 2 ;;
-      --acme-key-path) ACME_KEY_PATH="$2"; shift 2 ;;
-      --reality-sni) REALITY_SERVER_NAME="$2"; shift 2 ;;
-      --reality-fp) REALITY_FINGERPRINT="$2"; shift 2 ;;
-      --reality-port) REALITY_HANDSHAKE_PORT="$2"; shift 2 ;;
-      --tls-sni) TLS_SERVER_NAME="$2"; shift 2 ;;
-      --vmess-ws-path) VMESS_WS_PATH="$2"; shift 2 ;;
-      --vless-ws-path) VLESS_WS_PATH="$2"; shift 2 ;;
-      --vless-xhttp-path) VLESS_XHTTP_PATH="$2"; shift 2 ;;
-      --vless-xhttp-mode) VLESS_XHTTP_MODE="$2"; shift 2 ;;
-      --xray-vless-enc) XRAY_VLESS_ENC="$2"; shift 2 ;;
-      --xray-xhttp-reality) XRAY_XHTTP_REALITY="$2"; shift 2 ;;
-      --cdn-host-vmess) CDN_HOST_VMESS="$2"; shift 2 ;;
-      --cdn-host-vless-ws) CDN_HOST_VLESS_WS="$2"; shift 2 ;;
-      --cdn-host-vless-xhttp) CDN_HOST_VLESS_XHTTP="$2"; shift 2 ;;
-      --proxyip-vmess) PROXYIP_VMESS="$2"; shift 2 ;;
-      --proxyip-vless-ws) PROXYIP_VLESS_WS="$2"; shift 2 ;;
-      --proxyip-vless-xhttp) PROXYIP_VLESS_XHTTP="$2"; shift 2 ;;
-      --domain-direct) DOMAIN_SPLIT_DIRECT="$2"; shift 2 ;;
-      --domain-proxy) DOMAIN_SPLIT_PROXY="$2"; shift 2 ;;
-      --domain-block) DOMAIN_SPLIT_BLOCK="$2"; shift 2 ;;
-      --port-egress-map) PORT_EGRESS_MAP="$2"; shift 2 ;;
-      --outbound-proxy-mode) OUTBOUND_PROXY_MODE="$2"; shift 2 ;;
-      --outbound-proxy-host) OUTBOUND_PROXY_HOST="$2"; shift 2 ;;
-      --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2"; shift 2 ;;
-      --outbound-proxy-user) OUTBOUND_PROXY_USER="$2"; shift 2 ;;
-      --outbound-proxy-pass) OUTBOUND_PROXY_PASS="$2"; shift 2 ;;
-      --direct-share-endpoints) DIRECT_SHARE_ENDPOINTS="$2"; shift 2 ;;
-      --proxy-share-endpoints) PROXY_SHARE_ENDPOINTS="$2"; shift 2 ;;
-      --warp-share-endpoints) WARP_SHARE_ENDPOINTS="$2"; shift 2 ;;
+      --provider|--profile|--engine|--protocols|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vmess-ws-path|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vmess|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vmess|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
+        require_option_value "$1" "$#"
+        case "$1" in
+          --provider) PROVIDER="$2" ;;
+          --profile) PROFILE="$2" ;;
+          --engine) ENGINE="$2" ;;
+          --protocols) PROTOCOLS="$2"; protocols_explicit="true" ;;
+          --port-mode) PORT_MODE="$2" ;;
+          --port-map) MANUAL_PORT_MAP="$2" ;;
+          --main-port) INSTALL_MAIN_PORT="$2" ;;
+          --argo) ARGO_MODE="$2" ;;
+          --argo-domain) ARGO_DOMAIN="$2" ;;
+          --argo-token) ARGO_TOKEN="$2" ;;
+          --cdn-endpoints) ARGO_CDN_ENDPOINTS="$2" ;;
+          --psiphon-enable) PSIPHON_ENABLE="$2" ;;
+          --psiphon-mode) PSIPHON_MODE="$2" ;;
+          --psiphon-region) PSIPHON_REGION="$2" ;;
+          --warp-mode) WARP_MODE="$2" ;;
+          --route-mode) ROUTE_MODE="$2" ;;
+          --ip-preference) IP_PREFERENCE="$2" ;;
+          --cdn-host) CDN_TEMPLATE_HOST="$2" ;;
+          --tls-mode) TLS_MODE="$2" ;;
+          --acme-cert-path) ACME_CERT_PATH="$2" ;;
+          --acme-key-path) ACME_KEY_PATH="$2" ;;
+          --reality-sni) REALITY_SERVER_NAME="$2" ;;
+          --reality-fp) REALITY_FINGERPRINT="$2" ;;
+          --reality-port) REALITY_HANDSHAKE_PORT="$2" ;;
+          --tls-sni) TLS_SERVER_NAME="$2" ;;
+          --vmess-ws-path) VMESS_WS_PATH="$2" ;;
+          --vless-ws-path) VLESS_WS_PATH="$2" ;;
+          --vless-xhttp-path) VLESS_XHTTP_PATH="$2" ;;
+          --vless-xhttp-mode) VLESS_XHTTP_MODE="$2" ;;
+          --xray-vless-enc) XRAY_VLESS_ENC="$2" ;;
+          --xray-xhttp-reality) XRAY_XHTTP_REALITY="$2" ;;
+          --cdn-host-vmess) CDN_HOST_VMESS="$2" ;;
+          --cdn-host-vless-ws) CDN_HOST_VLESS_WS="$2" ;;
+          --cdn-host-vless-xhttp) CDN_HOST_VLESS_XHTTP="$2" ;;
+          --proxyip-vmess) PROXYIP_VMESS="$2" ;;
+          --proxyip-vless-ws) PROXYIP_VLESS_WS="$2" ;;
+          --proxyip-vless-xhttp) PROXYIP_VLESS_XHTTP="$2" ;;
+          --domain-direct) DOMAIN_SPLIT_DIRECT="$2" ;;
+          --domain-proxy) DOMAIN_SPLIT_PROXY="$2" ;;
+          --domain-block) DOMAIN_SPLIT_BLOCK="$2" ;;
+          --port-egress-map) PORT_EGRESS_MAP="$2" ;;
+          --outbound-proxy-mode) OUTBOUND_PROXY_MODE="$2" ;;
+          --outbound-proxy-host) OUTBOUND_PROXY_HOST="$2" ;;
+          --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2" ;;
+          --outbound-proxy-user) OUTBOUND_PROXY_USER="$2" ;;
+          --outbound-proxy-pass) OUTBOUND_PROXY_PASS="$2" ;;
+          --direct-share-endpoints) DIRECT_SHARE_ENDPOINTS="$2" ;;
+          --proxy-share-endpoints) PROXY_SHARE_ENDPOINTS="$2" ;;
+          --warp-share-endpoints) WARP_SHARE_ENDPOINTS="$2" ;;
+        esac
+        shift 2
+        ;;
       *) die "Unknown install argument: $1" ;;
     esac
   done

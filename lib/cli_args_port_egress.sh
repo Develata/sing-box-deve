@@ -8,6 +8,7 @@ parse_set_port_egress_args() {
       --list) SET_PORT_EGRESS_ACTION="list"; shift ;;
       --clear) SET_PORT_EGRESS_ACTION="clear"; shift ;;
       --map)
+        require_option_value "$1" "$#"
         SET_PORT_EGRESS_ACTION="map"
         SET_PORT_EGRESS_MAP="$2"
         shift 2

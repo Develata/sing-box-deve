@@ -12,7 +12,11 @@ parse_update_args() {
       --core) UPDATE_CORE="true"; shift ;;
       --all) UPDATE_SCRIPT="true"; UPDATE_CORE="true"; shift ;;
       --rollback) UPDATE_ROLLBACK="true"; shift ;;
-      --source) UPDATE_SOURCE="$2"; shift 2 ;;
+      --source)
+        require_option_value "$1" "$#"
+        UPDATE_SOURCE="$2"
+        shift 2
+        ;;
       --yes|-y) AUTO_YES="true"; shift ;;
       *) die "Unknown update argument: $1" ;;
     esac

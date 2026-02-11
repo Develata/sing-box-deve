@@ -88,7 +88,9 @@ provider_uninstall() {
   fi
   
   # Priority 3.4: Verify uninstall completed successfully
-  verify_uninstall
+  if ! verify_uninstall; then
+    die "$(msg "卸载验证失败：仍有托管文件残留，请手动清理后重试" "Uninstall verification failed: managed files still remain, please clean up manually and retry")"
+  fi
   
   log_success "$(msg "卸载完成" "Uninstall complete")"
 }
@@ -120,7 +122,9 @@ verify_uninstall() {
   if [[ ${#remaining[@]} -gt 0 ]]; then
     log_warn "$(msg "以下项目未能完全移除:" "Following items were not fully removed:")"
     printf '  - %s\n' "${remaining[@]}"
+    return 1
   else
     log_info "$(msg "卸载验证通过：所有托管文件已移除" "Uninstall verification passed: all managed files removed")"
+    return 0
   fi
 }

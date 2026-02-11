@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
+require_option_value() {
+  local opt="$1"
+  local argc="$2"
+  (( argc >= 2 )) || die "Option ${opt} requires a value"
+}
+
 parse_set_route_args() {
   SET_ROUTE_MODE="${1:-}"
   [[ -n "$SET_ROUTE_MODE" ]] || die "Usage: set-route <direct|global-proxy|cn-direct|cn-proxy>"
@@ -84,8 +90,16 @@ parse_set_port_args() {
   SET_PORT_VALUE=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --protocol) SET_PORT_PROTOCOL="$2"; shift 2 ;;
-      --port) SET_PORT_VALUE="$2"; shift 2 ;;
+      --protocol)
+        require_option_value "$1" "$#"
+        SET_PORT_PROTOCOL="$2"
+        shift 2
+        ;;
+      --port)
+        require_option_value "$1" "$#"
+        SET_PORT_VALUE="$2"
+        shift 2
+        ;;
       *) die "Unknown set-port argument: $1" ;;
     esac
   done
@@ -100,11 +114,31 @@ parse_set_egress_args() {
   SET_EGRESS_PASS=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --mode) SET_EGRESS_MODE="$2"; shift 2 ;;
-      --host) SET_EGRESS_HOST="$2"; shift 2 ;;
-      --port) SET_EGRESS_PORT="$2"; shift 2 ;;
-      --user) SET_EGRESS_USER="$2"; shift 2 ;;
-      --pass) SET_EGRESS_PASS="$2"; shift 2 ;;
+      --mode)
+        require_option_value "$1" "$#"
+        SET_EGRESS_MODE="$2"
+        shift 2
+        ;;
+      --host)
+        require_option_value "$1" "$#"
+        SET_EGRESS_HOST="$2"
+        shift 2
+        ;;
+      --port)
+        require_option_value "$1" "$#"
+        SET_EGRESS_PORT="$2"
+        shift 2
+        ;;
+      --user)
+        require_option_value "$1" "$#"
+        SET_EGRESS_USER="$2"
+        shift 2
+        ;;
+      --pass)
+        require_option_value "$1" "$#"
+        SET_EGRESS_PASS="$2"
+        shift 2
+        ;;
       *) die "Unknown set-egress argument: $1" ;;
     esac
   done

@@ -3,6 +3,20 @@
 
 perform_git_update() {
   local branch old_commit new_commit
+  local stashed="false" stash_ref="" pre_stash_head="" post_stash_head=""
+
+  restore_stashed_changes() {
+    [[ "$stashed" == "true" ]] || return 0
+    log_info "$(msg "正在恢复更新前暂存的本地修改" "Restoring stashed local changes from before update")"
+    if git -C "$PROJECT_ROOT" stash pop --index >/dev/null 2>&1; then
+      log_success "$(msg "本地修改已恢复" "Local changes restored")"
+      stashed="false"
+      stash_ref=""
+    else
+      log_warn "$(msg "自动恢复本地修改失败，请手动处理 stash: ${stash_ref:-stash@{0}}" "Failed to auto-restore local changes. Please resolve stash manually: ${stash_ref:-stash@{0}}")"
+    fi
+  }
+
   branch="$(get_git_branch)"
   old_commit="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
 
@@ -10,22 +24,30 @@ perform_git_update() {
   log_info "$(msg "当前分支" "Current branch"): ${branch}"
   log_info "$(msg "当前提交" "Current commit"): ${old_commit}"
 
-  if ! git -C "$PROJECT_ROOT" diff --quiet 2>/dev/null; then
+  if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
     log_warn "$(msg "检测到本地修改，将尝试 stash 保存" "Local modifications detected, will stash changes")"
-    if ! git -C "$PROJECT_ROOT" stash push -m "sing-box-deve auto-stash before update" 2>/dev/null; then
+    pre_stash_head="$(git -C "$PROJECT_ROOT" stash list -n1 --format='%H' 2>/dev/null || true)"
+    if ! git -C "$PROJECT_ROOT" stash push -u -m "sing-box-deve auto-stash before update" >/dev/null 2>&1; then
       die "$(msg "无法 stash 本地修改，请手动处理后重试" "Failed to stash local changes, please handle manually")"
     fi
-    log_info "$(msg "本地修改已暂存" "Local changes stashed")"
+    post_stash_head="$(git -C "$PROJECT_ROOT" stash list -n1 --format='%H' 2>/dev/null || true)"
+    if [[ -n "$post_stash_head" && "$post_stash_head" != "$pre_stash_head" ]]; then
+      stashed="true"
+      stash_ref="$(git -C "$PROJECT_ROOT" stash list -n1 --format='%gd' 2>/dev/null || echo "stash@{0}")"
+      log_info "$(msg "本地修改已暂存: ${stash_ref}" "Local changes stashed: ${stash_ref}")"
+    fi
   fi
 
   log_info "$(msg "正在从远程拉取更新..." "Fetching updates from remote...")"
   if ! git -C "$PROJECT_ROOT" fetch origin "$branch" 2>&1; then
+    restore_stashed_changes
     die "$(msg "git fetch 失败" "git fetch failed")"
   fi
 
   if ! git -C "$PROJECT_ROOT" pull --ff-only origin "$branch" 2>&1; then
     log_warn "$(msg "快进合并失败，尝试 rebase" "Fast-forward failed, trying rebase")"
     if ! git -C "$PROJECT_ROOT" pull --rebase origin "$branch" 2>&1; then
+      restore_stashed_changes
       die "$(msg "git pull 失败，请手动解决冲突" "git pull failed, please resolve conflicts manually")"
     fi
   fi
@@ -45,6 +67,7 @@ perform_git_update() {
     chmod +x "${PROJECT_ROOT}/${rel}" 2>/dev/null || true
   done
 
+  restore_stashed_changes
   return 0
 }
 

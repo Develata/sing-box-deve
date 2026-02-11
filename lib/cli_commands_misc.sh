@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+normalize_version_for_compare() {
+  printf '%s' "${1#v}"
+}
+
+version_lt() {
+  local left right
+  left="$(normalize_version_for_compare "${1:-}")"
+  right="$(normalize_version_for_compare "${2:-}")"
+  [[ -n "$left" && -n "$right" ]] || return 1
+  [[ "$left" == "$right" ]] && return 1
+  [[ "$(printf '%s\n%s\n' "$left" "$right" | sort -V | head -n1)" == "$left" ]]
+}
+
 show_version() {
   local local_ver remote_ver
   local_ver="$(current_script_version)"
@@ -30,13 +43,19 @@ update_command() {
     remote_ver="$(fetch_remote_script_version "${UPDATE_SOURCE:-auto}" 2>/dev/null || true)"
 
     if [[ -z "$remote_ver" ]]; then
-      log_warn "$(msg "无法获取远程版本，跳过脚本更新" "Unable to fetch remote version, skipping script update")"
+      log_warn "$(msg "无法获取远程版本，将直接尝试更新" "Unable to fetch remote version, will attempt update directly")"
+      if prompt_yes_no "$(msg "继续更新脚本本体与模块文件吗？" "Continue updating script and module files?")" "Y"; then
+        perform_script_self_update
+        log_success "$(msg "脚本更新完成，请重新执行命令" "Script update completed, please rerun command")"
+      else
+        log_warn "$(msg "已跳过脚本更新" "Skipped script update")"
+      fi
     elif [[ "$remote_ver" == "$local_ver" ]]; then
       log_info "$(msg "脚本已是最新版本" "Script is already up to date") (${local_ver})"
     else
       log_info "$(msg "本地版本" "Local version"): ${local_ver}"
       log_info "$(msg "远程版本" "Remote version"): ${remote_ver}"
-      if [[ "$remote_ver" < "$local_ver" ]]; then
+      if version_lt "$remote_ver" "$local_ver"; then
         log_warn "$(msg "远程版本低于本地版本，可能是切换了分支或更新源" "Remote version is older than local, possibly due to branch/source change")"
       fi
       if prompt_yes_no "$(msg "更新脚本本体与模块文件吗？" "Update script and module files?")" "Y"; then

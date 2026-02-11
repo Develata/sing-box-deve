@@ -86,6 +86,7 @@ provider_regen_nodes() {
 }
 
 provider_update() {
+  ensure_root
   if [[ ! -f /etc/sing-box-deve/runtime.env ]]; then
     die "$(msg "未检测到已安装运行时" "No installed runtime found")"
   fi
