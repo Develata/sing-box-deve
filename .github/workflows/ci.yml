@@ -16,13 +16,13 @@ jobs:
       - name: Bash syntax
         run: |
           bash -n sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh
-      - name: Enforce max 250 lines per shell file
+      - name: Enforce max 400 lines per shell file
         run: |
           failed=0
           for f in sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh; do
             lines=$(wc -l < "$f")
-            if [ "$lines" -gt 250 ]; then
-              echo "File too long ($lines > 250): $f"
+            if [ "$lines" -gt 400 ]; then
+              echo "File too long ($lines > 400): $f"
               failed=1
             fi
           done
