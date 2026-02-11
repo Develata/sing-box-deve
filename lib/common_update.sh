@@ -283,7 +283,7 @@ perform_download_update() {
 
   # shellcheck disable=SC2317 # Called indirectly via trap.
   _update_cleanup() {
-    [[ "$_update_cleanup_done" == "true" ]] && return 0
+    [[ "${_update_cleanup_done:-false}" == "true" ]] && return 0
     _update_cleanup_done="true"
     if [[ -n "${tmp_dir:-}" && -d "${tmp_dir}" ]]; then
       rm -rf "$tmp_dir"
