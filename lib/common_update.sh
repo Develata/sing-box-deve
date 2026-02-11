@@ -281,6 +281,7 @@ perform_download_update() {
   local tmp_dir=""
   local _update_cleanup_done="false"
 
+  # shellcheck disable=SC2317 # Called indirectly via trap.
   _update_cleanup() {
     [[ "$_update_cleanup_done" == "true" ]] && return 0
     _update_cleanup_done="true"

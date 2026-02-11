@@ -73,7 +73,7 @@ menu_config_center() {
     echo "6) $(msg "查看三通道分流规则（split3 show）" "Show split3 rules (split3 show)")"
     echo "7) $(msg "设置三通道分流规则（split3 set）" "Set split3 rules (split3 set)")"
     echo "8) $(msg "多端口跳跃复用管理（jump set/clear/replay）" "Jump-port management (jump set/clear/replay)")"
-    echo "$(msg "提示：协议增删请使用主菜单 3) 协议管理" "Tip: Use main menu 3) Protocol Management for protocol add/remove")"
+    printf '%s\n' "$(msg "提示：协议增删请使用主菜单 3) 协议管理" "Tip: Use main menu 3) Protocol Management for protocol add/remove")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in

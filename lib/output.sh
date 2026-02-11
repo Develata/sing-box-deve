@@ -60,13 +60,13 @@ print_nodes_with_qr() {
   fi
 
   echo
-  echo "$(msg "节点链接" "Node Links")"
+  printf '%s\n' "$(msg "节点链接" "Node Links")"
   echo "----------"
   cat "$SBD_NODES_FILE"
 
   if [[ -f "$SBD_SUB_FILE" ]]; then
     echo
-    echo "$(msg "聚合订阅（Base64）" "Aggregate Subscription (Base64)")"
+    printf '%s\n' "$(msg "聚合订阅（Base64）" "Aggregate Subscription (Base64)")"
     echo "-------------------------------"
     cat "$SBD_SUB_FILE"
   fi
@@ -77,7 +77,7 @@ print_nodes_with_qr() {
   fi
 
   echo
-  echo "$(msg "二维码" "QR Codes")"
+  printf '%s\n' "$(msg "二维码" "QR Codes")"
   echo "--------"
   local line
   while IFS= read -r line; do
