@@ -23,6 +23,42 @@ menu_view() {
   done
 }
 
+menu_protocol() {
+  while true; do
+    menu_status_header
+    menu_title "$(msg "[协议管理]" "[Protocol Management]")"
+    echo "1) $(msg "查看协议能力矩阵（protocol matrix）" "Protocol capability matrix (protocol matrix)")"
+    echo "2) $(msg "查看已启用协议能力（protocol matrix --enabled）" "Enabled protocol capability matrix (protocol matrix --enabled)")"
+    echo "3) $(msg "新增协议（cfg protocol-add）" "Add protocol (cfg protocol-add)")"
+    echo "4) $(msg "移除协议（cfg protocol-remove）" "Remove protocol (cfg protocol-remove)")"
+    echo "0) $(msg "返回上级" "Back")"
+    read -r -p "$(msg "请选择" "Select"): " c
+    case "${c:-0}" in
+      1) provider_protocol_matrix_show all; menu_pause ;;
+      2) provider_protocol_matrix_show enabled; menu_pause ;;
+      3)
+        read -r -p "$(msg "新增协议列表(csv)" "protocols to add(csv)"): " ap
+        read -r -p "$(msg "端口模式[random/manual] (默认 random)" "port mode[random/manual] (default random)"): " am
+        am="${am:-random}"
+        if [[ "$am" == "manual" ]]; then
+          read -r -p "$(msg "手动端口映射(proto:port,proto:port...)" "manual port map(proto:port,proto:port...)"): " amap
+          provider_cfg_command protocol-add "$ap" "$am" "$amap"
+        else
+          provider_cfg_command protocol-add "$ap" "$am"
+        fi
+        menu_pause
+        ;;
+      4)
+        read -r -p "$(msg "移除协议列表(csv)" "protocols to remove(csv)"): " rp
+        provider_cfg_command protocol-remove "$rp"
+        menu_pause
+        ;;
+      0) return 0 ;;
+      *) menu_invalid; menu_pause ;;
+    esac
+  done
+}
+
 menu_port() {
   while true; do
     menu_status_header
