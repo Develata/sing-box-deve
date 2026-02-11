@@ -46,15 +46,8 @@ build_xray_config() {
 
   local inbounds=""
   local inbound_map=""
-  inbounds+=$'    {\n'
-  inbounds+=$'      "tag": "vless-reality",\n'
-  inbounds+=$'      "listen": "::",\n'
-  inbounds+="      \"port\": ${port_vless_reality},\n"
-  inbounds+=$'      "protocol": "vless",\n'
-  inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "none"},\n'
-  inbounds+=$'      "streamSettings": {"network": "tcp", "security": "reality", "realitySettings": {"show": false, "dest": "'"${reality_server_name}:${reality_port}"'", "xver": 0, "serverNames": ["'"${reality_server_name}"'"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}}\n'
-  inbounds+=$'    }'
-  inbound_map="vless-reality:${port_vless_reality}"
+  sbd_inbounds_append inbounds inbound_map "vless-reality" "$port_vless_reality" \
+    "$(xray_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
 
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
@@ -68,71 +61,30 @@ build_xray_config() {
   fi
 
   if protocol_enabled "vmess-ws" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "vmess-ws",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"port\": ${port_vmess_ws},\n"
-    inbounds+=$'      "protocol": "vmess",\n'
-    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}]},\n'
-    inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "'"${ws_path_vmess}"'"}}\n'
-    inbounds+=$'    }'
-    inbound_map+=",vmess-ws:${port_vmess_ws}"
+    sbd_inbounds_append inbounds inbound_map "vmess-ws" "$port_vmess_ws" \
+      "$(xray_fragment_vmess_ws "$uuid" "$port_vmess_ws" "$ws_path_vmess")"
   fi
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "vless-ws",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"port\": ${port_vless_ws},\n"
-    inbounds+=$'      "protocol": "vless",\n'
-    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'"}], "decryption": "'"${vless_decryption}"'"},\n'
-    inbounds+=$'      "streamSettings": {"network": "ws", "wsSettings": {"path": "'"${ws_path_vless}"'"}}\n'
-    inbounds+=$'    }'
-    inbound_map+=",vless-ws:${port_vless_ws}"
+    sbd_inbounds_append inbounds inbound_map "vless-ws" "$port_vless_ws" \
+      "$(xray_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless" "$vless_decryption")"
   fi
 
   if protocol_enabled "vless-xhttp" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "vless-xhttp",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"port\": ${port_vless_xhttp},\n"
-    inbounds+=$'      "protocol": "vless",\n'
-    inbounds+=$'      "settings": {"clients": [{"id": "'"${uuid}"'", "flow": "xtls-rprx-vision"}], "decryption": "'"${vless_decryption}"'"},\n'
-    if sbd_xhttp_use_reality; then
-      inbounds+=$'      "streamSettings": {"network": "xhttp", "security": "reality", "realitySettings": {"show": false, "dest": "'"${reality_server_name}:${reality_port}"'", "xver": 0, "serverNames": ["'"${reality_server_name}"'"], "privateKey": "'"${private_key}"'", "shortIds": ["'"${short_id}"'"]}, "xhttpSettings": {"path": "'"${xhttp_path}"'", "mode": "'"${xhttp_mode}"'"}}\n'
-    else
-      inbounds+=$'      "streamSettings": {"network": "xhttp", "xhttpSettings": {"path": "'"${xhttp_path}"'", "mode": "'"${xhttp_mode}"'"}}\n'
-    fi
-    inbounds+=$'    }'
-    inbound_map+=",vless-xhttp:${port_vless_xhttp}"
+    local xhttp_reality="false"
+    sbd_xhttp_use_reality && xhttp_reality="true"
+    sbd_inbounds_append inbounds inbound_map "vless-xhttp" "$port_vless_xhttp" \
+      "$(xray_fragment_vless_xhttp "$uuid" "$port_vless_xhttp" "$vless_decryption" "$xhttp_path" "$xhttp_mode" "$xhttp_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
   fi
 
   if protocol_enabled "trojan" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "trojan",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"port\": ${port_trojan},\n"
-    inbounds+=$'      "protocol": "trojan",\n'
-    inbounds+=$'      "settings": {"clients": [{"password": "'"${uuid}"'"}]},\n'
-    inbounds+=$'      "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": "'"${cert_file}"'", "keyFile": "'"${key_file}"'"}]}}\n'
-    inbounds+=$'    }'
-    inbound_map+=",trojan:${port_trojan}"
+    sbd_inbounds_append inbounds inbound_map "trojan" "$port_trojan" \
+      "$(xray_fragment_trojan "$uuid" "$port_trojan" "$cert_file" "$key_file")"
   fi
 
   if protocol_enabled "socks5" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "tag": "socks5",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"port\": ${port_socks5},\n"
-    inbounds+=$'      "protocol": "socks",\n'
-    inbounds+=$'      "settings": {"auth": "password", "accounts": [{"user": "'"${uuid}"'", "pass": "'"${uuid}"'"}], "udp": true}\n'
-    inbounds+=$'    }'
-    inbound_map+=",socks5:${port_socks5}"
+    sbd_inbounds_append inbounds inbound_map "socks5" "$port_socks5" \
+      "$(xray_fragment_socks5 "$uuid" "$port_socks5")"
   fi
 
   local xray_outbounds xray_routing primary_tag available_outbounds

@@ -32,23 +32,8 @@ build_sing_box_config() {
   port_wireguard="$(resolve_protocol_port_for_engine "sing-box" "wireguard")"
   local inbounds=""
   local inbound_map=""
-  inbounds+=$'    {\n'
-  inbounds+=$'      "type": "vless",\n'
-  inbounds+=$'      "tag": "vless-reality",\n'
-  inbounds+=$'      "listen": "::",\n'
-  inbounds+="      \"listen_port\": ${port_vless_reality},\n"
-  inbounds+=$'      "users": [{"uuid": "'"${uuid}"'", "flow": "xtls-rprx-vision"}],\n'
-  inbounds+=$'      "tls": {\n'
-  inbounds+=$'        "enabled": true,\n'
-  inbounds+=$'        "server_name": "'"${reality_server_name}"'",\n'
-  inbounds+=$'        "reality": {\n'
-  inbounds+=$'          "enabled": true,\n'
-  inbounds+=$'          "handshake": {"server": "'"${reality_server_name}"'", "server_port": '"${reality_port}"'},\n'
-  inbounds+=$'          "private_key": "'"${private_key}"'",\n'
-  inbounds+=$'          "short_id": ["'"${short_id}"'"]\n'
-  inbounds+=$'        }\n'
-  inbounds+=$'      }\n'
-  inbounds+=$'    }'; inbound_map="vless-reality:${port_vless_reality}"
+  sbd_inbounds_append inbounds inbound_map "vless-reality" "$port_vless_reality" \
+    "$(singbox_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
 
@@ -62,130 +47,43 @@ build_sing_box_config() {
   fi
 
   if protocol_enabled "vmess-ws" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "vmess",\n'
-    inbounds+=$'      "tag": "vmess-ws",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_vmess_ws},\n"
-    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "transport": {"type": "ws", "path": "'"${ws_path_vmess}"'"}\n'
-    inbounds+=$'    }'; inbound_map+=",vmess-ws:${port_vmess_ws}"
+    sbd_inbounds_append inbounds inbound_map "vmess-ws" "$port_vmess_ws" \
+      "$(singbox_fragment_vmess_ws "$uuid" "$port_vmess_ws" "$ws_path_vmess")"
   fi
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "vless",\n'
-    inbounds+=$'      "tag": "vless-ws",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_vless_ws},\n"
-    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "transport": {"type": "ws", "path": "'"${ws_path_vless}"'"}\n'
-    inbounds+=$'    }'; inbound_map+=",vless-ws:${port_vless_ws}"
+    sbd_inbounds_append inbounds inbound_map "vless-ws" "$port_vless_ws" \
+      "$(singbox_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless")"
   fi
 
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "shadowsocks",\n'
-    inbounds+=$'      "tag": "ss-2022",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_ss2022},\n"
-    inbounds+=$'      "method": "2022-blake3-aes-128-gcm",\n'
-    inbounds+=$'      "password": "'"${uuid}"'"\n'
-    inbounds+=$'    }'; inbound_map+=",ss-2022:${port_ss2022}"
+    sbd_inbounds_append inbounds inbound_map "ss-2022" "$port_ss2022" \
+      "$(singbox_fragment_ss2022 "$uuid" "$port_ss2022")"
   fi
 
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "hysteria2",\n'
-    inbounds+=$'      "tag": "hy2",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_hysteria2},\n"
-    inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "tls": {\n'
-    inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "'"${tls_server_name}"'",\n'
-    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
-    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
-    inbounds+=$'      }\n'
-    inbounds+=$'    }'; inbound_map+=",hy2:${port_hysteria2}"
+    sbd_inbounds_append inbounds inbound_map "hy2" "$port_hysteria2" \
+      "$(singbox_fragment_hysteria2 "$uuid" "$port_hysteria2" "$tls_server_name" "$cert_file" "$key_file")"
   fi
 
   if protocol_enabled "tuic" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "tuic",\n'
-    inbounds+=$'      "tag": "tuic",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_tuic},\n"
-    inbounds+=$'      "users": [{"uuid": "'"${uuid}"'", "password": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "congestion_control": "bbr",\n'
-    inbounds+=$'      "tls": {\n'
-    inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "'"${tls_server_name}"'",\n'
-    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
-    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
-    inbounds+=$'      }\n'
-    inbounds+=$'    }'; inbound_map+=",tuic:${port_tuic}"
+    sbd_inbounds_append inbounds inbound_map "tuic" "$port_tuic" \
+      "$(singbox_fragment_tuic "$uuid" "$port_tuic" "$tls_server_name" "$cert_file" "$key_file")"
   fi
 
   if protocol_enabled "trojan" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "trojan",\n'
-    inbounds+=$'      "tag": "trojan",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_trojan},\n"
-    inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "tls": {\n'
-    inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "'"${tls_server_name}"'",\n'
-    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
-    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
-    inbounds+=$'      }\n'
-    inbounds+=$'    }'; inbound_map+=",trojan:${port_trojan}"
+    sbd_inbounds_append inbounds inbound_map "trojan" "$port_trojan" \
+      "$(singbox_fragment_trojan "$uuid" "$port_trojan" "$tls_server_name" "$cert_file" "$key_file")"
   fi
 
   if protocol_enabled "anytls" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "anytls",\n'
-    inbounds+=$'      "tag": "anytls",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_anytls},\n"
-    inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "padding_scheme": [],\n'
-    inbounds+=$'      "tls": {\n'
-    inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "certificate_path": "'"${cert_file}"'",\n'
-    inbounds+=$'        "key_path": "'"${key_file}"'"\n'
-    inbounds+=$'      }\n'
-    inbounds+=$'    }'; inbound_map+=",anytls:${port_anytls}"
+    sbd_inbounds_append inbounds inbound_map "anytls" "$port_anytls" \
+      "$(singbox_fragment_anytls "$uuid" "$port_anytls" "$cert_file" "$key_file")"
   fi
 
   if protocol_enabled "any-reality" "${protocols[@]}"; then
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "anytls",\n'
-    inbounds+=$'      "tag": "any-reality",\n'
-    inbounds+=$'      "listen": "::",\n'
-    inbounds+="      \"listen_port\": ${port_anyreality},\n"
-    inbounds+=$'      "users": [{"password": "'"${uuid}"'"}],\n'
-    inbounds+=$'      "padding_scheme": [],\n'
-    inbounds+=$'      "tls": {\n'
-    inbounds+=$'        "enabled": true,\n'
-    inbounds+=$'        "server_name": "'"${reality_server_name}"'",\n'
-    inbounds+=$'        "reality": {\n'
-    inbounds+=$'          "enabled": true,\n'
-    inbounds+=$'          "handshake": {"server": "'"${reality_server_name}"'", "server_port": '"${reality_port}"'},\n'
-    inbounds+=$'          "private_key": "'"${private_key}"'",\n'
-    inbounds+=$'          "short_id": ["'"${short_id}"'"]\n'
-    inbounds+=$'        }\n'
-    inbounds+=$'      }\n'
-    inbounds+=$'    }'; inbound_map+=",any-reality:${port_anyreality}"
+    sbd_inbounds_append inbounds inbound_map "any-reality" "$port_anyreality" \
+      "$(singbox_fragment_any_reality "$uuid" "$port_anyreality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
   fi
 
   if protocol_enabled "wireguard" "${protocols[@]}"; then
@@ -199,15 +97,8 @@ build_sing_box_config() {
       chmod 600 "${SBD_DATA_DIR}/wg_private.key" "${SBD_DATA_DIR}/wg_public.key"
     fi
     wg_private="$(<"${SBD_DATA_DIR}/wg_private.key")"
-    inbounds+=$',\n'
-    inbounds+=$'    {\n'
-    inbounds+=$'      "type": "wireguard",\n'
-    inbounds+=$'      "tag": "wireguard",\n'
-    inbounds+="      \"listen_port\": ${port_wireguard},\n"
-    inbounds+=$'      "address": ["10.66.66.1/24"],\n'
-    inbounds+=$'      "private_key": "'"${wg_private}"'",\n'
-    inbounds+=$'      "peers": []\n'
-    inbounds+=$'    }'; inbound_map+=",wireguard:${port_wireguard}"
+    sbd_inbounds_append inbounds inbound_map "wireguard" "$port_wireguard" \
+      "$(singbox_fragment_wireguard "$port_wireguard" "$wg_private")"
   fi
 
   local outbounds final_tag upstream_mode available_outbounds

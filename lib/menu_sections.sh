@@ -7,26 +7,40 @@ menu_view() {
     echo "1) $(msg "查看完整状态面板（panel --full）" "Full status panel (panel --full)")"
     echo "2) $(msg "查看全量运行信息（list --all）" "All runtime info (list --all)")"
     echo "3) $(msg "仅查看节点链接（list --nodes）" "Nodes only (list --nodes)")"
-    echo "4) $(msg "查看协议能力矩阵（protocol matrix）" "Protocol capability matrix (protocol matrix)")"
-    echo "5) $(msg "仅查看已启用协议能力（protocol matrix --enabled）" "Enabled protocol capability matrix (protocol matrix --enabled)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) provider_panel full; menu_pause ;;
       2) provider_list all; menu_pause ;;
       3) provider_list nodes; menu_pause ;;
-      4) provider_protocol_matrix_show all; menu_pause ;;
-      5) provider_protocol_matrix_show enabled; menu_pause ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
   done
 }
 
+menu_protocol_runtime_summary() {
+  local runtime_file runtime_engine runtime_profile runtime_protocols
+  runtime_file="$(provider_cfg_runtime_file)"
+  if [[ ! -f "$runtime_file" ]]; then
+    log_warn "$(msg "未找到运行时状态，请先安装或初始化" "Runtime state not found, install/init first")"
+    return 0
+  fi
+
+  runtime_engine="$(grep -E '^engine=' "$runtime_file" | head -n1 | cut -d= -f2-)"
+  runtime_profile="$(grep -E '^profile=' "$runtime_file" | head -n1 | cut -d= -f2-)"
+  runtime_protocols="$(grep -E '^protocols=' "$runtime_file" | head -n1 | cut -d= -f2-)"
+
+  log_info "$(msg "当前运行时: engine=${runtime_engine:-n/a} profile=${runtime_profile:-n/a}" "Runtime: engine=${runtime_engine:-n/a} profile=${runtime_profile:-n/a}")"
+  log_info "$(msg "已启用协议: ${runtime_protocols:-n/a}" "Enabled protocols: ${runtime_protocols:-n/a}")"
+  echo
+}
+
 menu_protocol() {
   while true; do
     menu_status_header
     menu_title "$(msg "[协议管理]" "[Protocol Management]")"
+    menu_protocol_runtime_summary
     echo "1) $(msg "查看协议能力矩阵（protocol matrix）" "Protocol capability matrix (protocol matrix)")"
     echo "2) $(msg "查看已启用协议能力（protocol matrix --enabled）" "Enabled protocol capability matrix (protocol matrix --enabled)")"
     echo "3) $(msg "新增协议（cfg protocol-add）" "Add protocol (cfg protocol-add)")"
@@ -40,17 +54,28 @@ menu_protocol() {
         read -r -p "$(msg "新增协议列表(csv)" "protocols to add(csv)"): " ap
         read -r -p "$(msg "端口模式[random/manual] (默认 random)" "port mode[random/manual] (default random)"): " am
         am="${am:-random}"
+        local add_args=()
+        add_args=("protocol-add" "$ap" "$am")
         if [[ "$am" == "manual" ]]; then
           read -r -p "$(msg "手动端口映射(proto:port,proto:port...)" "manual port map(proto:port,proto:port...)"): " amap
-          provider_cfg_command protocol-add "$ap" "$am" "$amap"
+          add_args+=("$amap")
+        fi
+        provider_cfg_command preview "${add_args[@]}"
+        if prompt_yes_no "$(msg "确认应用该协议新增变更？" "Apply this protocol-add change?")" "Y"; then
+          provider_cfg_command apply "${add_args[@]}"
         else
-          provider_cfg_command protocol-add "$ap" "$am"
+          log_warn "$(msg "已取消应用" "Apply cancelled")"
         fi
         menu_pause
         ;;
       4)
         read -r -p "$(msg "移除协议列表(csv)" "protocols to remove(csv)"): " rp
-        provider_cfg_command protocol-remove "$rp"
+        provider_cfg_command preview protocol-remove "$rp"
+        if prompt_yes_no "$(msg "确认应用该协议移除变更？" "Apply this protocol-remove change?")" "N"; then
+          provider_cfg_command apply protocol-remove "$rp"
+        else
+          log_warn "$(msg "已取消应用" "Apply cancelled")"
+        fi
         menu_pause
         ;;
       0) return 0 ;;
