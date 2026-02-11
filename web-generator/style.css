@@ -1,0 +1,110 @@
+:root {
+  --bg: #0b1220;
+  --card: #121d33;
+  --text: #e8eef9;
+  --muted: #b2bfd8;
+  --line: #2f3d61;
+  --accent: #35c6ff;
+  --warn: #ffcc66;
+  --ok: #44d18b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: radial-gradient(circle at 15% 0%, #1d3158, var(--bg));
+  color: var(--text);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.wrap { max-width: 1100px; margin: 0 auto; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+h1 { margin: 0 0 10px; font-size: 30px; }
+h2 { margin: 0 0 10px; font-size: 18px; color: #dbe8ff; }
+p { margin: 0 0 8px; color: var(--muted); }
+
+.row {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.row label { color: #dbe8ff; }
+
+input, select, textarea {
+  width: 100%;
+  background: #0d172d;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+textarea { min-height: 120px; resize: vertical; }
+
+.checklist { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill input { width: auto; margin: 0; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+button {
+  background: linear-gradient(90deg, var(--accent), #67deff);
+  border: none;
+  border-radius: 8px;
+  color: #021224;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.warn { color: var(--warn); }
+.ok { color: var(--ok); }
+
+.hint {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #0e1b32;
+  border: 1px dashed #3b4f7d;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hidden { display: none; }
+
+@media (max-width: 860px) {
+  .row { grid-template-columns: 1fr; }
+}
