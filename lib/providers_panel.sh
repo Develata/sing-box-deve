@@ -213,11 +213,46 @@ provider_panel() {
 
 provider_protocol_matrix_show() {
   local mode="${1:-all}" runtime_engine="sing-box" runtime_protocols=""
+  local runtime_warp_mode="off" jump_protocol="" jump_extra_ports="" warp_active="no" jump_active="no"
+
+  protocol_matrix_warp_active() {
+    local engine="$1" mode="$2"
+    if [[ "$engine" == "sing-box" ]]; then
+      warp_mode_targets_singbox "$mode"
+    else
+      warp_mode_targets_xray "$mode"
+    fi
+  }
+
+  protocol_matrix_jump_active_for() {
+    local protocol="$1" jp="$2" extras="$3"
+    [[ "$protocol" == "$jp" ]] || return 1
+    [[ "$extras" =~ [0-9] ]] || return 1
+    return 0
+  }
+
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
     # shellcheck disable=SC1091
     source /etc/sing-box-deve/runtime.env
     runtime_engine="${engine:-sing-box}"
     runtime_protocols="${protocols:-}"
+    runtime_warp_mode="${warp_mode:-off}"
+  fi
+
+  if [[ "$mode" == "enabled" && -f /var/lib/sing-box-deve/jump-ports.env ]]; then
+    jump_protocol="$(awk -F= '/^JUMP_PROTOCOL=/{print $2; exit}' /var/lib/sing-box-deve/jump-ports.env 2>/dev/null || true)"
+    jump_extra_ports="$(awk -F= '/^JUMP_EXTRA_PORTS=/{print $2; exit}' /var/lib/sing-box-deve/jump-ports.env 2>/dev/null || true)"
+  fi
+
+  if protocol_matrix_warp_active "$runtime_engine" "$runtime_warp_mode"; then
+    warp_active="yes"
+  fi
+  if [[ -n "$jump_protocol" && "$jump_extra_ports" =~ [0-9] ]]; then
+    jump_active="yes"
+  fi
+
+  if [[ "$mode" == "enabled" ]]; then
+    log_info "$(msg "运行态特性: WARP=${runtime_warp_mode} (active=${warp_active}), 多端口jump=${jump_active}" "Runtime feature state: WARP=${runtime_warp_mode} (active=${warp_active}), multi-port jump=${jump_active}")"
   fi
 
   log_info "$(msg "协议能力矩阵（engine=${runtime_engine}）" "Protocol capability matrix (engine=${runtime_engine})")"
@@ -244,6 +279,20 @@ provider_protocol_matrix_show() {
     multi="$(echo "$caps" | awk -F';' '{print $3}' | cut -d= -f2)"
     warp="$(echo "$caps" | awk -F';' '{print $4}' | cut -d= -f2)"
     share="$(echo "$caps" | awk -F';' '{print $5}' | cut -d= -f2)"
+
+    if [[ "$mode" == "enabled" ]]; then
+      if [[ "$multi" == "yes" ]]; then
+        if protocol_matrix_jump_active_for "$protocol" "$jump_protocol" "$jump_extra_ports"; then
+          multi="yes"
+        else
+          multi="no"
+        fi
+      fi
+      if [[ "$warp" == "yes" || "$warp" == "self" ]]; then
+        warp="$warp_active"
+      fi
+    fi
+
     printf '%-18s %-10s %-4s %-8s %-10s %-12s %-8s\n' \
       "$protocol" "$support" "$tls" "$reality" "$multi" "$warp" "$share"
   done < <(protocol_matrix_rows "$runtime_engine" true)
