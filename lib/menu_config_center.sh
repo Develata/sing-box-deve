@@ -113,8 +113,10 @@ menu_config_center() {
         menu_pause
         ;;
       8)
-        read -r -p "$(msg "jump 动作[set/clear/replay]" "jump action[set/clear/replay]"): " ja
-        if [[ "$ja" == "set" ]]; then
+        read -r -p "$(msg "jump 动作[show/set/clear/replay]" "jump action[show/set/clear/replay]"): " ja
+        if [[ "$ja" == "show" ]]; then
+          provider_jump_show
+        elif [[ "$ja" == "set" ]]; then
           read -r -p "$(msg "协议" "protocol"): " jp
           read -r -p "$(msg "主端口" "main port"): " jm
           read -r -p "$(msg "附加端口(csv)" "extra ports(csv)"): " je

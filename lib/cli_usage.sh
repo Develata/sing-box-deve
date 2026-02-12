@@ -9,7 +9,7 @@ Usage:
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
-  sing-box-deve.sh panel [--compact|--full]
+  sing-box-deve.sh panel [--compact|--full]           (alias: status)
   sing-box-deve.sh restart [--core|--argo|--all]
   sing-box-deve.sh logs [--core|--argo]
   sing-box-deve.sh set-port --list

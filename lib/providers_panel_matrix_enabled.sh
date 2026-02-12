@@ -65,13 +65,20 @@ provider_protocol_matrix_show_enabled() {
       continue
     fi
     IFS=',' read -r -a _ports <<< "$ports_csv"
+    local _first_port_in_proto=true
     for p in "${_ports[@]}"; do
       jump_csv="$(protocol_matrix_enabled_jump_csv "$protocol" "$p")"
       [[ -n "$jump_csv" ]] || jump_csv="-"
       outbound_desc="$(protocol_matrix_enabled_outbound_desc "$p" "$runtime_port_egress_map" "$default_outbound_mode" "$runtime_proxy_port" "$warp_active")"
       idx=$((idx + 1))
-      printf '%-4s %-16s %-8s %-8s %-14s %-14s %-4s %-8s %-6s %-8s %-8s\n' \
-        "${idx}" "$protocol" "$([[ "$p" == "$base_port" ]] && echo main || echo mport)" "$p" "$outbound_desc" "$jump_csv" "$tls" "$reality" "$multi" "$warp" "$share"
+      if [[ "$_first_port_in_proto" == "true" ]]; then
+        printf '%-4s %-16s %-8s %-8s %-14s %-14s %-4s %-8s %-6s %-8s %-8s\n' \
+          "${idx}" "$protocol" "$([[ "$p" == "$base_port" ]] && echo main || echo mport)" "$p" "$outbound_desc" "$jump_csv" "$tls" "$reality" "$multi" "$warp" "$share"
+        _first_port_in_proto=false
+      else
+        printf '%-4s %-16s %-8s %-8s %-14s %-14s %-4s %-8s %-6s %-8s %-8s\n' \
+          "${idx}" "" "$([[ "$p" == "$base_port" ]] && echo main || echo mport)" "$p" "$outbound_desc" "$jump_csv" "" "" "" "" ""
+      fi
     done
   done
 }
