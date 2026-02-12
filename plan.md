@@ -1,442 +1,356 @@
-# sing-box-deve plan文档
-“sb” 启动脚本，启动以后首次部署需要 USER 进入面板以后手动输入 `1` 进行安装。
+# sing-box-deve 计划文档（规范版）
 
-说明：本计划文档用于明确“当前实现”和“目标行为”，不受代码文件 250 行约束，允许详细展开。
+本文档用于先定义目标规范，再驱动代码实现。当前阶段以文档为准，不以现有代码行为倒推需求。
+
+## 0) 文档约定
+- `SPEC`：目标规范，后续必须实现。
+- `CURRENT`：当前实现现状，只用于定位差距。
+- `P0/P1/P2`：优先级，`P0` 必须先做。
+
+术语：
+- `主端口`：协议的真实监听端口（main inbound）。
+- `多真实端口`：同协议的多个真实独立监听端口（mport）。
+- `jump 附加端口`：通过防火墙重定向到某个主端口的端口，不是独立协议实例。
 
 ---
+
+## 1) 全局工程约束（SPEC）
+1. 模块化优先：新增逻辑优先拆到 `lib/*_*.sh` 小文件。
+2. 单代码文件行数限制：`<=250` 行，建议 `<=150` 行。
+3. 文档不受行数限制。
+4. 每个命令必须定义：
+   - 输入参数格式
+   - 校验规则
+   - 执行步骤
+   - 输出格式
+   - 失败处理/回滚策略
+   - 持久化影响
+5. 重要流程必须支持幂等执行（重复执行不产生脏状态）。
+
+---
+
+## 2) 主菜单（SPEC）
 
 ## 1) 安装/重装
 首次部署或按新参数重建配置。
 
-具体流程依次是：
-1. 进入向导（`wizard`）并采集 provider/profile/engine/protocols。
-2. 采集端口策略：随机端口或手动端口映射。
-3. 采集可选能力：Argo、WARP、上游代理、分流策略。
-4. 生成安装上下文与防火墙快照。
-5. 安装内核并写入配置（sing-box 或 xray）。
-6. 生成 systemd、节点文件、订阅聚合文件。
-7. 持久化 runtime 到 `/etc/sing-box-deve/runtime.env`。
-8. 持久化脚本目录并写入 `sb` 命令入口。
-
 ### 1) 交互安装（wizard）
-通过问答完成安装参数选择，适合首次部署。
+- 命令：`sb wizard`
+- 输入：向导交互输入 provider/profile/engine/protocols/port/argo/warp/egress/route。
+- 校验：协议合法、端口合法、引擎兼容、资源档位限制。
+- 执行：生成上下文 -> 快照防火墙 -> 安装内核 -> 生成配置 -> 写服务 -> 生成节点。
+- 输出：安装结果、关键路径、后续命令提示。
+- 失败处理：失败时回滚防火墙到安装前快照。
+- 持久化：`/etc/sing-box-deve/runtime.env`、service 文件、节点文件、脚本入口。
 
 ### 2) 命令安装（install）
-通过 `sb install --provider ... --engine ...` 直接执行，适合自动化。
+- 命令：`sb install ...`
+- 输入：命令行参数。
+- 校验：同上。
+- 执行/输出/失败/持久化：同 1)。
 
 ### 3) 按运行态重装（apply --runtime）
-读取当前 runtime.env，按现有参数整体重建。
+- 命令：`sb apply --runtime`
+- 输入：当前 runtime 文件。
+- 校验：runtime 文件存在且关键字段完整。
+- 执行：按 runtime 重建配置与节点。
+- 输出：重建结果。
+- 失败处理：保留旧配置并报错，不写脏状态。
+- 持久化：更新 runtime 时间戳与生成产物。
 
 ### 4) 按配置文件安装（apply -f）
-读取外部配置文件重建，适合迁移和批量部署。
+- 命令：`sb apply -f <config.env>`
+- 输入：外部配置文件。
+- 校验：文件存在、字段格式合法。
+- 执行：按文件构建运行态并安装。
+- 输出：重建结果。
+- 失败处理：中断并保持旧状态。
+- 持久化：同 1)。
 
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 2) 状态与节点查看
 查看运行状态、节点信息与运行摘要。
 
 ### 1) 查看完整状态面板（panel --full）
-显示核心状态、Argo 状态、runtime 全字段、settings、防火墙托管状态、版本对比信息。
+- 命令：`sb panel --full`
+- 输出：服务状态、runtime 全字段、settings、防火墙托管、版本状态。
 
 ### 2) 查看全量运行信息（list --all）
-输出运行时关键配置与节点产物摘要，便于排查问题。
+- 命令：`sb list --all`
+- 输出：运行态与节点相关全量信息。
 
 ### 3) 仅查看节点链接（list --nodes）
-仅展示节点链接，适合复制与快速分发。
+- 命令：`sb list --nodes`
+- 输出：仅节点链接。
 
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 3) 协议管理
 协议增删与协议能力矩阵。
 
 ### 1) 查看协议能力矩阵（protocol matrix）
-显示当前脚本支持的所有协议能力矩阵。
-
-矩阵含义：
-1. 协议是否被当前 engine 支持。
-2. 是否具备 TLS/Reality 能力。
-3. 是否支持多端口能力。
-4. 是否支持 WARP 相关出站。
-5. 是否参与订阅生成。
+- 命令：`sb protocol matrix`
+- 输出列（SPEC）：协议、内核支持、TLS、Reality、多端口、WARP 出站、订阅（是否参与订阅生成）。
 
 ### 2) 查看已启用协议及端口能力矩阵（protocol matrix --enabled）
-最左边是从1到n的序列数用于标号，显示当前脚本已经启用了的所有协议（必须注明对应端口）能力矩阵，由于支持多个不同端口的相同协议，因此每个协议必须要注明对应的入站inbound和出站outbound端口号，如果是jump多端口，也需要注明。
-
-当前实现说明：
-1. 已支持 `--enabled` 仅显示已启用协议。
-2. 已支持根据运行时状态显示 WARP/mport/jump 是否 active。
-3. “序号+端口明细(inbound/outbound/jump)”目前仍需继续细化展示格式。
+- 命令：`sb protocol matrix --enabled`
+- 输出列（SPEC）：
+  1. 序号（1..n）
+  2. 协议
+  3. 端口类型（main/mport）
+  4. inbound 端口
+  5. outbound（direct/proxy/warp/psiphon）
+  6. jump 附加端口
+  7. TLS 
+  8. Reality 
+  9. 多端口 
+  10. WARP 
+  11. 订阅
+- 规则（SPEC）：
+  1. 同协议多端口时，每个端口都要单独一行，从第二个端口开始其余同上信息不填。
+  2. 若存在 jump，必须显示主端口对应的 extra 端口集。
+  3. 非监听类协议（如纯模式协议）可显示 `-` 占位。
 
 ### 3) 新增协议（cfg protocol-add）
-打印出当前脚本支持的所有协议（不是协议能力矩阵）。
-等待 USER 输入协议并校验是否支持（不需要检查该协议是否已创建过，重复项会自动去重）。
-若支持，则继续选择接下来的端口策略（随机/手动），并执行预览再应用。
-
-当前实现路径：
-1. `cfg preview protocol-add ...` 先看变更。
-2. `cfg apply protocol-add ...` 再落盘。
-3. 自动重建 runtime、节点与相关服务。
+- 命令：`sb cfg preview protocol-add ...` / `sb cfg apply protocol-add ...`
+- 输入：协议名、端口模式、可选手动端口映射。
+- 校验：协议合法、引擎兼容、端口不冲突、profile 限制。
+- 执行：预览 -> 应用 -> 重建 runtime。
+- 输出：新增协议与影响摘要。
+- 失败处理：预览不落盘；应用失败恢复原状态。
+- 持久化：runtime、配置文件、节点、托管规则。
 
 ### 4) 移除协议（cfg protocol-remove）
-调用已启用协议矩阵后，等待 USER 选择要删除的协议（当前命令行为 csv 输入）。
-应用后自动重建运行时、节点与相关服务。
-
-### 5) 端口修改（由 4) 端口管理承接）
-你原始规划中的“协议菜单内端口修改”已在当前实现中拆分为独立 `4) 端口管理`。
-拆分原因：端口相关操作已扩展到主端口修改 + 多真实端口 + jump 绑定，独立菜单更清晰。
+- 命令：`sb cfg preview protocol-remove ...` / `sb cfg apply protocol-remove ...`
+- 输入：协议序号。
+- 校验：目标协议存在，且删除后保留至少一个可运行协议。
+- 执行：预览 -> 应用 -> 重建 runtime。
+- 输出：移除结果与影响摘要。
+- 失败处理：失败不落盘。
+- 持久化：同 3)。
 
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 4) 端口管理
-查看/修改各协议监听端口，并自动放行防火墙；支持多真实独立端口。
+查看/修改各协议监听端口并自动放行防火墙。
 
 ### 1) 查看协议端口映射（set-port --list）
-列出当前 engine 下可管理协议的主端口映射。
+- 命令：`sb set-port --list`
+- 输出：协议到主端口映射。
 
 ### 2) 修改指定协议端口（set-port --protocol --port）
-修改协议主监听端口。
-流程要求：
-1. 校验协议与端口。
-2. 修改配置文件中的对应 inbound 端口。
-3. 自动放行新端口防火墙。
-4. 可选移除旧端口防火墙托管规则。
-5. 重启核心或重建策略后重启。
+- 命令：`sb set-port --protocol <name> --port <1-65535>`
+- 校验：协议可管理、端口合法且不冲突。
+- 执行：更新 inbound 端口 -> 防火墙规则调整 -> 重启核心。
+- 输出：旧端口 -> 新端口。
+- 失败处理：配置校验失败时回退。
+- 持久化：配置文件、防火墙托管状态、runtime。
 
 ### 3) 查看多真实端口（mport list）
-查看已启用的“同协议多真实独立监听端口”记录。
+- 命令：`sb mport list`
+- 输出：`protocol|port` 列表。
 
 ### 4) 新增多真实端口（mport add）
-为某协议新增一个真实监听端口。
-流程要求：
-1. 校验协议已启用且支持本地监听。
-2. 校验端口范围与冲突。
-3. 写入 `multi-ports.db`。
-4. 自动放行该端口防火墙。
-5. 重建 runtime（自动把额外 inbound 注入配置）。
+- 命令：`sb mport add <protocol> <port>`
+- 校验：协议已启用且可监听，端口不冲突。
+- 执行：写 `multi-ports.db` -> 开防火墙 -> 重建 runtime。
+- 输出：新增记录。
+- 失败处理：失败时不写入或撤销写入。
 
 ### 5) 移除多真实端口（mport remove）
-移除某协议某个真实监听端口。
-流程要求：
-1. 从 `multi-ports.db` 删除记录。
-2. 清理该端口关联 jump 目标。
-3. 更新 jump 规则重放状态。
-4. 清理对应防火墙托管记录。
-5. 重建 runtime 与节点。
+- 命令：`sb mport remove <protocol> <port>`
+- 校验：记录存在。
+- 执行：删记录 -> 清理关联 jump -> 重建 runtime。
+- 输出：移除结果。
+- 失败处理：失败时保持原记录与规则一致性。
 
 ### 6) 清空多真实端口（mport clear）
-清理所有 mport 记录，并同步清理相关 jump 与防火墙状态。
+- 命令：`sb mport clear`
+- 执行：清空 mport 记录并同步清理 jump 关联。
 
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 5) 出站策略管理
 设置直连/上游代理/分流路由/按端口策略/分享出口。
 
 ### 1) 切换为直连出站（set-egress direct）
-调用2.2，打印出已启用协议及端口能力矩阵
-等待USER输入需要修改端口的对应协议的序列数
-将其改为直连出站
+- 命令：`sb set-egress --mode direct`
+- 作用域：全局默认出站。
 
 ### 2) 配置上游代理出站（set-egress socks/http/https）
-调用2.2，打印出已启用协议及端口能力矩阵
-等待USER输入需要修改端口的对应协议的序列数
-配置其socks/http/https代理出站
+- 命令：`sb set-egress --mode socks|http|https --host ... --port ...`
+- 作用域：全局默认出站。
 
 ### 3) 设置分流路由模式（set-route ...）
-设置 `direct/global-proxy/cn-direct/cn-proxy`。
+- 命令：`sb set-route <direct|global-proxy|cn-direct|cn-proxy>`
 
 ### 4) 设置分享出口端点（set-share ...）
-设置 `direct/proxy/warp` 三类分享出口端点。
+- 命令：`sb set-share <direct|proxy|warp> <host:port,...>`
 
 ### 5) 设置按端口出站策略（set-port-egress）
-支持 `list/set/clear`。
-用于指定某些入口端口走 direct/proxy/warp/psiphon。
+- 命令：`sb set-port-egress --list|--map|--clear`
+- 规则（SPEC）：端口级策略优先级高于全局默认出站。
 
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 6) 服务管理
 重启核心与 Argo、刷新节点、看日志。
 
 ### 1) 重启全部服务（restart --all）
-重启核心服务及相关边车。
-
 ### 2) 仅重启核心服务（restart --core）
-仅重启主服务。
-
 ### 3) 仅重启 Argo 边车（restart --argo）
-仅重启 Argo 服务。
-
 ### 4) 重建节点文件（regen-nodes）
-按当前配置重新生成节点与订阅产物。
-
 ### 5) 查看核心日志（logs --core）
-查看核心服务日志。
-
 ### 6) 查看 Argo 日志（logs --argo）
-查看 Argo 日志。
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 7) 更新管理
 更新脚本或内核，支持主源/备源。
 
 ### 1) 更新核心内核（update --core）
-更新已安装的 sing-box/xray 内核。
-
 ### 2) 更新脚本与模块（update --script）
-更新脚本本体与模块文件。
-当前逻辑：
-1. 若当前 `PROJECT_ROOT` 是 git 仓库，走 `git pull` 流程。
-2. 否则走 `checksums + manifest` 的下载校验更新流程。
-3. 支持失败回滚。
-
 ### 3) 同时更新内核与脚本（update --all）
-执行脚本更新后再执行内核更新。
-
 ### 4) 仅主源更新脚本（update --script --source primary）
-指定主源更新。
-
 ### 5) 仅备源更新脚本（update --script --source backup）
-指定备源更新。
-
-### 6) 更新回滚（update --rollback）
-从最近备份恢复脚本与模块文件。
-
 ### 0) 返回上级
-返回主菜单。
 
-补充注意：
-1. `sb` 的实际执行目录来自 `runtime.env` 的 `script_root`。
-2. 若你在别的目录 `git pull`，不会自动影响 `sb`，除非同步到 `script_root` 目录。
-
----
+备注（SPEC）：
+1. `update --rollback` 作为 CLI 能力保留，不强制出现在菜单。
+2. `sb` 执行目录由 `runtime.env:script_root` 决定。
 
 ## 8) 防火墙管理
-查看托管规则、回滚、重放持久化规则。
-
 ### 1) 查看防火墙托管状态（fw status）
-显示后端类型与托管规则明细。
-
 ### 2) 回滚到上次防火墙快照（fw rollback）
-从快照恢复防火墙。
-
 ### 3) 重放托管防火墙规则（fw replay）
-按托管记录重新应用规则。
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 9) 设置管理
-语言与自动确认开关。
-
 ### 1) 查看当前设置（settings show）
-显示当前 settings。
-
 ### 2) 设置界面语言（settings set lang）
-设置 `zh/en`。
-
 ### 3) 设置自动确认（settings set auto_yes）
-设置 `true/false`。
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 10) 日志查看
-快速查看核心或 Argo 日志。
-
 ### 1) 查看核心服务日志（logs --core）
-显示核心日志。
-
 ### 2) 查看 Argo 边车日志（logs --argo）
-显示 Argo 日志。
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 11) 卸载管理
-保留设置或完全卸载。
-
 ### 1) 卸载并保留设置（uninstall --keep-settings）
-保留 settings/uuid/keys 备份，移除服务与运行状态。
-
 ### 2) 完全卸载（uninstall）
-移除托管服务、状态目录、脚本入口及相关残留。
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 12) 订阅与分享
-刷新订阅、展示二维码、推送目标配置。
-
 ### 1) 刷新订阅与分享产物（sub refresh）
-重新生成节点、订阅与变体产物。
-
 ### 2) 查看链接与二维码（sub show）
-展示订阅链接与二维码。
-
 ### 3) 重同步规则集（sub rules-update）
-重拉并同步规则集。
-
 ### 4) 配置 GitLab 推送目标（sub gitlab-set）
-设置 token、项目、分支、路径。
-
 ### 5) 推送订阅到 GitLab（sub gitlab-push）
-推送产物到 GitLab。
-
 ### 6) 配置 Telegram 推送（sub tg-set）
-设置 bot token 与 chat id。
-
 ### 7) 推送订阅到 Telegram（sub tg-push）
-推送产物到 Telegram。
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 13) 配置变更中心
-预览/应用/回滚快照与高级变更。
-
 ### 1) 预览配置变更（cfg preview <action>）
-预览动作结果，不落盘。
-
 ### 2) 应用配置变更并自动快照（cfg apply <action>）
-应用动作并落盘快照。
-
 ### 3) 按快照回滚配置（cfg rollback ...）
-按 snapshot_id 或 latest 回滚。
-
 ### 4) 查看配置快照列表（cfg snapshots list）
-查看历史快照。
-
 ### 5) 清理旧快照（cfg snapshots prune）
-按保留数量清理。
-
 ### 6) 查看三通道分流规则（split3 show）
-查看 direct/proxy/block 三通道规则。
-
 ### 7) 设置三通道分流规则（split3 set）
-设置 direct/proxy/block 三通道规则。
-
 ### 8) 多端口跳跃复用管理（jump set/clear/replay）
-支持多个主端口目标：
-1. `jump set <protocol> <main_port> <extra_csv>`
-2. `jump clear [protocol] [main_port]`
-3. `jump replay`
-
 ### 0) 返回上级
-返回主菜单。
-
----
 
 ## 14) 内核与WARP
-内核切换、WARP、BBR、证书工具。
-
 ### 1) 查看内核版本状态（kernel show）
-显示当前内核状态。
-
 ### 2) 切换到最新 sing-box（kernel set sing-box latest）
-切换到最新 sing-box。
-
 ### 3) 切换到最新 xray（kernel set xray latest）
-切换到最新 xray。
-
 ### 4) 指定内核版本标签（kernel set <engine> <tag>）
-按 tag 切换版本。
-
 ### 5) 查看 WARP 状态（warp status）
-查看 WARP IPv4/IPv6 状态。
-
 ### 6) 注册 WARP 账户（warp register）
-执行 WARP 注册。
-
 ### 7) 检测 WARP 出口解锁（warp unlock）
-检测解锁状态。
-
 ### 8) 启动 WARP Socks5（warp socks5-start）
-启动本地 Socks5。
-
 ### 9) 查看 WARP Socks5 状态（warp socks5-status）
-查看 Socks5 运行状态。
-
 ### 10) 停止 WARP Socks5（warp socks5-stop）
-停止 Socks5。
-
 ### 11) 查看 BBR 状态（sys bbr-status）
-查看 BBR 状态。
-
 ### 12) 启用 BBR（sys bbr-enable）
-启用 BBR。
-
 ### 13) 安装 acme.sh（sys acme-install）
-安装 ACME 工具。
-
 ### 14) 申请证书（sys acme-issue）
-签发证书。
-
 ### 15) 应用证书到运行时（sys acme-apply）
-应用证书路径到运行时。
-
 ### 0) 返回上级
-返回主菜单。
-
----
-
-## 15) 多真实独立端口 + jump 多主端口（设计与落地）
-该节用于锁定你本次提出的重点能力，防止后续偏差。
-
-### 1) 核心目标
-1. 同一协议可开多个真实独立监听端口。
-2. 每个真实端口可分别设置 jump 多端口映射。
-3. 节点生成需要体现主端口、mport 变体、jump 变体。
-
-### 2) 状态文件
-1. `multi-ports.db`：`/var/lib/sing-box-deve/multi-ports.db`（`protocol|port`）。
-2. `jump-ports.db`：`/var/lib/sing-box-deve/jump-ports.db`（`protocol|main_port|extra_csv`）。
-3. `jump-rules.db`：`/var/lib/sing-box-deve/jump-rules.db`（防火墙 jump 规则）。
-
-### 3) 生效机制
-1. `mport add/remove/clear` 会触发 runtime 重建。
-2. runtime 重建会注入额外 inbound（按协议主 inbound 克隆）。
-3. `jump set/clear/replay` 维护防火墙 REDIRECT 规则并持久化。
-4. 节点生成流程按 base -> share -> mport -> jump 顺序叠加后去重。
-
-### 4) 你定义的显示要求（后续必须完成）
-`protocol matrix --enabled` 需要完整达到：
-1. 有 1..n 序号。
-2. 每个启用协议都标明端口。
-3. 支持同协议多端口时，逐条标明 inbound/outbound。
-4. 若配置 jump，明确标注主端口与附加端口关系。
-
-### 5) 当前差距
-以上第 4) 的展示格式目前仍未完全落地，需要下一阶段直接实现。
-
----
 
 ## 0) 退出
-退出脚本。
+
+---
+
+## 附录A) 数据契约（SPEC）
+1. `runtime.env`
+   - 必填：`provider/profile/engine/protocols/script_root/installed_at`
+   - 可选：出站、分流、证书、端口策略等字段。
+2. `multi-ports.db`
+   - 格式：`protocol|port`
+   - 唯一键：`(protocol, port)`。
+3. `jump-ports.db`
+   - 格式：`protocol|main_port|extra_csv`
+   - 唯一键：`(protocol, main_port)`。
+4. `jump-rules.db`
+   - 格式：`backend|proto|from_port|to_port|tag`
+   - 用途：重放 jump 规则。
+
+---
+
+## 附录B) 冲突处理规则（SPEC）
+1. `mport add` 与现有监听端口冲突 -> 拒绝执行。
+2. `jump set` 的 `main_port` 不是活动端口（主端口或 mport）-> 拒绝执行。
+3. 删除 mport 时若该端口被 jump 用作主端口 -> 先移除对应 jump 目标，再重建。
+4. `mport clear` -> 清理全部 mport 后，自动重放或清空 jump 规则。
+5. 端口出站映射引用了不存在 inbound 端口 -> 拒绝执行。
+
+---
+
+## 附录C) 幂等与原子性（SPEC）
+1. 重复执行同一 `mport add` 不应写重复记录。
+2. 重复执行同一 `jump set` 应覆盖同键记录，不堆叠冲突规则。
+3. 任何失败都不得留下“半更新状态”（配置写了但规则没写，或反之）。
+4. 关键写入使用临时文件 + 原子替换（`mv`）策略。
+
+---
+
+## 附录D) 验收标准（SPEC）
+
+### 6.1 协议矩阵（P0）
+1. `protocol matrix --enabled` 显示 1..n 序号。
+2. 同协议 `main + mport` 多行展示。
+3. `jump` 显示在对应主端口行。
+4. `outbound` 列能体现端口策略和全局策略。
+
+### 6.2 多端口与 jump（P0）
+1. `mport add/remove/clear` 全链路可用。
+2. `jump set/clear/replay` 支持多主端口并存。
+3. 节点变体包含 base/mport/jump，且去重。
+
+### 6.3 更新与持久化（P1）
+1. 更新后 `sb` 指向 `script_root` 行为稳定。
+2. update 失败可回滚，且不破坏运行态。
+
+---
+
+## 附录E) 非目标（Out of Scope）
+1. 不在本阶段实现全新 GUI。
+2. 不在本阶段引入数据库服务。
+3. 不在本阶段改写为非 shell 语言。
+
+---
+
+## 附录F) 里程碑（建议）
+1. `M1 (P0)`：矩阵明细 + mport/jump 一致性。
+2. `M2 (P0)`：端口冲突与回滚边界全覆盖。
+3. `M3 (P1)`：更新/回滚与脚本目录一致性。
+4. `M4 (P2)`：显示优化与文档补充。
+
+---
+
+## 附录G) CURRENT 差距清单（待持续更新）
+1. 若菜单与 CLI 描述不一致，以 `SPEC` 为后续改造目标。
+2. 每完成一项 P0/P1/P2，都要同步更新本节状态。
