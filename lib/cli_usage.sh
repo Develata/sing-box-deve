@@ -20,14 +20,15 @@ Usage:
   sing-box-deve.sh set-share <direct|proxy|warp> <host:port[,host:port...]>
   sing-box-deve.sh split3 show
   sing-box-deve.sh split3 set <direct_csv> <proxy_csv> <block_csv>
-  sing-box-deve.sh jump show|clear|replay|set <protocol> <main_port> <extra_csv>
+  sing-box-deve.sh jump show|replay|set <protocol> <main_port> <extra_csv>|clear [protocol] [main_port]
+  sing-box-deve.sh mport list|add <protocol> <port>|remove <protocol> <port>|clear
   sing-box-deve.sh sub refresh|show|rules-update
   sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
   sing-box-deve.sh sub gitlab-push
   sing-box-deve.sh sub tg-set <bot_token> <chat_id>
   sing-box-deve.sh sub tg-push
-  sing-box-deve.sh cfg preview <rotate-id|argo|psiphon|ip-pref|cdn-host|domain-split|tls|rebuild> ...
-  sing-box-deve.sh cfg apply <rotate-id|argo|psiphon|ip-pref|cdn-host|domain-split|tls|rebuild> ...
+  sing-box-deve.sh cfg preview <rotate-id|argo|psiphon|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ...
+  sing-box-deve.sh cfg apply <rotate-id|argo|psiphon|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ...
   sing-box-deve.sh cfg rollback [snapshot_id|latest]
   sing-box-deve.sh cfg snapshots list
   sing-box-deve.sh cfg snapshots prune [keep_count]
@@ -49,7 +50,7 @@ Usage:
   sing-box-deve.sh sys acme-issue <domain> <email> [dns_provider]
   sing-box-deve.sh sys acme-apply <cert_path> <key_path>
   sing-box-deve.sh regen-nodes
-  sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--yes]
+  sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--yes] [--rollback]
   sing-box-deve.sh version
   sing-box-deve.sh protocol matrix [--enabled]
   sing-box-deve.sh settings show

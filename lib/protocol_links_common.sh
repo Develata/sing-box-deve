@@ -56,3 +56,21 @@ extract_link_host() {
       ;;
   esac
 }
+
+extract_link_port() {
+  local link="$1" payload json
+  case "$link" in
+    vmess://*)
+      payload="${link#vmess://}"
+      json="$(printf '%s' "$payload" | base64 -d 2>/dev/null || true)"
+      [[ -n "$json" ]] && printf '%s' "$json" | jq -r '.port // empty' 2>/dev/null
+      ;;
+    *)
+      if [[ "$link" =~ @(\[[^]]+\]|[^:/?#]+):([0-9]+) ]]; then
+        echo "${BASH_REMATCH[2]}"
+      elif [[ "$link" =~ :([0-9]+)([/?#]|$) ]]; then
+        echo "${BASH_REMATCH[1]}"
+      fi
+      ;;
+  esac
+}

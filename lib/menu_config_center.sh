@@ -72,7 +72,7 @@ menu_config_center() {
     echo "5) $(msg "清理旧快照（cfg snapshots prune）" "Prune old snapshots (cfg snapshots prune)")"
     echo "6) $(msg "查看三通道分流规则（split3 show）" "Show split3 rules (split3 show)")"
     echo "7) $(msg "设置三通道分流规则（split3 set）" "Set split3 rules (split3 set)")"
-    echo "8) $(msg "多端口跳跃复用管理（jump set/clear/replay）" "Jump-port management (jump set/clear/replay)")"
+    echo "8) $(msg "多端口跳跃复用管理（支持多个主端口）" "Jump-port management (multi target)")"
     printf '%s\n' "$(msg "提示：协议增删请使用主菜单 3) 协议管理" "Tip: Use main menu 3) Protocol Management for protocol add/remove")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
@@ -122,7 +122,8 @@ menu_config_center() {
         elif [[ "$ja" == "replay" ]]; then
           provider_jump_replay
         else
-          provider_jump_clear
+          read -r -p "$(msg "仅清理某主端口? 输入 protocol main_port，留空则全清" "Clear one target? input protocol main_port, empty=clear all"): " jp jm
+          provider_jump_clear "${jp:-}" "${jm:-}"
         fi
         menu_pause
         ;;

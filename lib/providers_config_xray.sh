@@ -136,6 +136,7 @@ ${xray_outbounds}
 }
 EOF
 
+  multi_ports_runtime_append_xray "$protocols_csv"
   echo "$public_key" > "${SBD_DATA_DIR}/xray_public.key"
 }
 

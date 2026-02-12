@@ -32,7 +32,7 @@ case "$cmd" in
   install)
     exec "$main" install --provider "$provider" "$@"
     ;;
-  wizard|menu|list|panel|status|restart|logs|set-port|set-egress|set-route|set-share|split3|jump|sub|cfg|kernel|warp|sys|regen-nodes|update|version|settings|uninstall|doctor|fw|help)
+  wizard|menu|list|panel|status|restart|logs|set-port|set-egress|set-route|set-share|split3|jump|mport|sub|cfg|kernel|warp|sys|regen-nodes|update|version|settings|uninstall|doctor|fw|help)
     exec "$main" "$cmd" "$@"
     ;;
   *)

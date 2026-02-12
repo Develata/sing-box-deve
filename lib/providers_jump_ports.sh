@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 
-SBD_JUMP_FILE="/var/lib/sing-box-deve/jump-ports.env"
 SBD_JUMP_RULES_FILE="/var/lib/sing-box-deve/jump-rules.db"
 SBD_JUMP_SERVICE_FILE="/etc/systemd/system/sing-box-deve-jump.service"
 
 load_jump_ports() {
-  [[ -f "$SBD_JUMP_FILE" ]] || return 1
-  # shellcheck disable=SC1090
-  source "$SBD_JUMP_FILE"
-  return 0
+  jump_store_load_first
 }
 
 jump_rule_tag() {
@@ -77,7 +73,6 @@ clear_jump_rules() {
 
 apply_jump_rules() {
   local backend="$1" proto="$2" main_port="$3" extras_csv="$4"
-  : > "$SBD_JUMP_RULES_FILE"
   IFS=',' read -r -a _extras <<< "$extras_csv"
 
   local p tag
@@ -112,77 +107,81 @@ apply_jump_rules() {
 
 provider_jump_show() {
   ensure_root
-  if load_jump_ports; then
-    log_info "$(msg "jump 协议=${JUMP_PROTOCOL:-}" "jump protocol=${JUMP_PROTOCOL:-}")"
-    log_info "$(msg "jump 主端口=${JUMP_MAIN_PORT:-}" "jump main_port=${JUMP_MAIN_PORT:-}")"
-    log_info "$(msg "jump 附加端口=${JUMP_EXTRA_PORTS:-}" "jump extra_ports=${JUMP_EXTRA_PORTS:-}")"
-  else
+  local count=0 protocol main_port extras_csv
+  while IFS='|' read -r protocol main_port extras_csv; do
+    [[ -n "$protocol" && -n "$main_port" ]] || continue
+    log_info "$(msg "jump 协议=${protocol} 主端口=${main_port} 附加端口=${extras_csv:-}" "jump protocol=${protocol} main_port=${main_port} extra_ports=${extras_csv:-}")"
+    count=$((count + 1))
+  done < <(jump_store_records)
+  if (( count == 0 )); then
     log_info "$(msg "jump 尚未配置" "jump not configured")"
   fi
 }
 
 provider_jump_replay() {
   ensure_root
-  load_jump_ports || {
+  if [[ -z "$(jump_store_records)" ]]; then
     log_info "$(msg "jump 尚未配置，跳过重放" "jump not configured, replay skipped")"
     return 0
-  }
-  [[ -n "${JUMP_PROTOCOL:-}" && -n "${JUMP_MAIN_PORT:-}" && -n "${JUMP_EXTRA_PORTS:-}" ]] || die "$(msg "jump 配置不完整" "jump config is incomplete")"
+  fi
   fw_detect_backend
-  local map proto
-  map="$(protocol_port_map "$JUMP_PROTOCOL")"
-  proto="${map%%:*}"
   clear_jump_rules
-  apply_jump_rules "$FW_BACKEND" "$proto" "$JUMP_MAIN_PORT" "$JUMP_EXTRA_PORTS"
+  local protocol main_port extras_csv map proto
+  while IFS='|' read -r protocol main_port extras_csv; do
+    [[ -n "$protocol" && -n "$main_port" && -n "$extras_csv" ]] || continue
+    if ! contains_protocol "$protocol"; then
+      log_warn "$(msg "跳过非法 jump 记录: ${protocol}|${main_port}|${extras_csv}" "Skip invalid jump record: ${protocol}|${main_port}|${extras_csv}")"
+      continue
+    fi
+    map="$(protocol_port_map "$protocol")"
+    proto="${map%%:*}"
+    apply_jump_rules "$FW_BACKEND" "$proto" "$main_port" "$extras_csv"
+  done < <(jump_store_records)
   log_success "$(msg "jump 规则已重放" "jump rules replayed")"
 }
 
 provider_jump_set() {
   ensure_root
   local protocol="$1" main_port="$2" extra_ports="$3"
-  [[ "$main_port" =~ ^[0-9]+$ ]] || die "$(msg "主端口必须为数字" "main port must be numeric")"
-  (( main_port >= 1 && main_port <= 65535 )) || die "$(msg "主端口超出范围" "main port out of range")"
-  fw_detect_backend
+  local script_cmd normalized_extras
+  provider_cfg_load_runtime_exports
+  normalized_extras="$(provider_jump_validate_target "$protocol" "$main_port" "$extra_ports")"
+  jump_store_set "$protocol" "$main_port" "$normalized_extras"
+  provider_jump_replay
 
-  local map proto
-  map="$(protocol_port_map "$protocol")"
-  proto="${map%%:*}"
-  mkdir -p /var/lib/sing-box-deve
-
-  clear_jump_rules
-  apply_jump_rules "$FW_BACKEND" "$proto" "$main_port" "$extra_ports"
-
-  local script_cmd
   script_cmd="/usr/local/bin/sb"
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    # shellcheck disable=SC1091
-    source /etc/sing-box-deve/runtime.env
-    if [[ -n "${script_root:-}" && -x "${script_root}/sing-box-deve.sh" ]]; then
-      script_cmd="${script_root}/sing-box-deve.sh"
-    fi
+  if [[ -n "${script_root:-}" && -x "${script_root}/sing-box-deve.sh" ]]; then
+    script_cmd="${script_root}/sing-box-deve.sh"
   fi
-
-  cat > "$SBD_JUMP_FILE" <<EOF_JUMP
-JUMP_PROTOCOL=${protocol}
-JUMP_MAIN_PORT=${main_port}
-JUMP_EXTRA_PORTS=${extra_ports}
-EOF_JUMP
-
   enable_jump_replay_service "$script_cmd"
 
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    # shellcheck disable=SC1091
-    source /etc/sing-box-deve/runtime.env
-    write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
-  fi
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   log_success "$(msg "jump 端口复用已配置" "jump ports configured")"
+}
+
+provider_jump_clear_target() {
+  local protocol="$1" main_port="$2"
+  [[ -n "$protocol" && -n "$main_port" ]] || return 0
+  jump_store_remove "$protocol" "$main_port"
 }
 
 provider_jump_clear() {
   ensure_root
+  local protocol="${1:-}" main_port="${2:-}"
+  if [[ (-n "$protocol" && -z "$main_port") || (-z "$protocol" && -n "$main_port") ]]; then
+    die "Usage: jump clear [protocol main_port]"
+  fi
+  if [[ -n "$protocol" && -n "$main_port" ]]; then
+    provider_jump_clear_target "$protocol" "$main_port"
+  else
+    jump_store_clear
+  fi
   clear_jump_rules
-  rm -f "$SBD_JUMP_FILE"
-  disable_jump_replay_service
+  if [[ -n "$(jump_store_records)" ]]; then
+    provider_jump_replay
+  else
+    disable_jump_replay_service
+  fi
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
     # shellcheck disable=SC1091
     source /etc/sing-box-deve/runtime.env

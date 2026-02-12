@@ -100,10 +100,14 @@ main() {
       case "${1:-show}" in
         show) provider_jump_show ;;
         set) provider_jump_set "${2:-}" "${3:-}" "${4:-}" ;;
-        clear) provider_jump_clear ;;
+        clear) provider_jump_clear "${2:-}" "${3:-}" ;;
         replay) provider_jump_replay ;;
-        *) die "Usage: jump [show|set <protocol> <main_port> <extra_csv>|clear|replay]" ;;
+        *) die "Usage: jump [show|set <protocol> <main_port> <extra_csv>|clear [protocol] [main_port]|replay]" ;;
       esac
+      ;;
+    mport)
+      shift
+      provider_multi_ports_command "$@"
       ;;
     sub)
       shift

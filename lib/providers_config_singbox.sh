@@ -151,5 +151,6 @@ ${outbounds}
 }
 EOF_JSON
 
+  multi_ports_runtime_append_singbox "$protocols_csv"
   echo "$public_key" > "${SBD_DATA_DIR}/reality_public.key"
 }

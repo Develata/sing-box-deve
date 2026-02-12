@@ -106,7 +106,8 @@ write_nodes_output() {
 
   cp "$SBD_NODES_BASE_FILE" "$SBD_NODES_FILE"
   append_share_variants "$SBD_NODES_BASE_FILE" "$SBD_NODES_FILE" "${DIRECT_SHARE_ENDPOINTS:-}" "${PROXY_SHARE_ENDPOINTS:-}" "${WARP_SHARE_ENDPOINTS:-}"
-  append_jump_variants "$SBD_NODES_BASE_FILE" "$SBD_NODES_FILE"
+  append_multi_real_port_variants "$SBD_NODES_FILE" "$SBD_NODES_FILE"
+  append_jump_variants "$SBD_NODES_FILE" "$SBD_NODES_FILE"
   awk 'NF && !seen[$0]++' "$SBD_NODES_FILE" > "${SBD_NODES_FILE}.tmp" && mv "${SBD_NODES_FILE}.tmp" "$SBD_NODES_FILE"
   build_aggregate_subscription
 }

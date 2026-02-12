@@ -42,7 +42,7 @@ menu_protocol() {
     menu_title "$(msg "[协议管理]" "[Protocol Management]")"
     menu_protocol_runtime_summary
     echo "1) $(msg "查看协议能力矩阵（protocol matrix）" "Protocol capability matrix (protocol matrix)")"
-    echo "2) $(msg "查看已启用协议能力（protocol matrix --enabled）" "Enabled protocol capability matrix (protocol matrix --enabled)")"
+    echo "2) $(msg "查看已启用协议及端口能力矩阵（protocol matrix --enabled）" "Enabled protocol+port capability matrix (protocol matrix --enabled)")"
     echo "3) $(msg "新增协议（cfg protocol-add）" "Add protocol (cfg protocol-add)")"
     echo "4) $(msg "移除协议（cfg protocol-remove）" "Remove protocol (cfg protocol-remove)")"
     echo "0) $(msg "返回上级" "Back")"
@@ -90,6 +90,10 @@ menu_port() {
     menu_title "$(msg "[端口管理]" "[Port Management]")"
     echo "1) $(msg "查看协议端口映射（set-port --list）" "List protocol ports (set-port --list)")"
     echo "2) $(msg "修改指定协议端口（set-port --protocol --port）" "Set protocol port (set-port --protocol --port)")"
+    echo "3) $(msg "查看多真实端口（mport list）" "List multi real-ports (mport list)")"
+    echo "4) $(msg "新增多真实端口（mport add）" "Add multi real-port (mport add)")"
+    echo "5) $(msg "移除多真实端口（mport remove）" "Remove multi real-port (mport remove)")"
+    echo "6) $(msg "清空多真实端口（mport clear）" "Clear multi real-ports (mport clear)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -98,6 +102,25 @@ menu_port() {
         read -r -p "$(msg "输入协议名" "Protocol name"): " p
         read -r -p "$(msg "输入新端口(1-65535)" "New port(1-65535)"): " port
         provider_set_port "$p" "$port"
+        menu_pause
+        ;;
+      3) provider_multi_ports_list; menu_pause ;;
+      4)
+        read -r -p "$(msg "输入协议名" "Protocol name"): " p
+        read -r -p "$(msg "输入新增监听端口(1-65535)" "New listener port(1-65535)"): " port
+        provider_multi_ports_add "$p" "$port"
+        menu_pause
+        ;;
+      5)
+        read -r -p "$(msg "输入协议名" "Protocol name"): " p
+        read -r -p "$(msg "输入移除监听端口(1-65535)" "Remove listener port(1-65535)"): " port
+        provider_multi_ports_remove "$p" "$port"
+        menu_pause
+        ;;
+      6)
+        if prompt_yes_no "$(msg "确认清空所有多真实端口？" "Clear all multi real-ports?")" "N"; then
+          provider_multi_ports_clear
+        fi
         menu_pause
         ;;
       0) return 0 ;;
