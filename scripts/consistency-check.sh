@@ -8,6 +8,51 @@ config_dir="/etc/sing-box-deve"
 log() { printf '[CHECK] %s\n' "$*"; }
 fail() { printf '[FAIL] %s\n' "$*"; failures=$((failures + 1)); }
 
+trim_ws() {
+  local v="$1"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  printf '%s' "$v"
+}
+
+strip_inline_comment() {
+  local value="$1" out="" ch prev=""
+  local in_single="false" in_double="false" i
+  for ((i = 0; i < ${#value}; i++)); do
+    ch="${value:i:1}"
+    if [[ "$ch" == "'" && "$in_double" == "false" ]]; then
+      [[ "$in_single" == "true" ]] && in_single="false" || in_single="true"
+      out+="$ch"
+      prev="$ch"
+      continue
+    fi
+    if [[ "$ch" == "\"" && "$in_single" == "false" ]]; then
+      [[ "$in_double" == "true" ]] && in_double="false" || in_double="true"
+      out+="$ch"
+      prev="$ch"
+      continue
+    fi
+    if [[ "$ch" == "#" && "$in_single" == "false" && "$in_double" == "false" ]]; then
+      if [[ -n "$prev" && "$prev" =~ [[:space:]] ]]; then
+        break
+      fi
+    fi
+    out+="$ch"
+    prev="$ch"
+  done
+  printf '%s' "$out"
+}
+
+unquote_env_value() {
+  local value="$1"
+  if [[ "$value" == \"*\" && "$value" == *\" && "${#value}" -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ "$value" == \'*\' && "$value" == *\' && "${#value}" -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "$value"
+}
+
 safe_load_env() {
   local file="$1" raw line key value
   while IFS= read -r raw || [[ -n "$raw" ]]; do
@@ -26,6 +71,9 @@ safe_load_env() {
       echo "[ERROR] invalid env key in ${file}: ${key}" >&2
       exit 1
     }
+    value="$(strip_inline_comment "$value")"
+    value="$(trim_ws "$value")"
+    value="$(unquote_env_value "$value")"
     printf -v "$key" '%s' "$value"
   done < "$file"
 }

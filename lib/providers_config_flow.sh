@@ -165,7 +165,7 @@ provider_cfg_preview() {
       ;;
     protocol-remove)
       [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-remove <proto_csv|index_csv>"
-      arg1="$(provider_cfg_protocol_resolve_drop_csv "$current_protocols" "$arg1")"
+      arg1="$(provider_cfg_protocol_resolve_drop_csv "$current_protocols" "$arg1" "${engine:-sing-box}")"
       target_protocols="$(provider_cfg_protocol_csv_remove "$current_protocols" "$arg1")"
       [[ -n "$target_protocols" ]] || die "Preview result invalid: at least one protocol must remain"
       log_info "$(msg "预览协议变更: ${current_protocols} -> ${target_protocols}" "preview protocols: ${current_protocols} -> ${target_protocols}")"

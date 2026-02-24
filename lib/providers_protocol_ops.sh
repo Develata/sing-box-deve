@@ -34,17 +34,45 @@ provider_cfg_protocol_csv_added() {
   (IFS=','; echo "${added[*]}")
 }
 
-provider_cfg_protocol_index_to_name() {
-  local current_csv="$1" idx="$2"
-  local protocol_list=()
+provider_cfg_protocol_enabled_row_protocols() {
+  local current_csv="$1" runtime_engine="${2:-${engine:-sing-box}}"
+  local protocol_list=() protocol base_port ports_csv p
   protocols_to_array "$current_csv" protocol_list
+
+  for protocol in "${protocol_list[@]}"; do
+    if ! protocol_needs_local_listener "$protocol"; then
+      printf '%s\n' "$protocol"
+      continue
+    fi
+
+    base_port="$(resolve_protocol_port_for_engine "$runtime_engine" "$protocol" 2>/dev/null || true)"
+    ports_csv="$(protocol_matrix_enabled_ports_csv "$protocol" "$base_port")"
+    if [[ -z "$ports_csv" ]]; then
+      printf '%s\n' "$protocol"
+      continue
+    fi
+
+    IFS=',' read -r -a _ports <<< "$ports_csv"
+    for p in "${_ports[@]}"; do
+      [[ -n "$p" ]] || continue
+      printf '%s\n' "$protocol"
+    done
+  done
+}
+
+provider_cfg_protocol_index_to_name() {
+  local current_csv="$1" idx="$2" runtime_engine="${3:-${engine:-sing-box}}"
+  local row_protocols=()
   [[ "$idx" =~ ^[0-9]+$ ]] || die "Protocol index must be numeric: ${idx}"
-  (( idx >= 1 && idx <= ${#protocol_list[@]} )) || die "Protocol index out of range: ${idx} (1..${#protocol_list[@]})"
-  printf '%s\n' "${protocol_list[$((idx - 1))]}"
+
+  mapfile -t row_protocols < <(provider_cfg_protocol_enabled_row_protocols "$current_csv" "$runtime_engine")
+  (( ${#row_protocols[@]} > 0 )) || die "No enabled protocols available"
+  (( idx >= 1 && idx <= ${#row_protocols[@]} )) || die "Protocol index out of range: ${idx} (1..${#row_protocols[@]})"
+  printf '%s\n' "${row_protocols[$((idx - 1))]}"
 }
 
 provider_cfg_protocol_resolve_drop_csv() {
-  local current_csv="$1" raw="$2"
+  local current_csv="$1" raw="$2" runtime_engine="${3:-${engine:-sing-box}}"
   local out="" item proto
   [[ -n "$raw" ]] || die "Usage: cfg protocol-remove <proto_csv|index_csv>"
 
@@ -53,7 +81,7 @@ provider_cfg_protocol_resolve_drop_csv() {
     item="$(echo "$item" | xargs)"
     [[ -n "$item" ]] || continue
     if [[ "$item" =~ ^[0-9]+$ ]]; then
-      proto="$(provider_cfg_protocol_index_to_name "$current_csv" "$item")"
+      proto="$(provider_cfg_protocol_index_to_name "$current_csv" "$item" "$runtime_engine")"
     else
       proto="$item"
     fi
@@ -140,7 +168,7 @@ provider_cfg_protocol_remove() {
 
   provider_cfg_load_runtime_exports
   local drop_csv
-  drop_csv="$(provider_cfg_protocol_resolve_drop_csv "${protocols:-vless-reality}" "$drop_raw")"
+  drop_csv="$(provider_cfg_protocol_resolve_drop_csv "${protocols:-vless-reality}" "$drop_raw" "${engine:-sing-box}")"
   validate_protocols_csv "$drop_csv"
   local current_csv="${protocols:-vless-reality}" target_csv
   target_csv="$(provider_cfg_protocol_csv_remove "$current_csv" "$drop_csv")"

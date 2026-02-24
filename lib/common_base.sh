@@ -178,6 +178,42 @@ sbd_unquote_env_value() {
   printf '%s' "$value"
 }
 
+sbd_strip_inline_env_comment() {
+  local value="$1" out="" ch prev=""
+  local in_single="false" in_double="false" i
+  for ((i = 0; i < ${#value}; i++)); do
+    ch="${value:i:1}"
+    if [[ "$ch" == "'" && "$in_double" == "false" ]]; then
+      if [[ "$in_single" == "true" ]]; then
+        in_single="false"
+      else
+        in_single="true"
+      fi
+      out+="$ch"
+      prev="$ch"
+      continue
+    fi
+    if [[ "$ch" == "\"" && "$in_single" == "false" ]]; then
+      if [[ "$in_double" == "true" ]]; then
+        in_double="false"
+      else
+        in_double="true"
+      fi
+      out+="$ch"
+      prev="$ch"
+      continue
+    fi
+    if [[ "$ch" == "#" && "$in_single" == "false" && "$in_double" == "false" ]]; then
+      if [[ -n "$prev" && "$prev" =~ [[:space:]] ]]; then
+        break
+      fi
+    fi
+    out+="$ch"
+    prev="$ch"
+  done
+  printf '%s' "$out"
+}
+
 sbd_safe_load_env_file() {
   local file="$1"
   [[ -f "$file" ]] || return 1
@@ -199,6 +235,8 @@ sbd_safe_load_env_file() {
     value="${line#*=}"
     key="$(sbd_trim_whitespace "$key")"
     [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "Invalid env key (${file}:${lineno}): ${key}"
+    value="$(sbd_strip_inline_env_comment "$value")"
+    value="$(sbd_trim_whitespace "$value")"
     value="$(sbd_unquote_env_value "$value")"
     printf -v "$key" '%s' "$value"
   done < "$file"
