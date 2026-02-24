@@ -75,8 +75,15 @@ provider_multi_ports_add() {
   proto="${mapping%%:*}"
   fw_detect_backend
   load_install_context || create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
-  fw_apply_rule "$proto" "$port"
-  provider_cfg_rebuild_runtime
+  if ! ( fw_apply_rule "$proto" "$port" ); then
+    multi_ports_store_remove "$protocol" "$port"
+    die "Failed to apply firewall rule for multi real-port: ${protocol}:${port}"
+  fi
+  if ! ( provider_cfg_rebuild_runtime ); then
+    provider_multi_ports_remove_firewall "$protocol" "$port" || true
+    multi_ports_store_remove "$protocol" "$port"
+    die "Failed to rebuild runtime after adding multi real-port: ${protocol}:${port}"
+  fi
   log_success "$(msg "已新增多真实端口: ${protocol}:${port}" "Added multi real-port: ${protocol}:${port}")"
 }
 

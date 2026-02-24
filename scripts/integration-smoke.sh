@@ -29,6 +29,7 @@ done
 
 [[ "${EUID}" -eq 0 ]] || { echo "[ERROR] must run as root"; exit 1; }
 command -v systemctl >/dev/null 2>&1 || { echo "[ERROR] systemctl not found"; exit 1; }
+command -v jq >/dev/null 2>&1 || { echo "[ERROR] jq not found"; exit 1; }
 [[ -x "$main_script" ]] || { echo "[ERROR] main script not executable: $main_script"; exit 1; }
 
 case "$engine" in
@@ -42,6 +43,21 @@ run_step() {
   echo
   echo "[STEP] ${name}"
   "$@"
+}
+
+resolve_protocol_port() {
+  local tag="$1" cfg query port=""
+  if [[ "$engine" == "sing-box" ]]; then
+    cfg="/etc/sing-box-deve/config.json"
+    query=".inbounds[] | select(.tag==\$t) | (.listen_port // .port // empty)"
+  else
+    cfg="/etc/sing-box-deve/xray-config.json"
+    query=".inbounds[] | select(.tag==\$t) | (.port // empty)"
+  fi
+  [[ -f "$cfg" ]] || return 1
+  port="$(jq -r --arg t "$tag" "$query" "$cfg" | head -n1)"
+  [[ "$port" =~ ^[0-9]+$ ]] || return 1
+  printf '%s\n' "$port"
 }
 
 protocols="vless-reality,vmess-ws,vless-ws"
@@ -61,9 +77,15 @@ run_step "set route global-proxy" "$main_script" set-route global-proxy
 run_step "set route direct" "$main_script" set-route direct
 
 if command -v iptables >/dev/null 2>&1; then
-  run_step "jump set vless-reality 443 <- 8443,2053" \
-    "$main_script" jump set vless-reality 443 8443,2053
-  run_step "jump clear" "$main_script" jump clear
+  main_port="$(resolve_protocol_port "vless-reality" || true)"
+  if [[ -n "$main_port" ]]; then
+    run_step "jump set vless-reality ${main_port} <- 8443,2053" \
+      "$main_script" jump set vless-reality "$main_port" 8443,2053
+    run_step "jump clear" "$main_script" jump clear
+  else
+    echo
+    echo "[WARN] unable to resolve vless-reality port from runtime config, skip jump tests"
+  fi
 else
   echo
   echo "[WARN] iptables not found, skip jump tests"

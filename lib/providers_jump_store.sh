@@ -12,8 +12,7 @@ jump_store_migrate_legacy() {
   jump_store_init
   [[ -f "$SBD_JUMP_FILE" ]] || return 0
   [[ -s "$SBD_JUMP_DB_FILE" ]] && return 0
-  # shellcheck disable=SC1090
-  source "$SBD_JUMP_FILE"
+  sbd_safe_load_env_file "$SBD_JUMP_FILE"
   [[ -n "${JUMP_PROTOCOL:-}" && -n "${JUMP_MAIN_PORT:-}" ]] || return 0
   printf '%s|%s|%s\n' "${JUMP_PROTOCOL}" "${JUMP_MAIN_PORT}" "${JUMP_EXTRA_PORTS:-}" > "$SBD_JUMP_DB_FILE"
 }

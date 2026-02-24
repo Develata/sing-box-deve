@@ -161,7 +161,11 @@ perform_download_update() {
 
   trap - EXIT INT TERM
 
-  [[ "$ok" == "true" ]] || die "$(msg "安全更新失败：所有更新源不可用或校验失败。可使用 'sb update --rollback' 恢复" "Secure update failed: all sources unavailable or verification failed. Use 'sb update --rollback' to restore")"
+  if [[ "$ok" != "true" ]]; then
+    log_warn "$(msg "安全更新失败，正在自动回滚到更新前版本..." "Secure update failed, attempting automatic rollback to previous version...")"
+    perform_script_rollback >/dev/null 2>&1 || true
+    die "$(msg "安全更新失败：所有更新源不可用或校验失败。已尝试自动回滚，可执行 'sb update --rollback' 再次恢复" "Secure update failed: all sources unavailable or verification failed. Auto-rollback attempted, run 'sb update --rollback' to restore again")"
+  fi
 }
 
 perform_script_self_update() {

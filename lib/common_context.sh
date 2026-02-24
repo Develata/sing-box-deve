@@ -107,8 +107,7 @@ EOF
 
 load_install_context() {
   if [[ -f "$SBD_CONTEXT_FILE" ]]; then
-    # shellcheck disable=SC1090
-    source "$SBD_CONTEXT_FILE"
+    sbd_safe_load_env_file "$SBD_CONTEXT_FILE"
     return 0
   fi
   return 1

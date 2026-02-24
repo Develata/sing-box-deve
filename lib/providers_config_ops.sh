@@ -8,8 +8,9 @@ provider_cfg_load_runtime_exports() {
   local runtime_file
   runtime_file="$(provider_cfg_runtime_file)"
   [[ -f "$runtime_file" ]] || die "$(msg "未找到运行时状态" "No runtime state found")"
-  # shellcheck disable=SC1090
-  source "$runtime_file"
+  sbd_safe_load_env_file "$runtime_file"
+  [[ -n "${provider:-}" && -n "${profile:-}" && -n "${engine:-}" && -n "${protocols:-}" ]] || \
+    die "$(msg "运行时状态缺少关键字段(provider/profile/engine/protocols)" "Runtime missing required fields (provider/profile/engine/protocols)")"
   export ARGO_MODE="${argo_mode:-off}"
   export ARGO_DOMAIN="${argo_domain:-}"
   export ARGO_TOKEN="${argo_token:-}"

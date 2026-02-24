@@ -12,8 +12,7 @@ provider_warp_load_account() {
   local account_file
   account_file="$(provider_warp_account_env_file)"
   [[ -f "$account_file" ]] || die "$(msg "未找到 WARP 账户，请先执行 warp register" "WARP account not found, run warp register first")"
-  # shellcheck disable=SC1090
-  source "$account_file"
+  sbd_safe_load_env_file "$account_file"
   WARP_PRIVATE_KEY="${WARP_PRIVATE_KEY:-}"
   WARP_PEER_PUBLIC_KEY="${WARP_PEER_PUBLIC_KEY:-bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=}"
   WARP_RESERVED="${WARP_RESERVED:-[0,0,0]}"

@@ -138,9 +138,7 @@ set -euo pipefail
 
 script_root=""
 if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
-  script_root="${script_root:-}"
+  script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' /etc/sing-box-deve/runtime.env 2>/dev/null || true)"
 fi
 
 if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
@@ -176,7 +174,11 @@ persist_runtime_state() {
   local profile="$2"
   local engine="$3"
   local protocols_csv="$4"
-  cat > /etc/sing-box-deve/runtime.env <<EOF
+  local runtime_file="/etc/sing-box-deve/runtime.env" tmp_runtime
+  mkdir -p "$(dirname "$runtime_file")"
+  tmp_runtime="$(mktemp "${runtime_file}.tmp.XXXXXX")"
+  trap 'rm -f "$tmp_runtime" 2>/dev/null || true' RETURN
+  cat > "$tmp_runtime" <<EOF
 provider=${provider}
 profile=${profile}
 engine=${engine}
@@ -226,4 +228,8 @@ warp_share_endpoints=${WARP_SHARE_ENDPOINTS:-}
 script_root=${PROJECT_ROOT}
 installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
+  chmod 600 "$tmp_runtime" 2>/dev/null || true
+  mv "$tmp_runtime" "$runtime_file"
+  chmod 600 "$runtime_file" 2>/dev/null || true
+  trap - RETURN
 }

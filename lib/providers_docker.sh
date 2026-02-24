@@ -29,6 +29,7 @@ OUTBOUND_PROXY_PASS=${OUTBOUND_PROXY_PASS:-}
 WARP_PRIVATE_KEY=${WARP_PRIVATE_KEY:-}
 WARP_PEER_PUBLIC_KEY=${WARP_PEER_PUBLIC_KEY:-}
 EOF
+  chmod 600 /etc/sing-box-deve/docker.env 2>/dev/null || true
   cat > /etc/sing-box-deve/docker-compose.yml <<EOF
 services:
   sing-box-deve:

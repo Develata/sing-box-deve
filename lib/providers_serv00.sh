@@ -41,6 +41,7 @@ outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
+  chmod 600 /etc/sing-box-deve/serv00.env 2>/dev/null || true
 
   if ! command -v sshpass >/dev/null 2>&1; then
     apt-get update -y >/dev/null

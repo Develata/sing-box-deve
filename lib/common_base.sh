@@ -160,3 +160,52 @@ rand_hex_8() {
     printf '%s-%s-%s\n' "$(date +%s%N 2>/dev/null || date +%s)" "$$" "${RANDOM:-0}" | sha256sum | cut -c1-8
   fi
 }
+
+sbd_trim_whitespace() {
+  local v="$1"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  printf '%s' "$v"
+}
+
+sbd_unquote_env_value() {
+  local value="$1"
+  if [[ "$value" == \"*\" && "$value" == *\" && "${#value}" -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ "$value" == \'*\' && "$value" == *\' && "${#value}" -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "$value"
+}
+
+sbd_safe_load_env_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  local raw line key value lineno=0
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    lineno=$((lineno + 1))
+    line="${raw%$'\r'}"
+    [[ -n "${line//[[:space:]]/}" ]] || continue
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+
+    line="$(sbd_trim_whitespace "$line")"
+    if [[ "$line" == export[[:space:]]* ]]; then
+      line="$(sbd_trim_whitespace "${line#export}")"
+    fi
+    [[ "$line" == *=* ]] || die "Invalid env line (${file}:${lineno}), expected key=value"
+
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="$(sbd_trim_whitespace "$key")"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "Invalid env key (${file}:${lineno}): ${key}"
+    value="$(sbd_unquote_env_value "$value")"
+    printf -v "$key" '%s' "$value"
+  done < "$file"
+}
+
+sbd_load_runtime_env() {
+  local runtime_file="${1:-/etc/sing-box-deve/runtime.env}"
+  [[ -f "$runtime_file" ]] || return 1
+  sbd_safe_load_env_file "$runtime_file"
+}

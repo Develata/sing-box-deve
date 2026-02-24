@@ -44,6 +44,17 @@ run_install() {
   print_post_install_info "$provider" "$profile" "$engine" "$protocols_csv"
 }
 
+validate_runtime_required_fields() {
+  local missing=() key
+  local required=(provider profile engine protocols script_root installed_at)
+  for key in "${required[@]}"; do
+    [[ -n "${!key:-}" ]] || missing+=("$key")
+  done
+  if (( ${#missing[@]} > 0 )); then
+    die "runtime.env missing required fields: ${missing[*]}"
+  fi
+}
+
 apply_config() {
   local config_file="$1"
   ensure_root
@@ -52,8 +63,7 @@ apply_config() {
 
   [[ -f "$config_file" ]] || die "Config file not found: $config_file"
 
-  # shellcheck disable=SC1090
-  source "$config_file"
+  sbd_safe_load_env_file "$config_file"
 
   local provider="${provider:-vps}" profile="${profile:-lite}"
   local engine="${engine:-sing-box}" protocols="${protocols:-vless-reality}"
@@ -107,8 +117,8 @@ apply_runtime() {
   ensure_root
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found at /etc/sing-box-deve/runtime.env"
 
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  validate_runtime_required_fields
   export ARGO_MODE="${argo_mode:-off}"
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-}"
   export PSIPHON_ENABLE="${psiphon_enable:-off}"

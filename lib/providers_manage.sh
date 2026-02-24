@@ -77,8 +77,7 @@ provider_logs() {
 provider_regen_nodes() {
   ensure_root
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
   local runtime_engine="${engine:-sing-box}"
   local runtime_protocols="${protocols:-vless-reality}"
   write_nodes_output "$runtime_engine" "$runtime_protocols"
@@ -91,8 +90,7 @@ provider_update() {
     die "$(msg "未检测到已安装运行时" "No installed runtime found")"
   fi
 
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
   install_engine_binary "$engine"
   safe_service_restart
 
@@ -143,8 +141,7 @@ provider_kernel_set() {
   local has_runtime="false"
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
     has_runtime="true"
-    # shellcheck disable=SC1091
-    source /etc/sing-box-deve/runtime.env
+    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
   fi
 
   install_engine_binary "$target_engine" "$target_tag"

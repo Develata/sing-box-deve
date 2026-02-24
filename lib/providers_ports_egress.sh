@@ -64,9 +64,9 @@ provider_set_share_endpoints() {
   local runtime_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
 
   case "$kind" in
-    direct) DIRECT_SHARE_ENDPOINTS="$endpoints" ;;
-    proxy) PROXY_SHARE_ENDPOINTS="$endpoints" ;;
-    warp) WARP_SHARE_ENDPOINTS="$endpoints" ;;
+    direct) export DIRECT_SHARE_ENDPOINTS="$endpoints" ;;
+    proxy) export PROXY_SHARE_ENDPOINTS="$endpoints" ;;
+    warp) export WARP_SHARE_ENDPOINTS="$endpoints" ;;
     *) die "Unsupported share endpoint kind: $kind" ;;
   esac
 

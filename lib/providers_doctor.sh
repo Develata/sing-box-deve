@@ -29,8 +29,7 @@ provider_doctor_check_runtime() {
     log_warn "$(msg "运行时状态文件缺失: /etc/sing-box-deve/runtime.env" "Runtime state file missing: /etc/sing-box-deve/runtime.env")"
     return 1
   fi
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
   log_success "$(msg "运行时状态已加载" "Runtime state loaded")"
 }
 

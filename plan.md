@@ -354,3 +354,8 @@
 ## 附录G) CURRENT 差距清单（待持续更新）
 1. 若菜单与 CLI 描述不一致，以 `SPEC` 为后续改造目标。
 2. 每完成一项 P0/P1/P2，都要同步更新本节状态。
+3. [已完成 2026-02-24][P0] `apply --runtime` 增加 runtime 必填字段校验（`provider/profile/engine/protocols/script_root/installed_at`）。
+4. [已完成 2026-02-24][P0] `set-port` 增加失败回滚闭环：配置回滚、防火墙新规则撤销、`port_egress_map` 分支回滚 `runtime.env/nodes`。
+5. [已完成 2026-02-24][P0] 移除多个高风险 `source *.env` 路径，改为安全 env 解析加载。
+6. [已完成 2026-02-24][P1] `runtime.env` 与多个 provider 凭据文件补齐最小权限（`600`），并将关键写入改为临时文件 + `mv`。
+7. [进行中][P0] 基于附录 D 的真实环境验收（矩阵展示、mport/jump 全链路）仍需在目标主机执行。

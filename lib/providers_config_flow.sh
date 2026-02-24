@@ -164,7 +164,8 @@ provider_cfg_preview() {
       fi
       ;;
     protocol-remove)
-      [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-remove <proto_csv>"
+      [[ -n "$arg1" ]] || die "Usage: cfg preview protocol-remove <proto_csv|index_csv>"
+      arg1="$(provider_cfg_protocol_resolve_drop_csv "$current_protocols" "$arg1")"
       target_protocols="$(provider_cfg_protocol_csv_remove "$current_protocols" "$arg1")"
       [[ -n "$target_protocols" ]] || die "Preview result invalid: at least one protocol must remain"
       log_info "$(msg "预览协议变更: ${current_protocols} -> ${target_protocols}" "preview protocols: ${current_protocols} -> ${target_protocols}")"
@@ -185,7 +186,13 @@ provider_cfg_apply_with_snapshot_unlocked() {
   local sid
   sid="$(provider_cfg_snapshot_create "cfg ${action}")"
   log_info "$(msg "已创建配置快照: ${sid}" "cfg snapshot created: ${sid}")"
-  provider_cfg_apply_dispatch "$action" "$@"
+  if ! ( provider_cfg_apply_dispatch "$action" "$@" ); then
+    log_error "$(msg "配置变更失败，正在回滚到快照: ${sid}" "Config change failed, rolling back to snapshot: ${sid}")"
+    if ! provider_cfg_rollback_unlocked "$sid"; then
+      die "$(msg "配置变更失败，且自动回滚失败，请手动执行: cfg rollback ${sid}" "Config change failed and auto-rollback failed, run manually: cfg rollback ${sid}")"
+    fi
+    die "$(msg "配置变更失败，已自动回滚到: ${sid}" "Config change failed and rolled back to: ${sid}")"
+  fi
 }
 
 provider_cfg_rollback_unlocked() {
@@ -207,8 +214,7 @@ provider_cfg_rollback_unlocked() {
   cp -f "$target_dir/nodes.txt" "$SBD_NODES_FILE" 2>/dev/null || true
 
   provider_cfg_rebuild_runtime
-  # shellcheck disable=SC1090
-  source "$runtime_file"
+  sbd_safe_load_env_file "$runtime_file"
   if [[ "${argo_mode:-off}" == "off" ]]; then
     systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
     rm -f "$SBD_ARGO_SERVICE_FILE"
@@ -234,7 +240,7 @@ provider_cfg_command() {
       provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$action" "$@"
       ;;
     *)
-      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|psiphon <off|on> [off|proxy|global] [auto|cc]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email] [dns_provider]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv>|rebuild]"
+      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|psiphon <off|on> [off|proxy|global] [auto|cc]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email] [dns_provider]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv|index_csv>|rebuild]"
       ;;
   esac
 }

@@ -34,6 +34,39 @@ provider_cfg_protocol_csv_added() {
   (IFS=','; echo "${added[*]}")
 }
 
+provider_cfg_protocol_index_to_name() {
+  local current_csv="$1" idx="$2"
+  local protocol_list=()
+  protocols_to_array "$current_csv" protocol_list
+  [[ "$idx" =~ ^[0-9]+$ ]] || die "Protocol index must be numeric: ${idx}"
+  (( idx >= 1 && idx <= ${#protocol_list[@]} )) || die "Protocol index out of range: ${idx} (1..${#protocol_list[@]})"
+  printf '%s\n' "${protocol_list[$((idx - 1))]}"
+}
+
+provider_cfg_protocol_resolve_drop_csv() {
+  local current_csv="$1" raw="$2"
+  local out="" item proto
+  [[ -n "$raw" ]] || die "Usage: cfg protocol-remove <proto_csv|index_csv>"
+
+  IFS=',' read -r -a _items <<< "$raw"
+  for item in "${_items[@]}"; do
+    item="$(echo "$item" | xargs)"
+    [[ -n "$item" ]] || continue
+    if [[ "$item" =~ ^[0-9]+$ ]]; then
+      proto="$(provider_cfg_protocol_index_to_name "$current_csv" "$item")"
+    else
+      proto="$item"
+    fi
+    if [[ -z "$out" ]]; then
+      out="$proto"
+    elif ! csv_has_token "$out" "$proto"; then
+      out="${out},${proto}"
+    fi
+  done
+  [[ -n "$out" ]] || die "Usage: cfg protocol-remove <proto_csv|index_csv>"
+  printf '%s\n' "$out"
+}
+
 provider_cfg_protocol_sync_argo_service() {
   local protocols_csv="$1"
   local plist=()
@@ -102,11 +135,13 @@ provider_cfg_protocol_add() {
 
 provider_cfg_protocol_remove() {
   ensure_root
-  local drop_csv="$1"
-  [[ -n "$drop_csv" ]] || die "Usage: cfg protocol-remove <proto_csv>"
-  validate_protocols_csv "$drop_csv"
+  local drop_raw="$1"
+  [[ -n "$drop_raw" ]] || die "Usage: cfg protocol-remove <proto_csv|index_csv>"
 
   provider_cfg_load_runtime_exports
+  local drop_csv
+  drop_csv="$(provider_cfg_protocol_resolve_drop_csv "${protocols:-vless-reality}" "$drop_raw")"
+  validate_protocols_csv "$drop_csv"
   local current_csv="${protocols:-vless-reality}" target_csv
   target_csv="$(provider_cfg_protocol_csv_remove "$current_csv" "$drop_csv")"
   [[ "$target_csv" != "$current_csv" ]] || {

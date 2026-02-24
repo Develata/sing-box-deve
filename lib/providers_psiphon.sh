@@ -153,8 +153,7 @@ provider_psiphon_status() {
   local runtime_file="/etc/sing-box-deve/runtime.env"
   local mode="off" region="auto" enabled="off" state="stopped" ip=""
   if [[ -f "$runtime_file" ]]; then
-    # shellcheck disable=SC1090,SC1091
-    source "$runtime_file"
+    sbd_safe_load_env_file "$runtime_file"
     mode="${psiphon_mode:-off}"
     region="${psiphon_region:-auto}"
     enabled="${psiphon_enable:-off}"

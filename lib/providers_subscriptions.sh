@@ -4,8 +4,7 @@ SBD_SUB_ENV_FILE="/etc/sing-box-deve/subscription.env"
 
 load_subscription_env() {
   [[ -f "$SBD_SUB_ENV_FILE" ]] || return 0
-  # shellcheck disable=SC1090
-  source "$SBD_SUB_ENV_FILE"
+  sbd_safe_load_env_file "$SBD_SUB_ENV_FILE"
 }
 
 save_subscription_env() {
@@ -18,6 +17,7 @@ GITLAB_SUB_PATH=${GITLAB_SUB_PATH:-subs}
 TG_BOT_TOKEN=${TG_BOT_TOKEN:-}
 TG_CHAT_ID=${TG_CHAT_ID:-}
 EOF
+  chmod 600 "$SBD_SUB_ENV_FILE" 2>/dev/null || true
 }
 
 generate_client_artifacts() {
@@ -43,8 +43,7 @@ provider_sub_rules_update() {
 provider_sub_refresh() {
   ensure_root
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   generate_client_artifacts
   log_success "$(msg "订阅与分享产物已刷新" "Subscription artifacts refreshed")"

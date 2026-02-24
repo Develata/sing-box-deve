@@ -58,8 +58,7 @@ provider_status_header() {
   log_info "$(msg "状态: 核心=$(provider_i18n_value "$core_state") argo=$(provider_i18n_value "$argo_state") psiphon=$(provider_i18n_value "$psiphon_state")" "State: core=${core_state} argo=${argo_state} psiphon=${psiphon_state}")"
 
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    # shellcheck disable=SC1091
-    source /etc/sing-box-deve/runtime.env
+    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
     log_info "$(msg "环境: ${provider:-unknown} | 规格: ${profile:-unknown} | 内核: ${engine:-unknown}" "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}")"
     log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
     log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | Psiphon: enable=${psiphon_enable:-off},mode=${psiphon_mode:-off},region=${psiphon_region:-auto} | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | Psiphon: enable=${psiphon_enable:-off},mode=${psiphon_mode:-off},region=${psiphon_region:-auto} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"

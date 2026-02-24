@@ -143,11 +143,23 @@ provider_jump_replay() {
 provider_jump_set() {
   ensure_root
   local protocol="$1" main_port="$2" extra_ports="$3"
-  local script_cmd normalized_extras
+  local script_cmd normalized_extras had_old="false" old_extras=""
   provider_cfg_load_runtime_exports
   normalized_extras="$(provider_jump_validate_target "$protocol" "$main_port" "$extra_ports")"
+  if jump_store_has "$protocol" "$main_port"; then
+    had_old="true"
+    old_extras="$(jump_store_records | awk -F'|' -v p="$protocol" -v m="$main_port" '$1==p && $2==m {print $3; exit}')"
+  fi
   jump_store_set "$protocol" "$main_port" "$normalized_extras"
-  provider_jump_replay
+  if ! ( provider_jump_replay ); then
+    if [[ "$had_old" == "true" ]]; then
+      jump_store_set "$protocol" "$main_port" "$old_extras"
+    else
+      jump_store_remove "$protocol" "$main_port"
+    fi
+    ( provider_jump_replay ) >/dev/null 2>&1 || true
+    die "Failed to apply jump rules for ${protocol}:${main_port}, state restored"
+  fi
 
   script_cmd="/usr/local/bin/sb"
   if [[ -n "${script_root:-}" && -x "${script_root}/sing-box-deve.sh" ]]; then
@@ -183,8 +195,7 @@ provider_jump_clear() {
     disable_jump_replay_service
   fi
   if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    # shellcheck disable=SC1091
-    source /etc/sing-box-deve/runtime.env
+    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
     write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
   log_success "$(msg "jump 端口复用已清除" "jump ports cleared")"

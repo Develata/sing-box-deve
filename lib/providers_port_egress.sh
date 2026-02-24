@@ -66,8 +66,7 @@ provider_port_egress_validate_map() {
 provider_set_port_egress_info() {
   ensure_root
   [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  # shellcheck disable=SC1091
-  source /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
 
   local runtime_engine="${engine:-sing-box}" normalized ports_csv outbounds_csv
   normalized="$(normalize_port_egress_map "${port_egress_map:-}")"

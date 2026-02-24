@@ -40,6 +40,7 @@ outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
+  chmod 600 /etc/sing-box-deve/sap.env 2>/dev/null || true
 
   local sap_image
   sap_image="${SAP_DOCKER_IMAGE:-ygkkk/argosbx}"

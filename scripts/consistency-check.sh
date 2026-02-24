@@ -8,12 +8,33 @@ config_dir="/etc/sing-box-deve"
 log() { printf '[CHECK] %s\n' "$*"; }
 fail() { printf '[FAIL] %s\n' "$*"; failures=$((failures + 1)); }
 
+safe_load_env() {
+  local file="$1" raw line key value
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    line="${raw%$'\r'}"
+    [[ -n "${line//[[:space:]]/}" ]] || continue
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ "$line" == *=* ]] || {
+      echo "[ERROR] invalid env line in ${file}: ${line}" >&2
+      exit 1
+    }
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+      echo "[ERROR] invalid env key in ${file}: ${key}" >&2
+      exit 1
+    }
+    printf -v "$key" '%s' "$value"
+  done < "$file"
+}
+
 [[ -f "$runtime_file" ]] || { echo "[ERROR] runtime not found: ${runtime_file}"; exit 1; }
 [[ -f "$nodes_file" ]] || { echo "[ERROR] nodes not found: ${nodes_file}"; exit 1; }
 command -v jq >/dev/null 2>&1 || { echo "[ERROR] jq is required"; exit 1; }
 
-# shellcheck disable=SC1090
-source "$runtime_file"
+safe_load_env "$runtime_file"
 engine="${engine:-sing-box}"
 config_file="${config_dir}/config.json"
 [[ "$engine" == "xray" ]] && config_file="${config_dir}/xray-config.json"
