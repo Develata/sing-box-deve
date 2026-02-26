@@ -2,10 +2,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="${1:-sha256:7e5bc0e499a8d50cb1e32287944a90b9ec8fd7d500673e75daff3f52882f5798}"
+IMAGE="${1:-debian:12-slim}"
 
 docker run --rm -v "${ROOT_DIR}:/work" -w /work "${IMAGE}" bash -lc '
 set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update >/dev/null
+apt-get install -y jq >/dev/null
 
 mkdir -p /tmp/sbd-mock
 
