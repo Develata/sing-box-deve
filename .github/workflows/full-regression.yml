@@ -1,0 +1,25 @@
+name: Full Regression
+
+on:
+  workflow_dispatch:
+
+jobs:
+  full-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Acceptance matrix snapshot
+        run: |
+          bash scripts/acceptance-matrix.sh > /tmp/acceptance-matrix.md
+          sed -n '1,80p' /tmp/acceptance-matrix.md
+
+      - name: Clash ruleset generation checks
+        run: |
+          chmod +x scripts/test-clash-ruleset.sh
+          bash scripts/test-clash-ruleset.sh
+
+      - name: Docker regression smoke
+        run: |
+          chmod +x scripts/regression-docker.sh
+          bash scripts/regression-docker.sh

@@ -136,10 +136,12 @@ UPDATE_MANIFEST_FILES=(
   "scripts/integration-smoke.sh"
   "scripts/consistency-check.sh"
   "scripts/regression-docker.sh"
+  "scripts/test-clash-ruleset.sh"
   "scripts/update-checksums.sh"
   ".github/workflows/main.yml"
   ".github/workflows/mainh.yml"
   ".github/workflows/ci.yml"
+  ".github/workflows/full-regression.yml"
   "workers/_worker.js"
   "workers/workers_keep.js"
 )
@@ -161,5 +163,6 @@ UPDATE_MANIFEST_EXECUTABLES=(
   "scripts/integration-smoke.sh"
   "scripts/consistency-check.sh"
   "scripts/regression-docker.sh"
+  "scripts/test-clash-ruleset.sh"
   "scripts/update-checksums.sh"
 )
