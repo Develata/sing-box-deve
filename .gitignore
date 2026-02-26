@@ -3,6 +3,7 @@
 Thumbs.db
 .idea/
 .vscode/
+.tools/
 
 # Local runtime/state (generated on target hosts)
 /run/
