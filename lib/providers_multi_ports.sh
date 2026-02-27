@@ -63,7 +63,12 @@ provider_multi_ports_reject_conflict() {
 provider_multi_ports_add() {
   ensure_root
   local protocol="$1" port="$2" mapping proto
+  local runtime_provider runtime_profile runtime_engine runtime_protocols
   provider_cfg_load_runtime_exports
+  runtime_provider="${provider:-vps}"
+  runtime_profile="${profile:-lite}"
+  runtime_engine="${engine:-sing-box}"
+  runtime_protocols="${protocols:-vless-reality}"
   provider_multi_ports_validate_target "$protocol" "$port"
   provider_multi_ports_reject_conflict "$protocol" "$port"
   multi_ports_store_has "$protocol" "$port" && {
@@ -74,7 +79,11 @@ provider_multi_ports_add() {
   mapping="$(protocol_port_map "$protocol")"
   proto="${mapping%%:*}"
   fw_detect_backend
-  load_install_context || create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  load_install_context || create_install_context "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
+  provider="$runtime_provider"
+  profile="$runtime_profile"
+  engine="$runtime_engine"
+  protocols="$runtime_protocols"
   if ! ( fw_apply_rule "$proto" "$port" ); then
     multi_ports_store_remove "$protocol" "$port"
     die "Failed to apply firewall rule for multi real-port: ${protocol}:${port}"
@@ -89,9 +98,18 @@ provider_multi_ports_add() {
 
 provider_multi_ports_remove_firewall() {
   local protocol="$1" port="$2" mapping proto tag tmp_file backend p t created
+  local runtime_provider runtime_profile runtime_engine runtime_protocols
+  runtime_provider="${provider:-vps}"
+  runtime_profile="${profile:-lite}"
+  runtime_engine="${engine:-sing-box}"
+  runtime_protocols="${protocols:-vless-reality}"
   mapping="$(protocol_port_map "$protocol")"
   proto="${mapping%%:*}"
-  load_install_context || create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  load_install_context || create_install_context "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
+  provider="$runtime_provider"
+  profile="$runtime_profile"
+  engine="$runtime_engine"
+  protocols="$runtime_protocols"
   tag="$(fw_tag "core" "$proto" "$port")"
   [[ -f "$SBD_RULES_FILE" ]] || return 0
   tmp_file="$(mktemp)"
@@ -108,7 +126,12 @@ provider_multi_ports_remove_firewall() {
 provider_multi_ports_remove() {
   ensure_root
   local protocol="$1" port="$2"
+  local runtime_provider runtime_profile runtime_engine runtime_protocols
   provider_cfg_load_runtime_exports
+  runtime_provider="${provider:-vps}"
+  runtime_profile="${profile:-lite}"
+  runtime_engine="${engine:-sing-box}"
+  runtime_protocols="${protocols:-vless-reality}"
   provider_multi_ports_validate_target "$protocol" "$port" "false"
   if ! multi_ports_store_has "$protocol" "$port"; then
     log_warn "$(msg "该多真实端口不存在" "Multi real-port does not exist")"
@@ -123,13 +146,22 @@ provider_multi_ports_remove() {
     disable_jump_replay_service
   fi
   provider_multi_ports_remove_firewall "$protocol" "$port"
+  provider="$runtime_provider"
+  profile="$runtime_profile"
+  engine="$runtime_engine"
+  protocols="$runtime_protocols"
   provider_cfg_rebuild_runtime
   log_success "$(msg "已移除多真实端口: ${protocol}:${port}" "Removed multi real-port: ${protocol}:${port}")"
 }
 
 provider_multi_ports_clear() {
   ensure_root
+  local runtime_provider runtime_profile runtime_engine runtime_protocols
   provider_cfg_load_runtime_exports
+  runtime_provider="${provider:-vps}"
+  runtime_profile="${profile:-lite}"
+  runtime_engine="${engine:-sing-box}"
+  runtime_protocols="${protocols:-vless-reality}"
   while IFS='|' read -r protocol port; do
     [[ -n "$protocol" && -n "$port" ]] || continue
     provider_jump_clear_target "$protocol" "$port"
@@ -142,6 +174,10 @@ provider_multi_ports_clear() {
     disable_jump_replay_service
   fi
   multi_ports_store_clear
+  provider="$runtime_provider"
+  profile="$runtime_profile"
+  engine="$runtime_engine"
+  protocols="$runtime_protocols"
   provider_cfg_rebuild_runtime
   log_success "$(msg "多真实端口已清空" "Multi real-ports cleared")"
 }

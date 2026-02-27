@@ -82,7 +82,10 @@ provider_set_port() {
     cp "$cfg" "$rollback_cfg"
     cp "$cfg" "${cfg}.bak"
     tmp_cfg="${SBD_RUNTIME_DIR}/config.json.tmp"
-    jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .listen_port) = $p | (.inbounds[] | select(.tag==$t) |= del(.port))' "$cfg" > "$tmp_cfg"
+    jq --arg t "$tag" --argjson p "$new_port" \
+      '(.inbounds[] | select(.tag==$t) | .listen_port) = $p
+       | ((.inbounds[] | select(.tag==$t)) |= del(.port))' \
+      "$cfg" > "$tmp_cfg"
     mv "$tmp_cfg" "$cfg"
     validate_generated_config "sing-box" "true"
   else

@@ -60,7 +60,7 @@ build_port_egress_rules_singbox() {
     mode="${item#*:}"
     target="$(port_egress_mode_to_outbound "$mode")" || continue
     if ! csv_has_token "$available_outbounds" "$target"; then
-      log_warn "$(msg "端口出站映射跳过: ${port}:${mode}（出站 ${target} 不可用）" "Skip port egress mapping ${port}:${mode} (outbound ${target} unavailable)")"
+      log_warn "$(msg "端口出站映射跳过: ${port}:${mode}（出站 ${target} 不可用）" "Skip port egress mapping ${port}:${mode} (outbound ${target} unavailable)")" >&2
       continue
     fi
     found="false"
@@ -71,7 +71,7 @@ build_port_egress_rules_singbox() {
       rules+="${rules:+,}{\"inbound\":[\"${tag}\"],\"outbound\":\"${target}\"}"
       found="true"
     done
-    [[ "$found" == "true" ]] || log_warn "$(msg "端口出站映射未命中入站端口: ${port}" "Port egress mapping did not match inbound port: ${port}")"
+    [[ "$found" == "true" ]] || log_warn "$(msg "端口出站映射未命中入站端口: ${port}" "Port egress mapping did not match inbound port: ${port}")" >&2
   done
   echo "$rules"
 }
@@ -88,7 +88,7 @@ build_port_egress_rules_xray() {
     mode="${item#*:}"
     target="$(port_egress_mode_to_outbound "$mode")" || continue
     if ! csv_has_token "$available_outbounds" "$target"; then
-      log_warn "$(msg "端口出站映射跳过: ${port}:${mode}（出站 ${target} 不可用）" "Skip port egress mapping ${port}:${mode} (outbound ${target} unavailable)")"
+      log_warn "$(msg "端口出站映射跳过: ${port}:${mode}（出站 ${target} 不可用）" "Skip port egress mapping ${port}:${mode} (outbound ${target} unavailable)")" >&2
       continue
     fi
     found="false"
@@ -99,7 +99,7 @@ build_port_egress_rules_xray() {
       rules+="${rules:+,}{\"type\":\"field\",\"inboundTag\":[\"${tag}\"],\"outboundTag\":\"${target}\"}"
       found="true"
     done
-    [[ "$found" == "true" ]] || log_warn "$(msg "端口出站映射未命中入站端口: ${port}" "Port egress mapping did not match inbound port: ${port}")"
+    [[ "$found" == "true" ]] || log_warn "$(msg "端口出站映射未命中入站端口: ${port}" "Port egress mapping did not match inbound port: ${port}")" >&2
   done
   echo "$rules"
 }

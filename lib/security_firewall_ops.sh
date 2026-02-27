@@ -40,7 +40,7 @@ fw_remove_rule_by_record() {
   case "$backend" in
     ufw)
       local rule_numbers
-      rule_numbers="$(ufw status numbered | grep -nF "$tag" | sed 's/:.*//')"
+      rule_numbers="$(ufw status numbered | grep -nF "$tag" | sed 's/:.*//' || true)"
       if [[ -n "$rule_numbers" ]]; then
         local num ufw_num
         while read -r num; do
