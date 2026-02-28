@@ -132,6 +132,28 @@ echo "mock journalctl: $*"
 exit 0
 MOCK
 
+cat > /tmp/sbd-mock/crontab <<'"'"'MOCK'"'"'
+#!/usr/bin/env bash
+state_file="/tmp/sbd-mock/.crontab"
+case "${1:-}" in
+  -l)
+    [[ -f "$state_file" ]] || exit 1
+    cat "$state_file"
+    ;;
+  -)
+    cat > "$state_file"
+    ;;
+  "")
+    cat > "$state_file"
+    ;;
+  *)
+    # Keep behavior lenient for regression fixtures.
+    exit 0
+    ;;
+esac
+exit 0
+MOCK
+
 chmod +x /tmp/sbd-mock/*
 export PATH="/tmp/sbd-mock:${PATH}"
 
