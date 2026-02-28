@@ -66,7 +66,7 @@ EOF
 set -euo pipefail
 if command -v docker >/dev/null 2>&1; then
   if docker compose version >/dev/null 2>&1; then
-    docker compose -f ${SBD_CONFIG_DIR}/docker-compose.yml up -d
+    docker compose -f "${SBD_CONFIG_DIR}/docker-compose.yml" up -d
   else
     echo "docker compose not available, use docker run manually"
   fi

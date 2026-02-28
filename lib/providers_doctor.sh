@@ -25,11 +25,11 @@ provider_doctor_check_service() {
 }
 
 provider_doctor_check_runtime() {
-  if [[ ! -f ${SBD_CONFIG_DIR}/runtime.env ]]; then
+  if [[ ! -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
     log_warn "$(msg "运行时状态文件缺失: ${SBD_CONFIG_DIR}/runtime.env" "Runtime state file missing: ${SBD_CONFIG_DIR}/runtime.env")"
     return 1
   fi
-  sbd_load_runtime_env ${SBD_CONFIG_DIR}/runtime.env
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   log_success "$(msg "运行时状态已加载" "Runtime state loaded")"
 }
 

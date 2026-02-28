@@ -90,7 +90,6 @@ install_psiphon_prebuilt() {
   local os_name="linux"
   [[ "${OS_ID:-}" == "freebsd" ]] && os_name="freebsd"
 
-  local bin_url=""
   local bin_out="${SBD_BIN_DIR}/psiphon-tunnel-core"
 
   # Try Psiphon Labs official releases

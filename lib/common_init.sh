@@ -128,7 +128,8 @@ nohup_start_service() {
     rm -f "$pid_file"
   fi
 
-  # Start via nohup
+  # Start via nohup (exec_cmd intentionally unquoted; contains command + arguments)
+  # shellcheck disable=SC2086
   nohup $exec_cmd >> "$log_file" 2>&1 &
   local new_pid=$!
   echo "$new_pid" > "$pid_file"
@@ -305,7 +306,9 @@ sbd_service_logs() {
 # Daemon-reload (systemd only; no-op on other init systems)
 sbd_service_daemon_reload() {
   detect_init_system
-  [[ "$SBD_INIT_SYSTEM" == "systemd" ]] && systemctl daemon-reload || true
+  if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
+    systemctl daemon-reload
+  fi
 }
 
 # Check if a service unit/config exists
