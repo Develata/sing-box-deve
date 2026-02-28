@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-SBD_JUMP_FILE="/var/lib/sing-box-deve/jump-ports.env"
-SBD_JUMP_DB_FILE="/var/lib/sing-box-deve/jump-ports.db"
+SBD_JUMP_FILE="${SBD_STATE_DIR}/jump-ports.env"
+SBD_JUMP_DB_FILE="${SBD_STATE_DIR}/jump-ports.db"
 
 jump_store_init() {
-  mkdir -p "/var/lib/sing-box-deve"
+  mkdir -p "${SBD_STATE_DIR}"
   touch "$SBD_JUMP_DB_FILE"
 }
 

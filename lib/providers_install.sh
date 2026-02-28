@@ -3,7 +3,7 @@
 # Persist script files to a fixed location for reliable sb command access
 # This is critical when running via bash <(curl ...) from a temporary directory
 persist_script_installation() {
-  local persist_dir="/opt/sing-box-deve/script"
+  local persist_dir="${SBD_INSTALL_DIR}/script"
   local source_dir="${PROJECT_ROOT}"
   
   # Skip if already running from persist_dir

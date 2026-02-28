@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-SBD_MULTI_PORTS_FILE="/var/lib/sing-box-deve/multi-ports.db"
+SBD_MULTI_PORTS_FILE="${SBD_STATE_DIR}/multi-ports.db"
 
 multi_ports_store_init() {
-  mkdir -p "/var/lib/sing-box-deve"
+  mkdir -p "${SBD_STATE_DIR}"
   touch "$SBD_MULTI_PORTS_FILE"
 }
 
