@@ -38,12 +38,10 @@ build_sing_box_config() {
   protocols_to_array "$protocols_csv" protocols
 
   local has_warp="false"
-  if protocol_enabled "warp" "${protocols[@]}"; then
-    if warp_mode_targets_singbox "${WARP_MODE:-off}"; then
-      has_warp="true"
-    else
-      log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 sing-box 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-sing-box path")"
-    fi
+  if warp_mode_targets_singbox "${WARP_MODE:-off}"; then
+    has_warp="true"
+  elif protocol_enabled "warp" "${protocols[@]}"; then
+    log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 sing-box 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-sing-box path")"
   fi
 
   if protocol_enabled "vmess-ws" "${protocols[@]}"; then

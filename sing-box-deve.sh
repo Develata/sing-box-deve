@@ -26,17 +26,27 @@ bootstrap_remote_tree() {
     exit 1
   fi
 
-  tar -xzf "$archive" -C "$tmp_dir"
-  top_dir="$(tar -tzf "$archive" | awk -F/ 'NR==1{print $1; exit}')"
+  if ! tar -xzf "$archive" -C "$tmp_dir"; then
+    echo "[ERROR] Failed to extract project archive" >&2
+    exit 1
+  fi
+
+  # Avoid pipefail + SIGPIPE: read full tar listing first, then parse
+  local tar_listing
+  tar_listing="$(tar -tzf "$archive")"
+  top_dir="$(printf '%s\n' "$tar_listing" | head -1 | cut -d/ -f1)"
   remote_root="${tmp_dir}/${top_dir}"
 
   if [[ ! -f "${remote_root}/lib/common.sh" || ! -f "${remote_root}/sing-box-deve.sh" ]]; then
-    echo "[ERROR] Invalid project archive structure" >&2
+    echo "[ERROR] Invalid project archive structure (top_dir=${top_dir:-empty})" >&2
     exit 1
   fi
 
   target_script="${remote_root}/sing-box-deve.sh"
   chmod +x "$target_script"
+
+  # Disarm the cleanup trap so exec'd script can use the temp directory
+  trap - EXIT
   exec bash "$target_script" "$@"
 }
 

@@ -107,7 +107,7 @@ fw_apply_rule() {
     nftables)
       nft list table inet sing_box_deve >/dev/null 2>&1 || nft add table inet sing_box_deve
       nft list chain inet sing_box_deve input >/dev/null 2>&1 || nft add chain inet sing_box_deve input '{ type filter hook input priority 0; policy accept; }'
-      nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment "$tag"
+      nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \"$tag\"
       ;;
     firewalld)
       firewall-cmd --permanent --add-port="${port}/${proto}" >/dev/null

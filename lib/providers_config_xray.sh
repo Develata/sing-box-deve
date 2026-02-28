@@ -52,12 +52,10 @@ build_xray_config() {
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
   local has_warp="false"
-  if protocol_enabled "warp" "${protocols[@]}"; then
-    if warp_mode_targets_xray "${WARP_MODE:-off}"; then
-      has_warp="true"
-    else
-      log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 xray 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-xray path")"
-    fi
+  if warp_mode_targets_xray "${WARP_MODE:-off}"; then
+    has_warp="true"
+  elif protocol_enabled "warp" "${protocols[@]}"; then
+    log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 xray 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-xray path")"
   fi
 
   if protocol_enabled "vmess-ws" "${protocols[@]}"; then

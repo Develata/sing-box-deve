@@ -89,7 +89,7 @@ apply_jump_rules() {
       nftables)
         ensure_nft_jump_chain
         if ! nft -a list chain inet sing_box_deve prerouting 2>/dev/null | grep -Fq "$tag"; then
-          nft add rule inet sing_box_deve prerouting "$proto" dport "$p" counter redirect to ":${main_port}" comment "$tag"
+          nft add rule inet sing_box_deve prerouting "$proto" dport "$p" counter redirect to ":${main_port}" comment \"$tag\"
         fi
         ;;
       iptables|ufw|firewalld)
