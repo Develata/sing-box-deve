@@ -17,7 +17,7 @@ fw_replay() {
       nftables)
         nft list table inet sing_box_deve >/dev/null 2>&1 || nft add table inet sing_box_deve
         nft list chain inet sing_box_deve input >/dev/null 2>&1 || nft add chain inet sing_box_deve input '{ type filter hook input priority 0; policy accept; }'
-        nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \"$tag\" >/dev/null 2>&1 || true
+        nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \""$tag"\" >/dev/null 2>&1 || true
         ;;
       firewalld)
         firewall-cmd --permanent --add-port="${port}/${proto}" >/dev/null 2>&1 || true
@@ -123,7 +123,7 @@ fw_rollback() {
         nftables)
           nft list table inet sing_box_deve >/dev/null 2>&1 || nft add table inet sing_box_deve
           nft list chain inet sing_box_deve input >/dev/null 2>&1 || nft add chain inet sing_box_deve input '{ type filter hook input priority 0; policy accept; }'
-          nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \"$tag\" >/dev/null 2>&1 || true
+          nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \""$tag"\" >/dev/null 2>&1 || true
           ;;
         firewalld)
           firewall-cmd --permanent --add-port="${port}/${proto}" >/dev/null 2>&1 || true
