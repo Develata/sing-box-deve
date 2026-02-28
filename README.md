@@ -17,7 +17,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 - **Argo 隧道**：临时/固定模式 + 13 CDN 端口自动展开
 - **SAP 30 区域**：完整 AWS/Azure/GCP/Neo 区域代码映射
 - **GitHub Actions**：SAP 部署、Serv00 SSH 部署、多端保活工作流
-- **GitHub Pages**：在线命令生成器（UUID、暗色主题、CDN 面板、快捷命令）
+- **GitHub Pages**：[在线命令生成器](https://develata.github.io/sing-box-deve/)（UUID、暗色主题、CDN 面板、快捷命令）
 - **Docker 容器**：Node.js VLESS-WS 网关 + 健康检查
 - **保活体系**：本地 kp.sh、Serv00 serv00keep.sh、GitHub Actions 多方案
 - **SFW 客户端打包**：自动下载 Windows 客户端并打包配置
@@ -80,7 +80,14 @@ sudo sb doctor
 
 ## 设置持久化
 
-设置使用单行配置保存于：`/etc/sing-box-deve/settings.conf`
+设置使用单行配置保存于：`$SBD_CONFIG_DIR/settings.conf`
+
+| 模式 | `SBD_CONFIG_DIR` | `SBD_STATE_DIR` | `SBD_INSTALL_DIR` |
+|---|---|---|---|
+| root | `/etc/sing-box-deve` | `/var/lib/sing-box-deve` | `/opt/sing-box-deve` |
+| 非 root | `~/sing-box-deve/config` | `~/sing-box-deve/state` | `~/sing-box-deve` |
+
+> 下文档中出现的 `/etc/sing-box-deve`、`/opt/sing-box-deve` 等路径均为 root 模式默认值。非 root 模式下自动映射到 `~/sing-box-deve/` 下对应子目录。
 
 当前键：
 
