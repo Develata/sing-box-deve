@@ -34,6 +34,7 @@ init_user_mode_paths() {
   SBD_INSTALL_DIR="${base}"
   SBD_BIN_DIR="${base}/bin"
   SBD_DATA_DIR="${base}/data"
+  SBD_CACHE_DIR="${base}/cache"
   SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
   SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
   SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"

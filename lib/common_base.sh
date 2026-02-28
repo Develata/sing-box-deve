@@ -13,6 +13,7 @@ SBD_SETTINGS_FILE="${SBD_CONFIG_DIR}/settings.conf"
 SBD_INSTALL_DIR="/opt/sing-box-deve"
 SBD_BIN_DIR="${SBD_INSTALL_DIR}/bin"
 SBD_DATA_DIR="${SBD_INSTALL_DIR}/data"
+SBD_CACHE_DIR="${SBD_INSTALL_DIR}/cache"
 SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
 SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
 SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
@@ -121,7 +122,7 @@ detect_os() {
 }
 
 init_runtime_layout() {
-  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR"
+  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR"
   touch "$SBD_RULES_FILE"
   chmod 700 "$SBD_DATA_DIR" 2>/dev/null || true
   chmod 700 "$SBD_STATE_DIR" 2>/dev/null || true

@@ -106,10 +106,13 @@ EOF
     if command -v cf >/dev/null 2>&1; then
       return 0
     fi
-    local cf_tgz="${SBD_RUNTIME_DIR}/cf8-cli.tgz"
+    local cache_dir="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}"
+    mkdir -p "$cache_dir"
+    local cf_tgz="${cache_dir}/cf8-cli.tgz"
     download_file "https://github.com/cloudfoundry/cli/releases/download/v8.16.0/cf8-cli_8.16.0_linux_x86-64.tgz" "$cf_tgz"
-    tar -xzf "$cf_tgz" -C "$SBD_RUNTIME_DIR"
-    install -m 0755 "${SBD_RUNTIME_DIR}/cf8" /usr/local/bin/cf
+    tar -xzf "$cf_tgz" -C "$cache_dir"
+    install -m 0755 "${cache_dir}/cf8" /usr/local/bin/cf
+    rm -f "$cf_tgz" "${cache_dir}/cf8" 2>/dev/null || true
   }
 
   deploy_single_sap() {

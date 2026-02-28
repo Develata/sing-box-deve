@@ -18,7 +18,8 @@ install_cloudflared_binary() {
 
   local bin_out sha_out
   bin_out="${SBD_BIN_DIR}/cloudflared"
-  sha_out="${SBD_RUNTIME_DIR}/${asset}.sha256"
+  sha_out="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}/${asset}.sha256"
+  mkdir -p "$(dirname "$sha_out")"
 
   download_file "$url" "$bin_out"
   chmod 0755 "$bin_out"

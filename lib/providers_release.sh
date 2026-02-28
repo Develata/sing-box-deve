@@ -91,8 +91,10 @@ install_sing_box_binary() {
   if [[ "$digest" == sha256:* ]]; then
     expected="${digest#sha256:}"
   fi
-  local archive="${SBD_RUNTIME_DIR}/${filename}"
-  local sums_file="${SBD_RUNTIME_DIR}/sing-box-${version}-checksums.txt"
+  local cache_dir="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}"
+  mkdir -p "$cache_dir"
+  local archive="${cache_dir}/${filename}"
+  local sums_file="${cache_dir}/sing-box-${version}-checksums.txt"
 
   log_info "$(msg "正在安装 sing-box ${tag}" "Installing sing-box ${tag}")"
   if download_file "$url" "$archive"; then
@@ -103,8 +105,9 @@ install_sing_box_binary() {
       download_file "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-checksums.txt" "$sums_file"
       verify_sha256_from_checksums_file "$archive" "$sums_file"
     fi
-    tar -xzf "$archive" -C "$SBD_RUNTIME_DIR"
-    install -m 0755 "${SBD_RUNTIME_DIR}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box"
+    tar -xzf "$archive" -C "$cache_dir"
+    install -m 0755 "${cache_dir}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box"
+    rm -rf "${cache_dir}/sing-box-${version}-linux-${arch}" "$archive" "$sums_file" 2>/dev/null || true
   else
     if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
       log_warn "$(msg "下载 sing-box ${tag} 失败，复用本地已有二进制" "Failed to download sing-box ${tag}; reusing existing local binary")"
@@ -141,8 +144,10 @@ install_xray_binary() {
 
   local filename="Xray-linux-${x_arch}.zip"
   local url="https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}"
-  local archive="${SBD_RUNTIME_DIR}/${filename}"
-  local dgst="${SBD_RUNTIME_DIR}/${filename}.dgst"
+  local cache_dir="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}"
+  mkdir -p "$cache_dir"
+  local archive="${cache_dir}/${filename}"
+  local dgst="${cache_dir}/${filename}.dgst"
 
   log_info "$(msg "正在安装 xray ${tag}" "Installing xray ${tag}")"
   if download_file "$url" "$archive"; then
@@ -151,8 +156,9 @@ install_xray_binary() {
     if ! command -v unzip >/dev/null 2>&1; then
       apt-get install -y unzip >/dev/null
     fi
-    unzip -o "$archive" xray -d "$SBD_RUNTIME_DIR" >/dev/null
-    install -m 0755 "${SBD_RUNTIME_DIR}/xray" "${SBD_BIN_DIR}/xray"
+    unzip -o "$archive" xray -d "$cache_dir" >/dev/null
+    install -m 0755 "${cache_dir}/xray" "${SBD_BIN_DIR}/xray"
+    rm -f "${cache_dir}/xray" "$archive" "$dgst" 2>/dev/null || true
   else
     if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
       log_warn "$(msg "下载 xray ${tag} 失败，复用本地已有二进制" "Failed to download xray ${tag}; reusing existing local binary")"
