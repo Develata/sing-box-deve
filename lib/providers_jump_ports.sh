@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SBD_JUMP_RULES_FILE="/var/lib/sing-box-deve/jump-rules.db"
+SBD_JUMP_RULES_FILE="${SBD_STATE_DIR}/jump-rules.db"
 SBD_JUMP_SERVICE_FILE="/etc/systemd/system/sing-box-deve-jump.service"
 
 load_jump_ports() {
@@ -14,7 +14,9 @@ jump_rule_tag() {
 
 enable_jump_replay_service() {
   local script_cmd="${1:-/usr/local/bin/sb}"
-  cat > "$SBD_JUMP_SERVICE_FILE" <<EOF_UNIT
+  detect_init_system
+  if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
+    cat > "$SBD_JUMP_SERVICE_FILE" <<EOF_UNIT
 [Unit]
 Description=sing-box-deve jump replay
 After=network-online.target
@@ -27,16 +29,16 @@ ExecStart=${script_cmd} jump replay
 [Install]
 WantedBy=multi-user.target
 EOF_UNIT
-  systemctl daemon-reload
-  systemctl enable sing-box-deve-jump.service >/dev/null 2>&1 || true
+  fi
+  sbd_service_enable_oneshot "sing-box-deve-jump" "${script_cmd} jump replay"
 }
 
 disable_jump_replay_service() {
-  if systemctl list-unit-files | grep -q '^sing-box-deve-jump.service'; then
-    systemctl disable --now sing-box-deve-jump.service >/dev/null 2>&1 || true
+  if sbd_service_unit_exists "sing-box-deve-jump"; then
+    sbd_service_disable_oneshot "sing-box-deve-jump"
   fi
   rm -f "$SBD_JUMP_SERVICE_FILE"
-  systemctl daemon-reload
+  sbd_service_daemon_reload
 }
 
 ensure_nft_jump_chain() {
@@ -194,8 +196,8 @@ provider_jump_clear() {
   else
     disable_jump_replay_service
   fi
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
+    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
     write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
   log_success "$(msg "jump 端口复用已清除" "jump ports cleared")"

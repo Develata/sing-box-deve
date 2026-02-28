@@ -216,10 +216,10 @@ provider_cfg_rollback_unlocked() {
   provider_cfg_rebuild_runtime
   sbd_safe_load_env_file "$runtime_file"
   if [[ "${argo_mode:-off}" == "off" ]]; then
-    systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
+    sbd_service_stop "sing-box-deve-argo"
     rm -f "$SBD_ARGO_SERVICE_FILE"
     rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
-    systemctl daemon-reload
+    sbd_service_daemon_reload
   else
     configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"
   fi

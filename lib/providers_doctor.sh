@@ -16,7 +16,7 @@ provider_doctor_check_service() {
     log_warn "$(msg "未找到服务文件: ${SBD_SERVICE_FILE}" "Service file not found: ${SBD_SERVICE_FILE}")"
     return
   fi
-  if systemctl is-active --quiet sing-box-deve.service; then
+  if sbd_service_is_active "sing-box-deve"; then
     log_success "$(msg "核心服务状态: 运行中" "Core service status: active")"
   else
     log_warn "$(msg "核心服务状态: 未运行" "Core service status: inactive")"
@@ -25,11 +25,11 @@ provider_doctor_check_service() {
 }
 
 provider_doctor_check_runtime() {
-  if [[ ! -f /etc/sing-box-deve/runtime.env ]]; then
-    log_warn "$(msg "运行时状态文件缺失: /etc/sing-box-deve/runtime.env" "Runtime state file missing: /etc/sing-box-deve/runtime.env")"
+  if [[ ! -f ${SBD_CONFIG_DIR}/runtime.env ]]; then
+    log_warn "$(msg "运行时状态文件缺失: ${SBD_CONFIG_DIR}/runtime.env" "Runtime state file missing: ${SBD_CONFIG_DIR}/runtime.env")"
     return 1
   fi
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env ${SBD_CONFIG_DIR}/runtime.env
   log_success "$(msg "运行时状态已加载" "Runtime state loaded")"
 }
 
@@ -153,7 +153,7 @@ provider_doctor_check_firewall_persistence() {
     log_warn "$(msg "未检测到托管防火墙规则记录" "No managed firewall rule records found")"
     return
   fi
-  if systemctl is-enabled --quiet sing-box-deve-fw-replay.service 2>/dev/null; then
+  if sbd_service_is_enabled "sing-box-deve-fw-replay"; then
     log_success "$(msg "防火墙规则持久化服务已启用（fw replay）" "Firewall replay persistence service enabled")"
   else
     log_warn "$(msg "存在托管规则但 fw replay 服务未启用，建议执行 sb fw replay" "Managed rules exist but replay service disabled, run sb fw replay")"

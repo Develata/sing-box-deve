@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SBD_SUB_ENV_FILE="/etc/sing-box-deve/subscription.env"
+SBD_SUB_ENV_FILE="${SBD_CONFIG_DIR}/subscription.env"
 
 load_subscription_env() {
   [[ -f "$SBD_SUB_ENV_FILE" ]] || return 0
@@ -8,7 +8,7 @@ load_subscription_env() {
 }
 
 save_subscription_env() {
-  mkdir -p /etc/sing-box-deve
+  mkdir -p "${SBD_CONFIG_DIR}"
   cat > "$SBD_SUB_ENV_FILE" <<EOF
 GITLAB_TOKEN=${GITLAB_TOKEN:-}
 GITLAB_PROJECT=${GITLAB_PROJECT:-}
@@ -42,8 +42,8 @@ provider_sub_rules_update() {
 
 provider_sub_refresh() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   generate_client_artifacts
   log_success "$(msg "订阅与分享产物已刷新" "Subscription artifacts refreshed")"

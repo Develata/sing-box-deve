@@ -35,21 +35,21 @@ provider_status_header() {
   local argo_state="off"
   local psiphon_state="off"
   if [[ -f "$SBD_SERVICE_FILE" ]]; then
-    if systemctl is-active --quiet sing-box-deve.service; then
+    if sbd_service_is_active "sing-box-deve"; then
       core_state="running"
     else
       core_state="stopped"
     fi
   fi
   if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-    if systemctl is-active --quiet sing-box-deve-argo.service; then
+    if sbd_service_is_active "sing-box-deve-argo"; then
       argo_state="running"
     else
       argo_state="stopped"
     fi
   fi
   if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
-    if systemctl is-active --quiet sing-box-deve-psiphon.service; then
+    if sbd_service_is_active "sing-box-deve-psiphon"; then
       psiphon_state="running"
     else
       psiphon_state="stopped"
@@ -57,8 +57,8 @@ provider_status_header() {
   fi
   log_info "$(msg "状态: 核心=$(provider_i18n_value "$core_state") argo=$(provider_i18n_value "$argo_state") psiphon=$(provider_i18n_value "$psiphon_state")" "State: core=${core_state} argo=${argo_state} psiphon=${psiphon_state}")"
 
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
+    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
     log_info "$(msg "环境: ${provider:-unknown} | 规格: ${profile:-unknown} | 内核: ${engine:-unknown}" "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}")"
     log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
     log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | Psiphon: enable=${psiphon_enable:-off},mode=${psiphon_mode:-off},region=${psiphon_region:-auto} | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | Psiphon: enable=${psiphon_enable:-off},mode=${psiphon_mode:-off},region=${psiphon_region:-auto} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"
@@ -78,11 +78,11 @@ provider_status_header() {
     pub_ip="$(detect_public_ip)"
     log_info "$(msg "公网IP: ${pub_ip} | 主端口: ${main_port}" "PublicIP: ${pub_ip} | MainPort: ${main_port}")"
   else
-    log_warn "$(msg "未找到运行时状态文件 (/etc/sing-box-deve/runtime.env)" "Runtime state not found (/etc/sing-box-deve/runtime.env)")"
+    log_warn "$(msg "未找到运行时状态文件 (${SBD_CONFIG_DIR}/runtime.env)" "Runtime state not found (${SBD_CONFIG_DIR}/runtime.env)")"
   fi
 
   if [[ -f "$SBD_SERVICE_FILE" ]]; then
-    if systemctl is-active --quiet sing-box-deve.service; then
+    if sbd_service_is_active "sing-box-deve"; then
       log_success "$(msg "核心服务: 运行中" "Core service: running")"
     else
       log_warn "$(msg "核心服务: 未运行" "Core service: not running")"
@@ -144,7 +144,7 @@ provider_status_header() {
     cver="$("${SBD_BIN_DIR}/cloudflared" --version 2>/dev/null | awk '{print $3}' | head -n1)"
     [[ -n "$cver" ]] && log_info "$(msg "cloudflared 版本: ${cver}" "cloudflared version: ${cver}")"
     if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-      if systemctl is-active --quiet sing-box-deve-argo.service; then
+      if sbd_service_is_active "sing-box-deve-argo"; then
         log_success "$(msg "Argo 边车: 运行中" "Argo sidecar: running")"
       else
         log_warn "$(msg "Argo 边车: 未运行" "Argo sidecar: not running")"
@@ -154,7 +154,7 @@ provider_status_header() {
 
   if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
     local psiphon_ip
-    if systemctl is-active --quiet sing-box-deve-psiphon.service; then
+    if sbd_service_is_active "sing-box-deve-psiphon"; then
       psiphon_ip="$(provider_psiphon_detect_exit_ip || true)"
       log_success "$(msg "Psiphon 边车: 运行中 (出口IP=${psiphon_ip:-unknown})" "Psiphon sidecar: running (exit_ip=${psiphon_ip:-unknown})")"
     else
@@ -196,8 +196,8 @@ provider_panel() {
   if [[ "$mode" == "full" ]]; then
     echo
     log_info "$(msg "----- 运行时详情 -----" "----- Runtime Details -----")"
-    if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-      cat /etc/sing-box-deve/runtime.env
+    if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
+      cat "${SBD_CONFIG_DIR}/runtime.env"
     else
       log_warn "$(msg "缺少 runtime.env" "runtime.env missing")"
     fi

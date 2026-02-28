@@ -115,9 +115,9 @@ apply_config() {
 
 apply_runtime() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found at /etc/sing-box-deve/runtime.env"
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found at ${SBD_CONFIG_DIR}/runtime.env"
 
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   validate_runtime_required_fields
   export ARGO_MODE="${argo_mode:-off}"
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-}"

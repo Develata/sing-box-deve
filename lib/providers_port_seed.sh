@@ -71,7 +71,7 @@ sbd_random_free_port() {
 
 prepare_initial_install_ports() {
   local protocols_csv="$1"
-  [[ -f /etc/sing-box-deve/runtime.env ]] && return 0
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] && return 0
 
   local mode="${PORT_MODE:-random}"
   local map_csv="${MANUAL_PORT_MAP:-}"

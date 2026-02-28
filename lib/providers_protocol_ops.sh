@@ -101,9 +101,9 @@ provider_cfg_protocol_sync_argo_service() {
   protocols_to_array "$protocols_csv" plist
 
   if ! protocol_enabled "argo" "${plist[@]}" || [[ "${ARGO_MODE:-off}" == "off" ]]; then
-    systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
+    sbd_service_stop "sing-box-deve-argo"
     rm -f "$SBD_ARGO_SERVICE_FILE" "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
-    systemctl daemon-reload
+    sbd_service_daemon_reload
     return 0
   fi
 

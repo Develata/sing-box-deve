@@ -90,9 +90,7 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-  systemctl daemon-reload
-  systemctl enable sing-box-deve-argo.service >/dev/null
-  systemctl restart sing-box-deve-argo.service
+  sbd_service_enable_and_start "sing-box-deve-argo" "$exec_cmd"
 
   echo "$mode" > "${SBD_DATA_DIR}/argo_mode"
   [[ -n "$domain" ]] && echo "$domain" > "${SBD_DATA_DIR}/argo_domain"

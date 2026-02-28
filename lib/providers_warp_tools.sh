@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SBD_WARP_SOCKS_CONFIG_FILE="/etc/sing-box-deve/warp-socks5.json"
+SBD_WARP_SOCKS_CONFIG_FILE="${SBD_CONFIG_DIR}/warp-socks5.json"
 SBD_WARP_SOCKS_SERVICE_FILE="/etc/systemd/system/sing-box-deve-warp-socks5.service"
 SBD_WARP_SOCKS_PORT_FILE="${SBD_DATA_DIR}/warp-socks5-port"
 
@@ -36,7 +36,7 @@ provider_warp_socks5_write_config() {
   [[ -n "$client_ipv4" ]] || client_ipv4="172.16.0.2/32"
   client_ipv6="${WARP_CLIENT_IPV6:-fd01:5ca1:ab1e::2/128}"
 
-  mkdir -p /etc/sing-box-deve
+  mkdir -p "${SBD_CONFIG_DIR}"
   cat > "$SBD_WARP_SOCKS_CONFIG_FILE" <<EOF
 {
   "log": {"level": "warn"},
@@ -73,7 +73,11 @@ provider_warp_socks5_start() {
     die "$(msg "WARP Socks5 配置校验失败" "WARP Socks5 config validation failed")"
   fi
 
-  cat > "$SBD_WARP_SOCKS_SERVICE_FILE" <<EOF
+  local exec_cmd="${SBD_BIN_DIR}/sing-box run -c ${SBD_WARP_SOCKS_CONFIG_FILE}"
+
+  detect_init_system
+  if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
+    cat > "$SBD_WARP_SOCKS_SERVICE_FILE" <<EOF
 [Unit]
 Description=sing-box-deve WARP SOCKS5
 After=network-online.target
@@ -81,30 +85,30 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${SBD_BIN_DIR}/sing-box run -c ${SBD_WARP_SOCKS_CONFIG_FILE}
+ExecStart=${exec_cmd}
 Restart=always
 RestartSec=2
 
 [Install]
 WantedBy=multi-user.target
 EOF
+  fi
 
-  systemctl daemon-reload
-  systemctl enable --now sing-box-deve-warp-socks5.service >/dev/null
+  sbd_service_enable_and_start "sing-box-deve-warp-socks5" "$exec_cmd"
   printf '%s\n' "$port" > "$SBD_WARP_SOCKS_PORT_FILE"
   log_success "$(msg "WARP Socks5 已启动: 127.0.0.1:${port}" "WARP Socks5 started: 127.0.0.1:${port}")"
 }
 
 provider_warp_socks5_stop() {
   ensure_root
-  systemctl disable --now sing-box-deve-warp-socks5.service >/dev/null 2>&1 || true
+  sbd_service_stop "sing-box-deve-warp-socks5"
   log_success "$(msg "WARP Socks5 已停止" "WARP Socks5 stopped")"
 }
 
 provider_warp_socks5_status() {
   local port="40000"
   [[ -f "$SBD_WARP_SOCKS_PORT_FILE" ]] && port="$(cat "$SBD_WARP_SOCKS_PORT_FILE" 2>/dev/null || echo 40000)"
-  if systemctl is-active --quiet sing-box-deve-warp-socks5.service; then
+  if sbd_service_is_active "sing-box-deve-warp-socks5"; then
     log_success "$(msg "WARP Socks5 状态: 运行中 (127.0.0.1:${port})" "WARP Socks5 status: running (127.0.0.1:${port})")"
   else
     log_warn "$(msg "WARP Socks5 状态: 未运行" "WARP Socks5 status: stopped")"
@@ -122,7 +126,7 @@ provider_warp_unlock_probe() {
 
 provider_warp_unlock_check() {
   local socks_port="" trace code_netflix code_openai loc
-  if systemctl is-active --quiet sing-box-deve-warp-socks5.service; then
+  if sbd_service_is_active "sing-box-deve-warp-socks5"; then
     socks_port="$(cat "$SBD_WARP_SOCKS_PORT_FILE" 2>/dev/null || true)"
   fi
 

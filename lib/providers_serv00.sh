@@ -26,8 +26,8 @@ provider_serv00_install() {
 
   validate_feature_modes
   install_apt_dependencies
-  mkdir -p /etc/sing-box-deve
-  cat > /etc/sing-box-deve/serv00.env <<EOF
+  mkdir -p "${SBD_CONFIG_DIR}"
+  cat > "${SBD_CONFIG_DIR}/serv00.env" <<EOF
 profile=${profile}
 engine=${engine}
 protocols=${protocols_csv}
@@ -41,7 +41,7 @@ outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
-  chmod 600 /etc/sing-box-deve/serv00.env 2>/dev/null || true
+  chmod 600 "${SBD_CONFIG_DIR}/serv00.env" 2>/dev/null || true
 
   if ! command -v sshpass >/dev/null 2>&1; then
     apt-get update -y >/dev/null
@@ -105,7 +105,7 @@ EOF
     log_warn "$(msg "SERV00 凭据未设置；仅生成本地部署包" "SERV00 credentials not set; generated local bundle only")"
   fi
 
-  cat > /etc/sing-box-deve/serv00-run.sh <<'EOF'
+  cat > "${SBD_CONFIG_DIR}/serv00-run.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 if [ -z "${SERV00_HOST:-}" ] || [ -z "${SERV00_USER:-}" ] || [ -z "${SERV00_PASS:-}" ]; then
@@ -116,7 +116,7 @@ fi
 cmd="${SERV00_BOOTSTRAP_CMD:-bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/serv00.sh)}"
 sshpass -p "${SERV00_PASS}" ssh -o StrictHostKeyChecking=no "${SERV00_USER}@${SERV00_HOST}" "${cmd}"
 EOF
-  chmod +x /etc/sing-box-deve/serv00-run.sh
-  log_success "$(msg "Serv00 部署包已生成: /etc/sing-box-deve/serv00.env 与 /etc/sing-box-deve/serv00-run.sh" "Serv00 deployment bundle generated at /etc/sing-box-deve/serv00.env and /etc/sing-box-deve/serv00-run.sh")"
+  chmod +x "${SBD_CONFIG_DIR}/serv00-run.sh"
+  log_success "$(msg "Serv00 部署包已生成: ${SBD_CONFIG_DIR}/serv00.env 与 ${SBD_CONFIG_DIR}/serv00-run.sh" "Serv00 deployment bundle generated at ${SBD_CONFIG_DIR}/serv00.env and ${SBD_CONFIG_DIR}/serv00-run.sh")"
   return 0
 }

@@ -2,9 +2,8 @@
 
 uninstall_disable_unit() {
   local unit="$1"
-  if systemctl list-unit-files | grep -q "^${unit}"; then
-    systemctl disable --now "$unit" >/dev/null 2>&1 || true
-  fi
+  local svc_name="${unit%.service}"
+  sbd_service_disable_oneshot "$svc_name"
 }
 
 uninstall_remove_legacy_engine_units() {
@@ -60,31 +59,31 @@ provider_uninstall() {
   rm -f /etc/systemd/system/sing-box-deve-jump.service
   rm -f /etc/systemd/system/sing-box-deve-fw-replay.service
   uninstall_remove_managed_global_bins
-  systemctl daemon-reload
+  sbd_service_daemon_reload
   fw_detect_backend
   fw_clear_managed_rules
   if [[ "$keep_settings" == "true" ]]; then
-    mkdir -p /etc/sing-box-deve/backup
-    [[ -f "$SBD_SETTINGS_FILE" ]] && cp "$SBD_SETTINGS_FILE" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/uuid" ]] && cp "${SBD_DATA_DIR}/uuid" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/reality_private.key" ]] && cp "${SBD_DATA_DIR}/reality_private.key" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/reality_public.key" ]] && cp "${SBD_DATA_DIR}/reality_public.key" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/reality_short_id" ]] && cp "${SBD_DATA_DIR}/reality_short_id" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && cp "${SBD_DATA_DIR}/xray_private.key" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && cp "${SBD_DATA_DIR}/xray_public.key" /etc/sing-box-deve/backup/
-    [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && cp "${SBD_DATA_DIR}/xray_short_id" /etc/sing-box-deve/backup/
+    mkdir -p "${SBD_CONFIG_DIR}/backup"
+    [[ -f "$SBD_SETTINGS_FILE" ]] && cp "$SBD_SETTINGS_FILE" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/uuid" ]] && cp "${SBD_DATA_DIR}/uuid" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/reality_private.key" ]] && cp "${SBD_DATA_DIR}/reality_private.key" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/reality_public.key" ]] && cp "${SBD_DATA_DIR}/reality_public.key" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/reality_short_id" ]] && cp "${SBD_DATA_DIR}/reality_short_id" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && cp "${SBD_DATA_DIR}/xray_private.key" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && cp "${SBD_DATA_DIR}/xray_public.key" "${SBD_CONFIG_DIR}/backup/"
+    [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && cp "${SBD_DATA_DIR}/xray_short_id" "${SBD_CONFIG_DIR}/backup/"
     # Priority 2.4: Set restrictive permissions on sensitive backup files (explicit list, no glob)
-    chmod 700 /etc/sing-box-deve/backup
+    chmod 700 "${SBD_CONFIG_DIR}/backup"
     local sensitive_file
     for sensitive_file in uuid reality_private.key reality_short_id xray_private.key xray_short_id; do
-      [[ -f "/etc/sing-box-deve/backup/${sensitive_file}" ]] && chmod 600 "/etc/sing-box-deve/backup/${sensitive_file}"
+      [[ -f "${SBD_CONFIG_DIR}/backup/${sensitive_file}" ]] && chmod 600 "${SBD_CONFIG_DIR}/backup/${sensitive_file}"
     done
-    rm -f /etc/sing-box-deve/runtime.env /etc/sing-box-deve/config.yaml /etc/sing-box-deve/config.json /etc/sing-box-deve/xray-config.json
+    rm -f "${SBD_CONFIG_DIR}/runtime.env" "${SBD_CONFIG_DIR}/config.yaml" "${SBD_CONFIG_DIR}/config.json" "${SBD_CONFIG_DIR}/xray-config.json"
     rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
-    find /etc/sing-box-deve -maxdepth 1 -type f -delete 2>/dev/null || true
-    log_info "$(msg "已保留备份: /etc/sing-box-deve/backup/ (settings, uuid, keys)" "Backup preserved: /etc/sing-box-deve/backup/ (settings, uuid, keys)")"
+    find "${SBD_CONFIG_DIR}" -maxdepth 1 -type f -delete 2>/dev/null || true
+    log_info "$(msg "已保留备份: ${SBD_CONFIG_DIR}/backup/ (settings, uuid, keys)" "Backup preserved: ${SBD_CONFIG_DIR}/backup/ (settings, uuid, keys)")"
   else
-    rm -rf /etc/sing-box-deve "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
+    rm -rf "${SBD_CONFIG_DIR}" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
   fi
   
   # Priority 3.4: Verify uninstall completed successfully
@@ -115,7 +114,7 @@ verify_uninstall() {
   [[ -f /usr/local/bin/sb ]] && remaining+=("/usr/local/bin/sb")
   
   # Check if services are still active
-  if systemctl is-active sing-box-deve.service >/dev/null 2>&1; then
+  if sbd_service_is_active "sing-box-deve" 2>/dev/null; then
     remaining+=("sing-box-deve.service (still active)")
   fi
   

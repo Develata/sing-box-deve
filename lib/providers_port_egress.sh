@@ -65,8 +65,8 @@ provider_port_egress_validate_map() {
 
 provider_set_port_egress_info() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
 
   local runtime_engine="${engine:-sing-box}" normalized ports_csv outbounds_csv
   normalized="$(normalize_port_egress_map "${port_egress_map:-}")"
@@ -81,7 +81,7 @@ provider_set_port_egress_info() {
 
 provider_set_port_egress_map() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
 
   local raw_map="$1" normalized
   normalized="$(normalize_port_egress_map "$raw_map")"
@@ -96,7 +96,7 @@ provider_set_port_egress_map() {
 
 provider_set_port_egress_clear() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
   provider_cfg_load_runtime_exports
   PORT_EGRESS_MAP=""
   provider_cfg_rebuild_runtime

@@ -14,8 +14,8 @@ provider_protocol_matrix_show() {
   local runtime_port_egress_map="" runtime_outbound_mode="direct" runtime_proxy_port=""
   local runtime_psiphon_enable="off" runtime_psiphon_mode="off"
 
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
+    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
     runtime_engine="${engine:-sing-box}"
     runtime_protocols="${protocols:-}"
     runtime_warp_mode="${warp_mode:-off}"

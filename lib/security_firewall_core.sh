@@ -64,7 +64,9 @@ fw_record_rule() {
 
 fw_enable_replay_service() {
   local script_cmd="/usr/local/bin/sb"
-  cat > "$SBD_FW_REPLAY_SERVICE_FILE" <<EOF
+  detect_init_system
+  if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
+    cat > "$SBD_FW_REPLAY_SERVICE_FILE" <<EOF
 [Unit]
 Description=sing-box-deve firewall replay
 After=network-online.target
@@ -77,8 +79,8 @@ ExecStart=${script_cmd} fw replay
 [Install]
 WantedBy=multi-user.target
 EOF
-  systemctl daemon-reload
-  systemctl enable sing-box-deve-fw-replay.service >/dev/null 2>&1 || true
+  fi
+  sbd_service_enable_oneshot "sing-box-deve-fw-replay" "${script_cmd} fw replay"
 }
 
 fw_rule_exists_record() {

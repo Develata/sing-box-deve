@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 provider_cfg_runtime_file() {
-  echo "/etc/sing-box-deve/runtime.env"
+  echo "${SBD_CONFIG_DIR}/runtime.env"
 }
 
 provider_cfg_load_runtime_exports() {
@@ -100,10 +100,10 @@ provider_cfg_set_argo() {
   provider_cfg_load_runtime_exports
   ARGO_MODE="$mode"; ARGO_TOKEN="$token"; ARGO_DOMAIN="$domain"
   if [[ "$mode" == "off" ]]; then
-    systemctl disable --now sing-box-deve-argo.service >/dev/null 2>&1 || true
+    sbd_service_stop "sing-box-deve-argo"
     rm -f "$SBD_ARGO_SERVICE_FILE"
     rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
-    systemctl daemon-reload
+    sbd_service_daemon_reload
   else
     configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"
   fi

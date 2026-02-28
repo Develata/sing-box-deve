@@ -212,7 +212,7 @@ sbd_service_enable_and_start() {
       systemctl restart "${svc_name}.service"
       ;;
     openrc)
-      rc-service "$svc_name" restart 2>/dev/null || true
+      write_openrc_service "$svc_name" "$exec_cmd"
       ;;
     nohup)
       nohup_start_service "$svc_name" "$exec_cmd"
@@ -298,6 +298,69 @@ sbd_service_logs() {
       else
         log_warn "$(msg "未找到日志文件: ${log_file}" "Log file not found: ${log_file}")"
       fi
+      ;;
+  esac
+}
+
+# Daemon-reload (systemd only; no-op on other init systems)
+sbd_service_daemon_reload() {
+  detect_init_system
+  [[ "$SBD_INIT_SYSTEM" == "systemd" ]] && systemctl daemon-reload || true
+}
+
+# Check if a service unit/config exists
+sbd_service_unit_exists() {
+  local svc_name="$1"
+  detect_init_system
+  case "$SBD_INIT_SYSTEM" in
+    systemd)  systemctl list-unit-files "${svc_name}.service" 2>/dev/null | grep -q "^${svc_name}.service" ;;
+    openrc)   [[ -f "/etc/init.d/${svc_name}" ]] ;;
+    nohup)    [[ -f "${SBD_RUNTIME_DIR}/${svc_name}.pid" ]] || crontab -l 2>/dev/null | grep -q "# sbd:${svc_name}" ;;
+  esac
+}
+
+# Check if a service is enabled at boot
+sbd_service_is_enabled() {
+  local svc_name="$1"
+  detect_init_system
+  case "$SBD_INIT_SYSTEM" in
+    systemd)  systemctl is-enabled --quiet "${svc_name}.service" 2>/dev/null ;;
+    openrc)   rc-update show default 2>/dev/null | grep -q "$svc_name" ;;
+    nohup)    crontab -l 2>/dev/null | grep -q "# sbd:${svc_name}" ;;
+  esac
+}
+
+# Enable a oneshot service (fw-replay, jump-replay) — runs once at boot
+sbd_service_enable_oneshot() {
+  local svc_name="$1"
+  local exec_cmd="$2"
+  detect_init_system
+  case "$SBD_INIT_SYSTEM" in
+    systemd)
+      # Caller must have already written the systemd unit file
+      systemctl daemon-reload
+      systemctl enable "${svc_name}.service" >/dev/null 2>&1 || true
+      ;;
+    openrc|nohup)
+      nohup_register_crontab "$svc_name" "$exec_cmd" "/dev/null"
+      ;;
+  esac
+}
+
+# Disable a oneshot/any service and remove artifacts
+sbd_service_disable_oneshot() {
+  local svc_name="$1"
+  detect_init_system
+  case "$SBD_INIT_SYSTEM" in
+    systemd)
+      systemctl disable --now "${svc_name}.service" 2>/dev/null || true
+      ;;
+    openrc)
+      rc-service "$svc_name" stop 2>/dev/null || true
+      rc-update del "$svc_name" default 2>/dev/null || true
+      ;;
+    nohup)
+      nohup_remove_crontab "$svc_name"
       ;;
   esac
 }

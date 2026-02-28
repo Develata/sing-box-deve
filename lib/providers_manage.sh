@@ -4,9 +4,9 @@ provider_list() {
   local mode="${1:-all}"
 
   if [[ "$mode" == "runtime" || "$mode" == "all" ]]; then
-    if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+    if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
       log_info "$(msg "当前运行时状态:" "Current runtime state:")"
-      cat /etc/sing-box-deve/runtime.env
+      cat "${SBD_CONFIG_DIR}/runtime.env"
     else
       log_warn "$(msg "未找到运行时状态" "No runtime state found")"
     fi
@@ -37,7 +37,7 @@ provider_restart() {
 
   if [[ "$target" == "argo" || "$target" == "all" ]]; then
     if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-      systemctl restart sing-box-deve-argo.service
+      sbd_service_restart "sing-box-deve-argo"
       log_success "$(msg "sing-box-deve argo 服务已重启" "sing-box-deve argo service restarted")"
     else
       log_warn "$(msg "未找到 Argo 服务文件" "Argo service file not found")"
@@ -46,7 +46,7 @@ provider_restart() {
 
   if [[ "$target" == "all" ]]; then
     if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
-      systemctl restart sing-box-deve-psiphon.service
+      sbd_service_restart "sing-box-deve-psiphon"
       log_success "$(msg "sing-box-deve psiphon 服务已重启" "sing-box-deve psiphon service restarted")"
     fi
   fi
@@ -60,13 +60,13 @@ provider_logs() {
       if [[ ! -f "$SBD_SERVICE_FILE" ]]; then
         die "$(msg "核心服务未安装" "Core service is not installed")"
       fi
-      journalctl -u sing-box-deve.service -n 120 --no-pager
+      sbd_service_logs "sing-box-deve" 120
       ;;
     argo)
       if [[ ! -f "$SBD_ARGO_SERVICE_FILE" ]]; then
         die "$(msg "Argo 服务未安装" "Argo service is not installed")"
       fi
-      journalctl -u sing-box-deve-argo.service -n 120 --no-pager
+      sbd_service_logs "sing-box-deve-argo" 120
       ;;
     *)
       die "$(msg "不支持的日志目标: $target" "Unsupported logs target: $target")"
@@ -76,8 +76,8 @@ provider_logs() {
 
 provider_regen_nodes() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   local runtime_engine="${engine:-sing-box}"
   local runtime_protocols="${protocols:-vless-reality}"
   write_nodes_output "$runtime_engine" "$runtime_protocols"
@@ -86,17 +86,17 @@ provider_regen_nodes() {
 
 provider_update() {
   ensure_root
-  if [[ ! -f /etc/sing-box-deve/runtime.env ]]; then
+  if [[ ! -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
     die "$(msg "未检测到已安装运行时" "No installed runtime found")"
   fi
 
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   install_engine_binary "$engine"
   safe_service_restart
 
   if [[ -f "$SBD_SERVICE_FILE" ]]; then
     local wait_count=0
-    while ! systemctl is-active --quiet sing-box-deve.service && (( wait_count < 15 )); do
+    while ! sbd_service_is_active "sing-box-deve" && (( wait_count < 15 )); do
       sleep 1
       ((wait_count++))
     done
@@ -108,7 +108,7 @@ provider_update() {
   fi
 
   if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-    systemctl restart sing-box-deve-argo.service
+    sbd_service_restart "sing-box-deve-argo"
   fi
   provider_psiphon_sync_service
   log_success "$(msg "内核已更新并重启服务" "Engine updated and service restarted")"
@@ -139,9 +139,9 @@ provider_kernel_set() {
   validate_engine "$target_engine"
 
   local has_runtime="false"
-  if [[ -f /etc/sing-box-deve/runtime.env ]]; then
+  if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
     has_runtime="true"
-    sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   fi
 
   install_engine_binary "$target_engine" "$target_tag"

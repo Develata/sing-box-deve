@@ -144,9 +144,9 @@ provider_psiphon_exec_command() {
 provider_psiphon_sync_service() {
   ensure_root
   if ! provider_psiphon_enabled; then
-    systemctl disable --now sing-box-deve-psiphon.service >/dev/null 2>&1 || true
+    sbd_service_stop "sing-box-deve-psiphon"
     rm -f "$SBD_PSIPHON_SERVICE_FILE"
-    systemctl daemon-reload
+    sbd_service_daemon_reload
     return 0
   fi
 
@@ -176,16 +176,14 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-  systemctl daemon-reload
-  systemctl enable sing-box-deve-psiphon.service >/dev/null
-  systemctl restart sing-box-deve-psiphon.service
+  sbd_service_enable_and_start "sing-box-deve-psiphon" "$exec_cmd"
 }
 
 provider_psiphon_stop_service() {
   ensure_root
-  systemctl disable --now sing-box-deve-psiphon.service >/dev/null 2>&1 || true
+  sbd_service_stop "sing-box-deve-psiphon"
   rm -f "$SBD_PSIPHON_SERVICE_FILE"
-  systemctl daemon-reload
+  sbd_service_daemon_reload
 }
 
 provider_psiphon_detect_exit_ip() {
@@ -197,7 +195,7 @@ provider_psiphon_detect_exit_ip() {
 }
 
 provider_psiphon_status() {
-  local runtime_file="/etc/sing-box-deve/runtime.env"
+  local runtime_file="${SBD_CONFIG_DIR}/runtime.env"
   local mode="off" region="auto" enabled="off" state="stopped" ip=""
   if [[ -f "$runtime_file" ]]; then
     sbd_safe_load_env_file "$runtime_file"
@@ -205,7 +203,7 @@ provider_psiphon_status() {
     region="${psiphon_region:-auto}"
     enabled="${psiphon_enable:-off}"
   fi
-  if systemctl is-active --quiet sing-box-deve-psiphon.service; then
+  if sbd_service_is_active "sing-box-deve-psiphon"; then
     state="running"
     ip="$(provider_psiphon_detect_exit_ip || true)"
   fi
@@ -266,7 +264,7 @@ provider_psiphon_doctor_check() {
     log_warn "$(msg "Psiphon: 已启用但服务文件缺失" "Psiphon: enabled but service file missing")"
     return 0
   fi
-  if systemctl is-active --quiet sing-box-deve-psiphon.service; then
+  if sbd_service_is_active "sing-box-deve-psiphon"; then
     log_success "$(msg "Psiphon 服务状态: 运行中" "Psiphon service status: active")"
   else
     log_warn "$(msg "Psiphon 服务状态: 未运行" "Psiphon service status: inactive")"

@@ -3,8 +3,8 @@
 
 provider_set_port_info() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   local whitelist cfg
   case "${engine:-sing-box}" in
     sing-box)
@@ -46,8 +46,8 @@ provider_set_port_info() {
 
 provider_set_port() {
   ensure_root
-  [[ -f /etc/sing-box-deve/runtime.env ]] || die "No runtime state found"
-  sbd_load_runtime_env /etc/sing-box-deve/runtime.env
+  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   local runtime_provider="${provider:-vps}"
   local runtime_engine="${engine:-sing-box}"
   validate_provider "$runtime_provider"
@@ -127,7 +127,7 @@ provider_set_port() {
   if [[ -n "${port_egress_map:-}" ]]; then
     rollback_runtime="${SBD_RUNTIME_DIR}/set-port.runtime.bak.$$"
     rollback_nodes="${SBD_RUNTIME_DIR}/set-port.nodes.bak.$$"
-    cp -f /etc/sing-box-deve/runtime.env "$rollback_runtime" 2>/dev/null || true
+    cp -f "${SBD_CONFIG_DIR}/runtime.env" "$rollback_runtime" 2>/dev/null || true
     cp -f "$SBD_NODES_FILE" "$rollback_nodes" 2>/dev/null || true
 
     if ! (
@@ -136,7 +136,7 @@ provider_set_port() {
       provider_cfg_rebuild_runtime
     ); then
       cp -f "$rollback_cfg" "$cfg" 2>/dev/null || true
-      cp -f "$rollback_runtime" /etc/sing-box-deve/runtime.env 2>/dev/null || true
+      cp -f "$rollback_runtime" "${SBD_CONFIG_DIR}/runtime.env" 2>/dev/null || true
       cp -f "$rollback_nodes" "$SBD_NODES_FILE" 2>/dev/null || true
       if [[ "$new_rule_preexisting" != "true" ]]; then
         fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$new_port" "$new_tag"

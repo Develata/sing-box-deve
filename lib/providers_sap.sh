@@ -82,8 +82,8 @@ provider_sap_install() {
   local protocols_csv="$3"
 
   validate_feature_modes
-  mkdir -p /etc/sing-box-deve
-  cat > /etc/sing-box-deve/sap.env <<EOF
+  mkdir -p "${SBD_CONFIG_DIR}"
+  cat > "${SBD_CONFIG_DIR}/sap.env" <<EOF
 profile=${profile}
 engine=${engine}
 protocols=${protocols_csv}
@@ -97,7 +97,7 @@ outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
-  chmod 600 /etc/sing-box-deve/sap.env 2>/dev/null || true
+  chmod 600 "${SBD_CONFIG_DIR}/sap.env" 2>/dev/null || true
 
   local sap_image
   sap_image="${SAP_DOCKER_IMAGE:-ygkkk/argosbx}"
@@ -196,7 +196,7 @@ EOF
     log_warn "$(msg "SAP 凭据未完整设置；仅生成模板文件" "SAP credentials not fully set; generated templates only")"
   fi
 
-  cat > /etc/sing-box-deve/sap-github-workflow.yml <<'EOF'
+  cat > "${SBD_CONFIG_DIR}/sap-github-workflow.yml" <<'EOF'
 name: SAP Deploy
 on:
   workflow_dispatch:
@@ -222,6 +222,6 @@ jobs:
           cf login -a "$SAP_CF_API" -u "$SAP_CF_USERNAME" -p "$SAP_CF_PASSWORD" -o "$SAP_CF_ORG" -s "$SAP_CF_SPACE"
           cf push "$SAP_APP_NAME" --docker-image ${SAP_DOCKER_IMAGE:-ygkkk/argosbx} -m 512M --health-check-type port
 EOF
-  log_success "$(msg "SAP 部署模板已生成到 /etc/sing-box-deve" "SAP deployment templates generated under /etc/sing-box-deve")"
+  log_success "$(msg "SAP 部署模板已生成到 ${SBD_CONFIG_DIR}" "SAP deployment templates generated under ${SBD_CONFIG_DIR}")"
   return 0
 }

@@ -124,7 +124,7 @@ provider_vps_install() {
   provider_psiphon_sync_service
   write_nodes_output "$engine" "$protocols_csv"
 
-  mkdir -p /etc/sing-box-deve
+  mkdir -p "${SBD_CONFIG_DIR}"
   
   # Persist script to fixed location before saving runtime state
   # This ensures sb command works even after temp directory is cleaned
@@ -132,14 +132,17 @@ provider_vps_install() {
   
   persist_runtime_state "vps" "$profile" "$engine" "$protocols_csv"
 
-  cat > /usr/local/bin/sb <<'EOF'
+  cat > /usr/local/bin/sb <<'SBEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
 script_root=""
-if [[ -f /etc/sing-box-deve/runtime.env ]]; then
-  script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' /etc/sing-box-deve/runtime.env 2>/dev/null || true)"
-fi
+for _p in "/etc/sing-box-deve/runtime.env" "$HOME/sing-box-deve/config/runtime.env"; do
+  if [[ -f "$_p" ]]; then
+    script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$_p" 2>/dev/null || true)"
+    [[ -n "$script_root" ]] && break
+  fi
+done
 
 if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
   :
@@ -163,7 +166,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 exec "$script_root/sing-box-deve.sh" "$@"
-EOF
+SBEOF
   chmod +x /usr/local/bin/sb
 
   log_success "$(msg "VPS 场景部署完成" "VPS provider setup complete")"
@@ -174,7 +177,7 @@ persist_runtime_state() {
   local profile="$2"
   local engine="$3"
   local protocols_csv="$4"
-  local runtime_file="/etc/sing-box-deve/runtime.env" tmp_runtime
+  local runtime_file="${SBD_CONFIG_DIR}/runtime.env" tmp_runtime
   mkdir -p "$(dirname "$runtime_file")"
   tmp_runtime="$(mktemp "${runtime_file}.tmp.XXXXXX")"
   trap 'rm -f "$tmp_runtime" 2>/dev/null || true' RETURN
