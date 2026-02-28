@@ -5,7 +5,23 @@
 GitHub：`https://github.com/Develata/sing-box-deve`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian-blue)](docs/V1-SPEC.md)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Alpine%20%7C%20FreeBSD-blue)](docs/V1-SPEC.md)
+
+## 特性概览
+
+- **14 种协议**：vless-reality, vmess-ws, vless-ws, hysteria2, tuic, anytls, trojan 等
+- **双引擎**：sing-box / xray 自由切换
+- **4 种部署场景**：VPS / Serv00 / SAP Cloud Foundry / Docker
+- **多初始化系统**：systemd / OpenRC / nohup+crontab 自动检测
+- **非 root 模式**：支持无 root 权限运行（Serv00/受限环境）
+- **Argo 隧道**：临时/固定模式 + 13 CDN 端口自动展开
+- **SAP 30 区域**：完整 AWS/Azure/GCP/Neo 区域代码映射
+- **GitHub Actions**：SAP 部署、Serv00 SSH 部署、多端保活工作流
+- **GitHub Pages**：在线命令生成器（UUID、暗色主题、CDN 面板、快捷命令）
+- **Docker 容器**：Node.js VLESS-WS 网关 + 健康检查
+- **保活体系**：本地 kp.sh、Serv00 serv00keep.sh、GitHub Actions 多方案
+- **SFW 客户端打包**：自动下载 Windows 客户端并打包配置
+- **Psiphon 预编译**：自动下载 psiphon-tunnel-core 二进制
 
 ## 一键安装
 

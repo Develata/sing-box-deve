@@ -1,5 +1,50 @@
 #!/usr/bin/env bash
 
+# SAP BTP Cloud Foundry region code → API endpoint mapping
+# 30 regions covering AWS, Azure, GCP, Alibaba Cloud
+sap_region_to_api() {
+  case "$1" in
+    SG)      echo "https://api.cf.ap21.hana.ondemand.com" ;;
+    US)      echo "https://api.cf.us10-001.hana.ondemand.com" ;;
+    AU-A)    echo "https://api.cf.ap10.hana.ondemand.com" ;;
+    SG-A)    echo "https://api.cf.ap11.hana.ondemand.com" ;;
+    KR-A)    echo "https://api.cf.ap12.hana.ondemand.com" ;;
+    BR-A)    echo "https://api.cf.br10.hana.ondemand.com" ;;
+    CA-A)    echo "https://api.cf.ca10.hana.ondemand.com" ;;
+    DE-A)    echo "https://api.cf.eu10-005.hana.ondemand.com" ;;
+    JP-A)    echo "https://api.cf.jp10.hana.ondemand.com" ;;
+    US-V-A)  echo "https://api.cf.us10-001.hana.ondemand.com" ;;
+    US-O-A)  echo "https://api.cf.us11.hana.ondemand.com" ;;
+    AU-G)    echo "https://api.cf.ap30.hana.ondemand.com" ;;
+    BR-G)    echo "https://api.cf.br30.hana.ondemand.com" ;;
+    US-G)    echo "https://api.cf.us30.hana.ondemand.com" ;;
+    DE-G)    echo "https://api.cf.eu30.hana.ondemand.com" ;;
+    JP-O-G)  echo "https://api.cf.jp30.hana.ondemand.com" ;;
+    JP-T-G)  echo "https://api.cf.jp31.hana.ondemand.com" ;;
+    IL-G)    echo "https://api.cf.il30.hana.ondemand.com" ;;
+    IN-G)    echo "https://api.cf.in30.hana.ondemand.com" ;;
+    SA-G)    echo "https://api.cf.sa31.hana.ondemand.com" ;;
+    AU-M)    echo "https://api.cf.ap20.hana.ondemand.com" ;;
+    BR-M)    echo "https://api.cf.br20.hana.ondemand.com" ;;
+    CA-M)    echo "https://api.cf.ca20.hana.ondemand.com" ;;
+    US-V-M)  echo "https://api.cf.us21.hana.ondemand.com" ;;
+    US-W-M)  echo "https://api.cf.us20.hana.ondemand.com" ;;
+    NL-M)    echo "https://api.cf.eu20-001.hana.ondemand.com" ;;
+    JP-M)    echo "https://api.cf.jp20.hana.ondemand.com" ;;
+    SG-M)    echo "https://api.cf.ap21.hana.ondemand.com" ;;
+    AE-N)    echo "https://api.cf.neo-ae1.hana.ondemand.com" ;;
+    SA-N)    echo "https://api.cf.neo-sa1.hana.ondemand.com" ;;
+    *) echo "" ;;
+  esac
+}
+
+# List all available SAP region codes
+sap_list_regions() {
+  echo "SG US AU-A SG-A KR-A BR-A CA-A DE-A JP-A US-V-A US-O-A"
+  echo "AU-G BR-G US-G DE-G JP-O-G JP-T-G IL-G IN-G SA-G"
+  echo "AU-M BR-M CA-M US-V-M US-W-M NL-M JP-M SG-M AE-N SA-N"
+}
+
 validate_sap_accounts_json() {
   local json="$1"
   echo "$json" | jq -e . >/dev/null 2>&1 || die "SAP_ACCOUNTS_JSON is not valid JSON"
@@ -11,11 +56,23 @@ validate_sap_accounts_json() {
     idx=$((idx + 1))
     [[ "$(echo "$item" | jq -r 'type')" == "object" ]] || die "SAP_ACCOUNTS_JSON item #${idx} must be an object"
     local required_key
-    for required_key in api username password org space app_name; do
+    for required_key in username password org space app_name; do
       if [[ -z "$(echo "$item" | jq -r --arg k "$required_key" '.[$k] // empty')" ]]; then
         die "SAP_ACCOUNTS_JSON item #${idx} missing required key '${required_key}'"
       fi
     done
+    # Either 'api' or 'region' must be provided
+    local item_api item_region
+    item_api="$(echo "$item" | jq -r '.api // empty')"
+    item_region="$(echo "$item" | jq -r '.region // empty')"
+    if [[ -z "$item_api" && -z "$item_region" ]]; then
+      die "SAP_ACCOUNTS_JSON item #${idx} missing 'api' or 'region'"
+    fi
+    if [[ -n "$item_region" && -z "$item_api" ]]; then
+      local resolved
+      resolved="$(sap_region_to_api "$item_region")"
+      [[ -n "$resolved" ]] || die "SAP_ACCOUNTS_JSON item #${idx} unknown region: ${item_region}"
+    fi
   done < <(echo "$json" | jq -c '.[]')
 }
 
@@ -83,8 +140,14 @@ EOF
     [[ "$retries" =~ ^[0-9]+$ ]] || retries=1
     while IFS= read -r item; do
       [[ -z "$item" ]] && continue
-      local api username password org space app memory image uuid agn agk
+      local api username password org space app memory image uuid agn agk region
       api="$(echo "$item" | jq -r '.api // empty')"
+      region="$(echo "$item" | jq -r '.region // empty')"
+      # Resolve region code to API endpoint if api is not provided
+      if [[ -z "$api" && -n "$region" ]]; then
+        api="$(sap_region_to_api "$region")"
+        [[ -n "$api" ]] || { log_warn "Unknown region: ${region}, skipping"; skipped=$((skipped + 1)); continue; }
+      fi
       username="$(echo "$item" | jq -r '.username // empty')"
       password="$(echo "$item" | jq -r '.password // empty')"
       org="$(echo "$item" | jq -r '.org // empty')"

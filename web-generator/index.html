@@ -7,11 +7,17 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+  <div id="toast" class="toast hidden"></div>
   <div class="wrap">
-    <div class="card">
-      <h1>sing-box-deve 命令生成器</h1>
-      <p>用于生成部署命令与环境变量模板。该页面是静态页面，不会在 VPS 上运行服务。</p>
-      <p class="warn">提示：Lite 模式最多 2 个协议，建议默认保留 `vless-reality`。</p>
+    <div class="card header-card">
+      <div class="header-row">
+        <div>
+          <h1>sing-box-deve 命令生成器</h1>
+          <p>用于生成部署命令与环境变量模板。纯前端静态页面，不会泄露任何信息。</p>
+        </div>
+        <button id="themeToggle" class="icon-btn" title="切换主题">🌙</button>
+      </div>
+      <p class="warn">提示：Lite 模式最多 2 个协议，建议默认保留 vless-reality。</p>
     </div>
 
     <div class="card">
@@ -40,6 +46,17 @@
         </select>
       </div>
       <div class="row">
+        <label>UUID</label>
+        <div class="input-group">
+          <input id="uuid" type="text" placeholder="留空则自动生成">
+          <button id="genUUID" class="small-btn" title="生成 UUID">🔄</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>节点名称前缀</label>
+        <input id="nodeName" type="text" placeholder="可选，如 my-vps">
+      </div>
+      <div class="row">
         <label>协议选择</label>
         <div class="checklist" id="protocols"></div>
       </div>
@@ -47,13 +64,13 @@
     </div>
 
     <div class="card">
-      <h2>高级参数</h2>
+      <h2>Argo 隧道</h2>
       <div class="row">
         <label for="argoMode">Argo 模式</label>
         <select id="argoMode">
-          <option value="off">off</option>
-          <option value="temp">temp</option>
-          <option value="fixed">fixed</option>
+          <option value="off">off（关闭）</option>
+          <option value="temp">temp（临时隧道）</option>
+          <option value="fixed">fixed（固定隧道）</option>
         </select>
       </div>
       <div id="argoFixed" class="hidden">
@@ -63,15 +80,48 @@
         </div>
         <div class="row">
           <label for="argoToken">Argo Token</label>
-          <input id="argoToken" type="text" placeholder="cloudflared token">
+          <input id="argoToken" type="text" placeholder="cloudflared tunnel token">
         </div>
       </div>
+    </div>
 
+    <div class="card" id="cdnPanel">
+      <h2>CDN 优选端口 <span class="badge">Argo</span></h2>
+      <p class="muted">Argo 隧道开启时可自动生成 13 个 CDN 优选端口节点。勾选需要的端口：</p>
+      <div class="cdn-grid">
+        <div class="cdn-group">
+          <h3>TLS 端口（443 系）</h3>
+          <label class="pill cdn"><input type="checkbox" value="443" checked>443</label>
+          <label class="pill cdn"><input type="checkbox" value="8443" checked>8443</label>
+          <label class="pill cdn"><input type="checkbox" value="2053" checked>2053</label>
+          <label class="pill cdn"><input type="checkbox" value="2083" checked>2083</label>
+          <label class="pill cdn"><input type="checkbox" value="2087" checked>2087</label>
+          <label class="pill cdn"><input type="checkbox" value="2096" checked>2096</label>
+        </div>
+        <div class="cdn-group">
+          <h3>非 TLS 端口（80 系）</h3>
+          <label class="pill cdn"><input type="checkbox" value="80" checked>80</label>
+          <label class="pill cdn"><input type="checkbox" value="8080" checked>8080</label>
+          <label class="pill cdn"><input type="checkbox" value="8880" checked>8880</label>
+          <label class="pill cdn"><input type="checkbox" value="2052" checked>2052</label>
+          <label class="pill cdn"><input type="checkbox" value="2082" checked>2082</label>
+          <label class="pill cdn"><input type="checkbox" value="2086" checked>2086</label>
+          <label class="pill cdn"><input type="checkbox" value="2095" checked>2095</label>
+        </div>
+      </div>
+      <div class="row">
+        <label for="cdnHost">CDN 优选域名/IP</label>
+        <input id="cdnHost" type="text" placeholder="可选，如 cdn.example.com 或 CF 优选 IP">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>WARP 出站</h2>
       <div class="row">
         <label for="warpMode">WARP 模式</label>
         <select id="warpMode">
-          <option value="off">off</option>
-          <option value="global">global</option>
+          <option value="off">off（关闭）</option>
+          <option value="global">global（全局 WARP）</option>
         </select>
       </div>
       <div id="warpKeys" class="hidden">
@@ -84,37 +134,90 @@
           <input id="warpPeerPublicKey" type="text" placeholder="Cloudflare peer public key">
         </div>
       </div>
-
-      <div id="serv00Fields" class="hidden">
-        <div class="row">
-          <label for="serv00Host">SERV00_HOST</label>
-          <input id="serv00Host" type="text" placeholder="s0.serv00.com">
-        </div>
-        <div class="row">
-          <label for="serv00User">SERV00_USER</label>
-          <input id="serv00User" type="text" placeholder="用户名">
-        </div>
-      </div>
-
-      <div id="sapFields" class="hidden">
-        <div class="row">
-          <label for="sapApi">SAP_CF_API</label>
-          <input id="sapApi" type="text" placeholder="https://api.cf...">
-        </div>
-        <div class="row">
-          <label for="sapOrg">SAP_CF_ORG</label>
-          <input id="sapOrg" type="text" placeholder="org">
-        </div>
-        <div class="row">
-          <label for="sapSpace">SAP_CF_SPACE</label>
-          <input id="sapSpace" type="text" placeholder="space">
-        </div>
-      </div>
-
       <div class="row">
-        <label for="outboundProxyMode">上游出站代理模式</label>
+        <label for="ipPref">IP 导出优先</label>
+        <select id="ipPref">
+          <option value="">自动检测</option>
+          <option value="4">IPv4</option>
+          <option value="6">IPv6</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="serv00Fields" class="card hidden">
+      <h2>Serv00 / Hostuno 参数</h2>
+      <div class="row">
+        <label for="serv00Host">SERV00_HOST</label>
+        <input id="serv00Host" type="text" placeholder="s0.serv00.com">
+      </div>
+      <div class="row">
+        <label for="serv00User">SERV00_USER</label>
+        <input id="serv00User" type="text" placeholder="用户名">
+      </div>
+    </div>
+
+    <div id="sapFields" class="card hidden">
+      <h2>SAP Cloud Foundry 参数</h2>
+      <div class="row">
+        <label for="sapApi">SAP_CF_API</label>
+        <input id="sapApi" type="text" placeholder="https://api.cf.eu10.hana.ondemand.com">
+      </div>
+      <div class="row">
+        <label for="sapRegion">SAP 地区快选</label>
+        <select id="sapRegion">
+          <option value="">自定义 API（手动填写上方）</option>
+          <optgroup label="Trial 试用区">
+            <option value="https://api.cf.us10-001.hana.ondemand.com">US (us10) - AWS</option>
+            <option value="https://api.cf.ap21.hana.ondemand.com">SG (ap21) - Azure</option>
+          </optgroup>
+          <optgroup label="AWS">
+            <option value="https://api.cf.ap10.hana.ondemand.com">AU (ap10)</option>
+            <option value="https://api.cf.ap11.hana.ondemand.com">SG (ap11)</option>
+            <option value="https://api.cf.ap12.hana.ondemand.com">KR (ap12)</option>
+            <option value="https://api.cf.br10.hana.ondemand.com">BR (br10)</option>
+            <option value="https://api.cf.ca10.hana.ondemand.com">CA (ca10)</option>
+            <option value="https://api.cf.eu10.hana.ondemand.com">DE (eu10)</option>
+            <option value="https://api.cf.jp10.hana.ondemand.com">JP (jp10)</option>
+            <option value="https://api.cf.us10.hana.ondemand.com">US-VA (us10)</option>
+            <option value="https://api.cf.us30.hana.ondemand.com">US-OR (us30)</option>
+          </optgroup>
+          <optgroup label="Google Cloud">
+            <option value="https://api.cf.us20.hana.ondemand.com">US (us20)</option>
+            <option value="https://api.cf.eu20.hana.ondemand.com">NL (eu20)</option>
+            <option value="https://api.cf.jp20.hana.ondemand.com">JP (jp20)</option>
+            <option value="https://api.cf.in30.hana.ondemand.com">IN (in30)</option>
+            <option value="https://api.cf.il30.hana.ondemand.com">IL (il30)</option>
+            <option value="https://api.cf.sa30.hana.ondemand.com">SA (sa30)</option>
+          </optgroup>
+          <optgroup label="Azure 微软">
+            <option value="https://api.cf.ap20.hana.ondemand.com">AU (ap20)</option>
+            <option value="https://api.cf.jp21.hana.ondemand.com">JP (jp21)</option>
+            <option value="https://api.cf.us21.hana.ondemand.com">US-VA (us21)</option>
+            <option value="https://api.cf.br20.hana.ondemand.com">BR (br20)</option>
+            <option value="https://api.cf.ca20.hana.ondemand.com">CA (ca20)</option>
+          </optgroup>
+          <optgroup label="SAP DC">
+            <option value="https://api.cf.ae10.hana.ondemand.com">AE (ae10)</option>
+            <option value="https://api.cf.sa10.hana.ondemand.com">SA (sa10)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="row">
+        <label for="sapOrg">SAP_CF_ORG</label>
+        <input id="sapOrg" type="text" placeholder="org name">
+      </div>
+      <div class="row">
+        <label for="sapSpace">SAP_CF_SPACE</label>
+        <input id="sapSpace" type="text" placeholder="space name">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>出站代理</h2>
+      <div class="row">
+        <label for="outboundProxyMode">上游出站代理</label>
         <select id="outboundProxyMode">
-          <option value="direct">direct</option>
+          <option value="direct">direct（直连）</option>
           <option value="socks">socks</option>
           <option value="http">http</option>
           <option value="https">https</option>
@@ -141,13 +244,34 @@
     </div>
 
     <div class="card">
+      <h2>快捷命令</h2>
+      <div class="shortcut-grid">
+        <button class="shortcut" data-cmd="menu" title="打开交互式菜单">📋 menu</button>
+        <button class="shortcut" data-cmd="list --nodes" title="查看节点信息">📝 list</button>
+        <button class="shortcut" data-cmd="status" title="查看运行状态">📊 status</button>
+        <button class="shortcut" data-cmd="restart" title="重启服务">🔄 restart</button>
+        <button class="shortcut" data-cmd="update --script" title="更新脚本">⬆️ update</button>
+        <button class="shortcut" data-cmd="uninstall" title="卸载">🗑️ uninstall</button>
+        <button class="shortcut" data-cmd="doctor" title="诊断检查">🩺 doctor</button>
+        <button class="shortcut" data-cmd="sub refresh" title="刷新订阅">📡 sub</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="actions">
-        <button id="buildCmd">生成命令</button>
+        <button id="buildCmd">生成安装命令</button>
         <button id="buildEnv" class="ghost">生成 env 模板</button>
-        <button id="copyOut" class="ghost">复制输出</button>
+        <button id="copyOut" class="ghost">📋 复制输出</button>
       </div>
       <p id="resultHint" class="ok" style="margin-top:10px">输出结果：</p>
       <textarea id="output" readonly></textarea>
+    </div>
+
+    <div class="card footer-card">
+      <p class="muted center">
+        <a href="https://github.com/Develata/sing-box-deve" target="_blank">GitHub</a> ·
+        sing-box-deve by Develata · MIT License
+      </p>
     </div>
   </div>
 

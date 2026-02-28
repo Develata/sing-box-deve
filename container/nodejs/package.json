@@ -1,0 +1,19 @@
+{
+  "name": "sing-box-deve-container",
+  "version": "1.0.0",
+  "description": "sing-box-deve container gateway with VLESS-WS protocol handling",
+  "main": "index.js",
+  "author": "Develata",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}

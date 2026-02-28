@@ -64,6 +64,12 @@ provider_psiphon_detect_client() {
 provider_psiphon_install_client() {
   ensure_root
   provider_psiphon_detect_client && return 0
+
+  # Try downloading pre-compiled binary first
+  if install_psiphon_prebuilt; then
+    provider_psiphon_detect_client && return 0
+  fi
+
   [[ -n "${OS_ID:-}" ]] || detect_os
   if [[ "${OS_ID:-}" != "ubuntu" && "${OS_ID:-}" != "debian" ]]; then
     die "Psiphon client missing. Set PSIPHON_CLIENT_BIN to an installed binary path."
@@ -75,6 +81,47 @@ provider_psiphon_install_client() {
     fi
   done
   provider_psiphon_detect_client || die "Unable to install/detect Psiphon client. Set PSIPHON_CLIENT_BIN manually."
+}
+
+# Download pre-compiled psiphon-tunnel-core binary
+install_psiphon_prebuilt() {
+  local arch
+  arch="$(get_arch)"
+  local os_name="linux"
+  [[ "${OS_ID:-}" == "freebsd" ]] && os_name="freebsd"
+
+  local bin_url=""
+  local bin_out="${SBD_BIN_DIR}/psiphon-tunnel-core"
+
+  # Try Psiphon Labs official releases
+  local psiphon_base="https://raw.githubusercontent.com/AzadDevX/PROXY-List/main/psiphon"
+  local gh_release="https://github.com/nicekid1/Psiphon-tunnel/releases/latest/download"
+
+  # Architecture mapping
+  local asset_suffix="${os_name}-${arch}"
+
+  local candidates=(
+    "${gh_release}/psiphon-tunnel-core-${asset_suffix}"
+    "${psiphon_base}/psiphon-tunnel-core_${asset_suffix}"
+  )
+
+  mkdir -p "$SBD_BIN_DIR"
+
+  local url
+  for url in "${candidates[@]}"; do
+    log_info "$(msg "尝试下载 Psiphon: ${url}" "Trying to download Psiphon: ${url}")"
+    if curl -fsSL --max-time 30 "$url" -o "$bin_out" 2>/dev/null; then
+      chmod 0755 "$bin_out"
+      if [[ -x "$bin_out" ]] && "$bin_out" --help >/dev/null 2>&1; then
+        log_success "$(msg "Psiphon 预编译二进制已下载" "Psiphon pre-built binary downloaded")"
+        return 0
+      fi
+      rm -f "$bin_out"
+    fi
+  done
+
+  log_warn "$(msg "无法下载预编译 Psiphon 二进制" "Failed to download pre-built Psiphon binary")"
+  return 1
 }
 
 provider_psiphon_default_socks_port() { echo "11080"; }

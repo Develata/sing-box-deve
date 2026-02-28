@@ -1,0 +1,61 @@
+name: SSH Keepalive
+# Periodically ping keepalive URLs (`/up` or `/re`) for Serv00/VPS/SAP instances
+# ⚠️ Must be run in a PRIVATE repository!
+
+on:
+  # schedule:
+  #   - cron: '*/12 * * * *'  # every 12 minutes (stay within free tier limits)
+  workflow_dispatch:
+
+concurrency:
+  group: ssh-keepalive
+  cancel-in-progress: true
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    env:
+      # KEEPALIVE_URLS: space or comma separated
+      # Example: "http://user1.serv00.net/up http://user2.serv00.net/up https://sap-app.cfapps.ap21.hana.ondemand.com/UUID"
+      KEEPALIVE_URLS: ""
+
+    steps:
+      - name: Ping keepalive URLs
+        run: |
+          set +e
+          IFS=$',， ' read -r -a urls <<< "$KEEPALIVE_URLS"
+
+          if [[ ${#urls[@]} -eq 0 ]]; then
+            echo "No KEEPALIVE_URLS configured."
+            exit 1
+          fi
+
+          echo "========================================"
+          echo " sing-box-deve SSH Keepalive"
+          echo "========================================"
+
+          alive=0; down=0
+
+          for url in "${urls[@]}"; do
+            [[ -z "$url" ]] && continue
+            response=$(curl -sk --max-time 15 "$url" 2>/dev/null || true)
+
+            if echo "$response" | grep -iqE 'keepalive|UP|running|保活|重启成功|vless|ok'; then
+              echo "✅ ${url} — alive"
+              ((alive++))
+            else
+              code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || echo "000")
+              if [[ "$code" =~ ^[23] ]]; then
+                echo "✅ ${url} — HTTP ${code}"
+                ((alive++))
+              else
+                echo "❌ ${url} — HTTP ${code}"
+                ((down++))
+              fi
+            fi
+          done
+
+          echo ""
+          echo "========================================"
+          echo " Summary: Alive=${alive} | Down=${down}"
+          echo "========================================"

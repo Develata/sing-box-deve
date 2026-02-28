@@ -1,23 +1,119 @@
-name: Keepalive Only (Optional Template)
+name: SAP Keepalive Only
+# ⚠️ Must be run in a PRIVATE repository!
+# Only checks and restarts existing SAP instances — does NOT deploy new ones.
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: sap-keepalive
+  cancel-in-progress: true
+
 jobs:
   keepalive:
     runs-on: ubuntu-latest
+    env:
+      CF_USERNAMES: ""
+      CF_PASSWORDS: ""
+      REGIONS: ""
+      UUIDS: ""
+      APP_NAMES: ""
+
     steps:
-      - name: Ping keepalive URLs
-        env:
-          KEEPALIVE_URLS: ${{ secrets.KEEPALIVE_URLS }}
+      - name: Install CF CLI v8
         run: |
-          IFS=$',， ' read -r -a urls <<< "$KEEPALIVE_URLS"
-          if [ ${#urls[@]} -eq 0 ]; then
-            echo "No KEEPALIVE_URLS configured"
+          wget -q https://github.com/cloudfoundry/cli/releases/download/v8.16.0/cf8-cli_8.16.0_linux_x86-64.tgz
+          tar -xzf cf8-cli_8.16.0_linux_x86-64.tgz
+          sudo mv cf8 /usr/local/bin/cf8
+          sudo ln -sf /usr/local/bin/cf8 /usr/local/bin/cf
+          sudo chmod +x /usr/local/bin/cf8
+
+      - name: Check and restart
+        run: |
+          set +e
+          read -ra USERS <<< "$CF_USERNAMES"
+          read -ra PASSES <<< "$CF_PASSWORDS"
+          read -ra REGS <<< "$REGIONS"
+          read -ra IDS <<< "$UUIDS"
+          read -ra NAMES <<< "$APP_NAMES"
+
+          if [[ ${#USERS[@]} -eq 0 ]]; then
+            echo "No accounts configured."
             exit 1
           fi
-          for u in "${urls[@]}"; do
-            [ -z "$u" ] && continue
-            code=$(curl -Ls -o /dev/null -w "%{http_code}" "$u" || true)
-            echo "$u -> $code"
+
+          region_to_api() {
+            case "$1" in
+              SG) echo "https://api.cf.ap21.hana.ondemand.com" ;;
+              US) echo "https://api.cf.us10-001.hana.ondemand.com" ;;
+              AU-A) echo "https://api.cf.ap10.hana.ondemand.com" ;;
+              SG-A) echo "https://api.cf.ap11.hana.ondemand.com" ;;
+              KR-A) echo "https://api.cf.ap12.hana.ondemand.com" ;;
+              BR-A) echo "https://api.cf.br10.hana.ondemand.com" ;;
+              CA-A) echo "https://api.cf.ca10.hana.ondemand.com" ;;
+              DE-A) echo "https://api.cf.eu10-005.hana.ondemand.com" ;;
+              JP-A) echo "https://api.cf.jp10.hana.ondemand.com" ;;
+              US-V-A) echo "https://api.cf.us10-001.hana.ondemand.com" ;;
+              US-O-A) echo "https://api.cf.us11.hana.ondemand.com" ;;
+              AU-G) echo "https://api.cf.ap30.hana.ondemand.com" ;;
+              BR-G) echo "https://api.cf.br30.hana.ondemand.com" ;;
+              US-G) echo "https://api.cf.us30.hana.ondemand.com" ;;
+              DE-G) echo "https://api.cf.eu30.hana.ondemand.com" ;;
+              JP-O-G) echo "https://api.cf.jp30.hana.ondemand.com" ;;
+              JP-T-G) echo "https://api.cf.jp31.hana.ondemand.com" ;;
+              IL-G) echo "https://api.cf.il30.hana.ondemand.com" ;;
+              IN-G) echo "https://api.cf.in30.hana.ondemand.com" ;;
+              SA-G) echo "https://api.cf.sa31.hana.ondemand.com" ;;
+              AU-M) echo "https://api.cf.ap20.hana.ondemand.com" ;;
+              BR-M) echo "https://api.cf.br20.hana.ondemand.com" ;;
+              CA-M) echo "https://api.cf.ca20.hana.ondemand.com" ;;
+              US-V-M) echo "https://api.cf.us21.hana.ondemand.com" ;;
+              US-W-M) echo "https://api.cf.us20.hana.ondemand.com" ;;
+              NL-M) echo "https://api.cf.eu20-001.hana.ondemand.com" ;;
+              JP-M) echo "https://api.cf.jp20.hana.ondemand.com" ;;
+              SG-M) echo "https://api.cf.ap21.hana.ondemand.com" ;;
+              AE-N) echo "https://api.cf.neo-ae1.hana.ondemand.com" ;;
+              SA-N) echo "https://api.cf.neo-sa1.hana.ondemand.com" ;;
+              *) echo "" ;;
+            esac
+          }
+
+          alive=0; restarted=0; down=0
+
+          for i in "${!USERS[@]}"; do
+            CF_API=$(region_to_api "${REGS[$i]}")
+            [[ -z "$CF_API" ]] && { echo "❌ Unknown region: ${REGS[$i]}"; ((down++)); continue; }
+
+            APP="${NAMES[$i]:-}"
+            UUID="${IDS[$i]}"
+            serv=$(echo "${REGS[$i]}" | tr '[:upper:]' '[:lower:]')
+            [[ -z "$APP" || "$APP" == "no" ]] && APP="sbd-${serv}-${USERS[$i]//[^a-zA-Z0-9_-]/-}"
+
+            echo "── Checking $APP (${REGS[$i]}) ──"
+            cf login -a "$CF_API" -u "${USERS[$i]}" -p "${PASSES[$i]}" 2>&1 || { ((down++)); continue; }
+            ORG=$(cf orgs | sed -n '4p'); SPACE=$(cf spaces | sed -n '4p')
+            cf target -o "$ORG" -s "$SPACE"
+
+            ROUTE=$(cf app "$APP" 2>/dev/null | grep "routes:" | awk '{print $2}')
+            if [[ -z "$ROUTE" ]]; then
+              echo "⚪ $APP not found, skip (keepalive-only mode)."
+              ((down++))
+              continue
+            fi
+
+            url="https://$ROUTE/$UUID"
+            if curl -s "$url" | grep -iq "vless\|running\|sing-box"; then
+              echo "✅ $APP is alive."
+              ((alive++))
+            else
+              echo "🟡 $APP not responding, restarting..."
+              cf restart "$APP"
+              ((restarted++))
+            fi
           done
+
+          echo ""
+          echo "========================================"
+          echo " Keepalive Summary"
+          echo " Alive: $alive | Restarted: $restarted | Down: $down"
+          echo "========================================"

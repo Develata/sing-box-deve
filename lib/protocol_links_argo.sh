@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+# Cloudflare CDN port constants
+CDN_TLS_PORTS=(443 8443 2053 2083 2087 2096)
+CDN_PLAIN_PORTS=(80 8080 8880 2052 2082 2086 2095)
+
+# Auto-generate CDN endpoints if none provided
+# Uses Cloudflare-compatible TLS and non-TLS ports with the argo domain as host
+sbd_auto_cdn_endpoints() {
+  local domain="$1"
+  [[ -n "$domain" ]] || return 0
+  local parts=() port
+  for port in "${CDN_TLS_PORTS[@]}"; do
+    parts+=("${domain}:${port}:tls")
+  done
+  for port in "${CDN_PLAIN_PORTS[@]}"; do
+    parts+=("${domain}:${port}:none")
+  done
+  local IFS=','
+  echo "${parts[*]}"
+}
+
 append_argo_cdn_templates() {
   local file="$1" uuid="$2" domain="$3" vm="$4" vl="$5" enc="${6:-none}"
   local vm_host vl_host vm_path vl_path
@@ -8,8 +28,11 @@ append_argo_cdn_templates() {
   vm_path="$(sbd_vmess_ws_path)"
   vl_path="$(uri_encode "$(sbd_vless_ws_path)")"
   local cdn_endpoints="${ARGO_CDN_ENDPOINTS:-}"
+
+  # Auto-expand: when no explicit endpoints, generate all 13 Cloudflare CDN ports
   if [[ -z "$cdn_endpoints" ]]; then
-    return 0
+    cdn_endpoints="$(sbd_auto_cdn_endpoints "$domain")"
+    [[ -n "$cdn_endpoints" ]] || return 0
   fi
 
   local ep host port tls

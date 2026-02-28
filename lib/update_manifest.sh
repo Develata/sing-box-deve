@@ -16,6 +16,7 @@ UPDATE_MANIFEST_FILES=(
   "config.env.example"
   "lib/common.sh"
   "lib/common_base.sh"
+  "lib/common_init.sh"
   "lib/common_settings.sh"
   "lib/common_update_sources.sh"
   "lib/common_update.sh"

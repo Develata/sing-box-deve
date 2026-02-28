@@ -145,6 +145,7 @@ write_systemd_service() {
   local config_path
   local binary_path
   local exec_args
+  local exec_cmd
   case "$engine" in
     sing-box)
       config_path="${SBD_CONFIG_DIR}/config.json"
@@ -158,15 +159,20 @@ write_systemd_service() {
       ;;
     *) die "Unsupported engine for service: $engine" ;;
   esac
+  exec_cmd="${binary_path} ${exec_args}"
 
-  cat > "$SBD_SERVICE_FILE" <<EOF
+  detect_init_system 2>/dev/null || true
+
+  case "${SBD_INIT_SYSTEM:-systemd}" in
+    systemd)
+      cat > "$SBD_SERVICE_FILE" <<EOF
 [Unit]
 Description=sing-box-deve core service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=${binary_path} ${exec_args}
+ExecStart=${exec_cmd}
 Restart=always
 RestartSec=3
 LimitNOFILE=1048576
@@ -174,7 +180,16 @@ LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF
+      systemd_reload_and_enable
+      safe_service_restart
+      ;;
 
-  systemd_reload_and_enable
-  safe_service_restart
+    openrc)
+      write_openrc_service "sing-box-deve" "$exec_cmd" "${SBD_DATA_DIR}/sing-box-deve.log"
+      ;;
+
+    nohup)
+      nohup_start_service "sing-box-deve" "$exec_cmd"
+      ;;
+  esac
 }

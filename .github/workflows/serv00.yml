@@ -1,0 +1,71 @@
+name: Serv00 SSH Deploy
+# Deploy or update sing-box-deve on Serv00 servers via SSH
+# ⚠️ Must be run in a PRIVATE repository!
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: serv00-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets format: space-separated entries
+      # SERV00_HOSTS: "s1.serv00.com s2.serv00.com"
+      # SERV00_USERS: "user1 user2"
+      # SERV00_PASSES: "pass1 pass2"
+      SERV00_HOSTS: ""
+      SERV00_USERS: ""
+      SERV00_PASSES: ""
+      SERV00_CMD: "bash <(curl -Ls https://raw.githubusercontent.com/Develata/sing-box-deve/main/providers/serv00.sh)"
+
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y sshpass
+
+      - name: Deploy to Serv00 servers
+        run: |
+          set +e
+          read -ra HOSTS <<< "$SERV00_HOSTS"
+          read -ra USERS <<< "$SERV00_USERS"
+          read -ra PASSES <<< "$SERV00_PASSES"
+
+          if [[ ${#HOSTS[@]} -eq 0 ]]; then
+            echo "No SERV00_HOSTS configured."
+            exit 1
+          fi
+
+          total=${#HOSTS[@]}
+          success=0; failed=0
+
+          for i in "${!HOSTS[@]}"; do
+            HOST="${HOSTS[$i]}"
+            USER="${USERS[$i]:-}"
+            PASS="${PASSES[$i]:-}"
+            echo "── Deploying to ${USER}@${HOST} ──"
+
+            if [[ -z "$USER" || -z "$PASS" ]]; then
+              echo "❌ Missing credentials for ${HOST}"
+              ((failed++))
+              continue
+            fi
+
+            sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+              "${USER}@${HOST}" "${SERV00_CMD}" 2>&1 && {
+              echo "✅ ${HOST} deployed successfully."
+              ((success++))
+            } || {
+              echo "❌ ${HOST} deployment failed."
+              ((failed++))
+            }
+          done
+
+          echo ""
+          echo "========================================"
+          echo " Serv00 Deploy Summary"
+          echo " Total: ${total} | Success: ${success} | Failed: ${failed}"
+          echo "========================================"
+          [[ $failed -eq 0 ]] || exit 1

@@ -1,19 +1,200 @@
-name: Keepalive URLs (Optional Template)
+name: SAP Deploy + Keepalive
+# ⚠️ Must be run in a PRIVATE repository!
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: sap-deploy
+  cancel-in-progress: true
+
 jobs:
-  keepalive:
+  deploy:
     runs-on: ubuntu-latest
+    env:
+      # === Required (space-separated, one per account) ===
+      CF_USERNAMES: ""
+      CF_PASSWORDS: ""
+      REGIONS: ""
+      UUIDS: ""
+
+      # === Optional (space-separated, use "no" to skip for individual accounts) ===
+      APP_NAMES: ""
+      ARGO_PORTS: ""
+      ARGO_DOMAINS: ""
+      ARGO_TOKENS: ""
+
+      # === Delete operation (space-separated app names; clear after use) ===
+      DELAPP: ""
+
+      # === Docker image ===
+      DOCKER_IMAGE: "ghcr.io/develata/sing-box-deve:latest"
+
     steps:
-      - name: Ping URLs
-        env:
-          KEEPALIVE_URLS: ${{ secrets.KEEPALIVE_URLS }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CF CLI v8
         run: |
-          IFS=$',， ' read -r -a urls <<< "$KEEPALIVE_URLS"
-          for u in "${urls[@]}"; do
-            [ -z "$u" ] && continue
-            code=$(curl -Ls -o /dev/null -w "%{http_code}" "$u" || true)
-            echo "$u -> $code"
+          wget -q https://github.com/cloudfoundry/cli/releases/download/v8.16.0/cf8-cli_8.16.0_linux_x86-64.tgz
+          tar -xzf cf8-cli_8.16.0_linux_x86-64.tgz
+          sudo mv cf8 /usr/local/bin/cf8
+          sudo ln -sf /usr/local/bin/cf8 /usr/local/bin/cf
+          sudo chmod +x /usr/local/bin/cf8
+          cf version
+
+      - name: Deploy all accounts
+        run: |
+          set +e
+          read -ra USERS   <<< "$CF_USERNAMES"
+          read -ra PASSES   <<< "$CF_PASSWORDS"
+          read -ra REGS     <<< "$REGIONS"
+          read -ra IDS      <<< "$UUIDS"
+          read -ra NAMES    <<< "$APP_NAMES"
+          read -ra APORTS   <<< "$ARGO_PORTS"
+          read -ra ADOMS    <<< "$ARGO_DOMAINS"
+          read -ra ATOKS    <<< "$ARGO_TOKENS"
+
+          total=${#USERS[@]}
+          success=0; failed=0; skipped=0
+
+          region_to_api() {
+            case "$1" in
+              SG)       echo "https://api.cf.ap21.hana.ondemand.com" ;;
+              US)       echo "https://api.cf.us10-001.hana.ondemand.com" ;;
+              AU-A)     echo "https://api.cf.ap10.hana.ondemand.com" ;;
+              SG-A)     echo "https://api.cf.ap11.hana.ondemand.com" ;;
+              KR-A)     echo "https://api.cf.ap12.hana.ondemand.com" ;;
+              BR-A)     echo "https://api.cf.br10.hana.ondemand.com" ;;
+              CA-A)     echo "https://api.cf.ca10.hana.ondemand.com" ;;
+              DE-A)     echo "https://api.cf.eu10-005.hana.ondemand.com" ;;
+              JP-A)     echo "https://api.cf.jp10.hana.ondemand.com" ;;
+              US-V-A)   echo "https://api.cf.us10-001.hana.ondemand.com" ;;
+              US-O-A)   echo "https://api.cf.us11.hana.ondemand.com" ;;
+              AU-G)     echo "https://api.cf.ap30.hana.ondemand.com" ;;
+              BR-G)     echo "https://api.cf.br30.hana.ondemand.com" ;;
+              US-G)     echo "https://api.cf.us30.hana.ondemand.com" ;;
+              DE-G)     echo "https://api.cf.eu30.hana.ondemand.com" ;;
+              JP-O-G)   echo "https://api.cf.jp30.hana.ondemand.com" ;;
+              JP-T-G)   echo "https://api.cf.jp31.hana.ondemand.com" ;;
+              IL-G)     echo "https://api.cf.il30.hana.ondemand.com" ;;
+              IN-G)     echo "https://api.cf.in30.hana.ondemand.com" ;;
+              SA-G)     echo "https://api.cf.sa31.hana.ondemand.com" ;;
+              AU-M)     echo "https://api.cf.ap20.hana.ondemand.com" ;;
+              BR-M)     echo "https://api.cf.br20.hana.ondemand.com" ;;
+              CA-M)     echo "https://api.cf.ca20.hana.ondemand.com" ;;
+              US-V-M)   echo "https://api.cf.us21.hana.ondemand.com" ;;
+              US-W-M)   echo "https://api.cf.us20.hana.ondemand.com" ;;
+              NL-M)     echo "https://api.cf.eu20-001.hana.ondemand.com" ;;
+              JP-M)     echo "https://api.cf.jp20.hana.ondemand.com" ;;
+              SG-M)     echo "https://api.cf.ap21.hana.ondemand.com" ;;
+              AE-N)     echo "https://api.cf.neo-ae1.hana.ondemand.com" ;;
+              SA-N)     echo "https://api.cf.neo-sa1.hana.ondemand.com" ;;
+              *)        echo "" ;;
+            esac
+          }
+
+          set_app_env() {
+            local app="$1" uuid="$2" ap="$3" ad="$4" at="$5"
+            cf set-env "$app" UUID "$uuid"
+            if [[ -n "$ap" && "$ap" != "no" ]]; then
+              cf set-env "$app" ARGO_MODE "fixed"
+              cf set-env "$app" ARGO_TOKEN "$at"
+              cf set-env "$app" ARGO_DOMAIN "$ad"
+              cf set-env "$app" ARGO_BACKEND_PORT "$ap"
+            fi
+            local route
+            route=$(cf app "$app" | grep "routes:" | awk '{print $2}')
+            [[ -n "$route" ]] && cf set-env "$app" DOMAIN "$route"
+          }
+
+          echo "========================================"
+          echo " sing-box-deve SAP Multi-Account Deploy"
+          echo " Accounts: $total"
+          echo "========================================"
+
+          for i in "${!USERS[@]}"; do
+            CF_EMAIL="${USERS[$i]}"
+            CF_PASS="${PASSES[$i]}"
+            REGION="${REGS[$i]}"
+            UUID="${IDS[$i]}"
+            APP="${NAMES[$i]:-}"
+            AP="${APORTS[$i]:-}"
+            AD="${ADOMS[$i]:-}"
+            AT="${ATOKS[$i]:-}"
+
+            [[ "$APP" == "no" ]] && APP=""
+            [[ "$AP" == "no" ]] && AP=""
+            [[ "$AD" == "no" ]] && AD=""
+            [[ "$AT" == "no" ]] && AT=""
+
+            CF_API=$(region_to_api "$REGION")
+            if [[ -z "$CF_API" ]]; then
+              echo "❌ Unknown region: $REGION (account $((i+1)))"
+              ((failed++))
+              continue
+            fi
+
+            serv=$(echo "$REGION" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+            [[ -z "$APP" ]] && APP="sbd-${serv}-${CF_EMAIL//[^a-zA-Z0-9_-]/-}"
+            APP="${APP//[^a-zA-Z0-9_-]/-}"
+
+            echo ""
+            echo "── Account $((i+1))/$total: $APP ($REGION) ──"
+
+            if ! cf login -a "$CF_API" -u "$CF_EMAIL" -p "$CF_PASS" 2>&1; then
+              echo "❌ Login failed for $CF_EMAIL"
+              ((failed++))
+              continue
+            fi
+
+            ORG=$(cf orgs | sed -n '4p')
+            SPACE=$(cf spaces | sed -n '4p')
+            cf target -o "$ORG" -s "$SPACE"
+
+            # Handle delete operation
+            if [[ -n "$DELAPP" ]]; then
+              for dapp in $DELAPP; do
+                echo "🗑️ Deleting: $dapp"
+                cf delete "$dapp" -r -f
+              done
+              continue
+            fi
+
+            # Check existing deployment
+            ROUTE=$(cf app "$APP" 2>/dev/null | grep "routes:" | awk '{print $2}')
+            if [[ -n "$ROUTE" ]]; then
+              url="https://$ROUTE/$UUID"
+              if curl -s "$url" | grep -iq "vless\|running\|sing-box"; then
+                echo "✅ $APP is running, skipped."
+                ((skipped++))
+                continue
+              else
+                echo "🟡 $APP exists but not running, restarting..."
+                set_app_env "$APP" "$UUID" "$AP" "$AD" "$AT"
+                timeout 180 cf restart "$APP" 2>&1
+              fi
+            else
+              echo "🔵 Deploying $APP..."
+              push_out=$(timeout 180 cf push "$APP" --docker-image "$DOCKER_IMAGE" -m 512M --health-check-type port 2>&1)
+              echo "$push_out"
+              if echo "$push_out" | grep -iq "insufficient\|FAILED\|mapped"; then
+                echo "❌ Deploy failed for $APP"
+                ((failed++))
+                continue
+              fi
+              set_app_env "$APP" "$UUID" "$AP" "$AD" "$AT"
+              cf restage "$APP"
+            fi
+
+            ROUTE=$(cf app "$APP" | grep "routes:" | awk '{print $2}')
+            echo "🚀 Account $((i+1)) deployed: $APP"
+            echo "🌐 Node URL: https://$ROUTE/$UUID"
+            ((success++))
           done
+
+          echo ""
+          echo "========================================"
+          echo " Deploy Summary"
+          echo " Total: $total | Success: $success | Failed: $failed | Skipped: $skipped"
+          echo "========================================"

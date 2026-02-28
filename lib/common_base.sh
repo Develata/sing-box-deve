@@ -78,12 +78,25 @@ die() {
 }
 
 ensure_root() {
-  if [[ "${EUID}" -ne 0 ]]; then
+  if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+    if [[ "${SBD_USER_MODE:-false}" == "true" ]]; then
+      log_warn "$(msg "此操作通常需要 root 权限，在用户模式下可能受限" \
+                   "This operation normally requires root; may be limited in user mode")"
+      return 0
+    fi
     die "Please run as root"
   fi
 }
 
 detect_os() {
+  # FreeBSD detection (Serv00 / HeroTofu environments)
+  if [[ "$(uname -s)" == "FreeBSD" ]]; then
+    OS_ID="freebsd"
+    OS_VERSION_ID="$(uname -r | cut -d- -f1)"
+    log_info "$(msg "检测到 FreeBSD ${OS_VERSION_ID}" "Detected FreeBSD ${OS_VERSION_ID}")"
+    return 0
+  fi
+
   if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
     source /etc/os-release
@@ -93,12 +106,17 @@ detect_os() {
       ubuntu|debian)
         log_info "$(msg "检测到受支持系统: ${OS_ID} ${OS_VERSION_ID}" "Detected supported OS: ${OS_ID} ${OS_VERSION_ID}")"
         ;;
+      alpine)
+        log_info "$(msg "检测到 Alpine Linux ${OS_VERSION_ID}" "Detected Alpine Linux ${OS_VERSION_ID}")"
+        ;;
       *)
         log_warn "$(msg "检测到非主支持系统: ${OS_ID} ${OS_VERSION_ID}" "Detected non-primary OS: ${OS_ID} ${OS_VERSION_ID}")"
         ;;
     esac
   else
-    die "$(msg "无法从 /etc/os-release 检测系统信息" "Unable to detect OS from /etc/os-release")"
+    OS_ID="unknown"
+    OS_VERSION_ID="unknown"
+    log_warn "$(msg "无法从 /etc/os-release 检测系统信息，尝试继续" "Unable to detect OS from /etc/os-release, attempting to continue")"
   fi
 }
 
@@ -118,6 +136,21 @@ get_arch() {
 }
 
 install_apt_dependencies() {
+  # FreeBSD (Serv00) — use pkg
+  if [[ "${OS_ID:-}" == "freebsd" ]]; then
+    if command -v pkg >/dev/null 2>&1; then
+      pkg install -y curl jq openssl ca_root_nss unzip 2>/dev/null || true
+    fi
+    return 0
+  fi
+
+  # Alpine — use apk
+  if [[ "${OS_ID:-}" == "alpine" ]]; then
+    apk update >/dev/null 2>&1 || true
+    apk add --no-cache curl jq tar openssl util-linux iproute2 ca-certificates unzip wireguard-tools libqrencode-tools >/dev/null 2>&1 || true
+    return 0
+  fi
+
   if [[ "$OS_ID" != "ubuntu" && "$OS_ID" != "debian" ]]; then
     log_warn "$(msg "在 ${OS_ID} 上跳过 apt 依赖安装" "Skipping apt dependency install on ${OS_ID}")"
     return 0
@@ -145,12 +178,36 @@ download_file() {
 }
 
 systemd_reload_and_enable() {
-  systemctl daemon-reload
-  systemctl enable sing-box-deve.service >/dev/null
+  detect_init_system 2>/dev/null || true
+  case "${SBD_INIT_SYSTEM:-systemd}" in
+    systemd)
+      systemctl daemon-reload
+      systemctl enable sing-box-deve.service >/dev/null
+      ;;
+    openrc)
+      rc-update add sing-box-deve default 2>/dev/null || true
+      ;;
+    nohup)
+      log_info "$(msg "nohup 模式：跳过 daemon-reload" "nohup mode: skipping daemon-reload")"
+      ;;
+  esac
 }
 
 safe_service_restart() {
-  systemctl restart sing-box-deve.service
+  detect_init_system 2>/dev/null || true
+  case "${SBD_INIT_SYSTEM:-systemd}" in
+    systemd)
+      systemctl restart sing-box-deve.service
+      ;;
+    openrc)
+      rc-service sing-box-deve restart 2>/dev/null || true
+      ;;
+    nohup)
+      # Caller should use sbd_service_restart with full exec_cmd
+      log_warn "$(msg "nohup 模式下需通过 sbd_service_restart 重启" \
+                   "Use sbd_service_restart in nohup mode")"
+      ;;
+  esac
 }
 
 rand_hex_8() {
@@ -243,7 +300,7 @@ sbd_safe_load_env_file() {
 }
 
 sbd_load_runtime_env() {
-  local runtime_file="${1:-/etc/sing-box-deve/runtime.env}"
+  local runtime_file="${1:-${SBD_CONFIG_DIR}/runtime.env}"
   [[ -f "$runtime_file" ]] || return 1
   sbd_safe_load_env_file "$runtime_file"
 }
