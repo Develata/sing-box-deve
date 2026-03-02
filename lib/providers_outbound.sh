@@ -9,6 +9,8 @@ build_warp_outbound_singbox() {
 
   [[ -n "$private_key" ]] || die "WARP_PRIVATE_KEY is required when warp protocol is enabled"
   [[ -n "$peer_public_key" ]] || die "WARP_PEER_PUBLIC_KEY is required when warp protocol is enabled"
+  [[ "$local_v4" == */* ]] || local_v4="${local_v4}/32"
+  [[ "$local_v6" == */* ]] || local_v6="${local_v6}/128"
 
   cat <<EOF
     {"type": "wireguard", "tag": "warp-out", "server": "engage.cloudflareclient.com", "server_port": 2408, "local_address": ["${local_v4}", "${local_v6}"], "private_key": "${private_key}", "peer_public_key": "${peer_public_key}", "reserved": ${reserved}, "mtu": 1280}
@@ -104,10 +106,13 @@ EOF
 
 build_warp_outbound_xray() {
   local private_key="${WARP_PRIVATE_KEY:-}"
-  local local_v6="${WARP_LOCAL_V6:-2606:4700:110:876d:4d3c:4206:c90c:6bd0}"
+  local local_v6_raw="${WARP_LOCAL_V6:-2606:4700:110:876d:4d3c:4206:c90c:6bd0}"
+  local local_v6
   local reserved="${WARP_RESERVED:-[0,0,0]}"
   local domain_strategy
   domain_strategy="$(xray_domain_strategy_from_warp_mode)"
+  local_v6="${local_v6_raw%%/*}"
+  [[ -n "$local_v6" ]] || local_v6="2606:4700:110:876d:4d3c:4206:c90c:6bd0"
 
   [[ -n "$private_key" ]] || die "WARP_PRIVATE_KEY is required when warp mode targets xray"
 

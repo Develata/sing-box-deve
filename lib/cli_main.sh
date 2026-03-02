@@ -134,7 +134,13 @@ main() {
         socks5-start) provider_warp_socks5_start "${2:-}" ;;
         socks5-stop) provider_warp_socks5_stop ;;
         socks5-status) provider_warp_socks5_status ;;
-        *) die "Usage: warp [status|register|unlock|socks5-start [port]|socks5-stop|socks5-status]" ;;
+        config) provider_warp_config ;;
+        account-show) provider_warp_account_show ;;
+        account-set) shift; provider_warp_account_set "$@" ;;
+        mode) provider_warp_set_mode "${2:-}" ;;
+        countries) provider_warp_countries ;;
+        region) provider_warp_region_set "${2:-}" ;;
+        *) die "Usage: warp [status|register|unlock|socks5-start [port]|socks5-stop|socks5-status|config|account-show|account-set [private_key local_v6 reserved local_v4 peer_public_key client_id]|mode <value>|countries|region <auto|cc>]" ;;
       esac
       ;;
     psiphon)

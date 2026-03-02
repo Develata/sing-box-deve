@@ -96,8 +96,8 @@ xray_domain_strategy_from_warp_mode() {
 build_singbox_warp_route_json() {
   case "${WARP_MODE:-off}" in
     global|s|sx|xs) echo '{"final":"warp-out"}' ;;
-    s4|s4x4|s4x6|sx4|x4s|s4x|x4s4|x4s6) echo '{"rules":[{"ip_cidr":["0.0.0.0/0"],"outbound":"warp-out"}],"final":"direct"}' ;;
-    s6|s6x4|s6x6|sx6|x6s|s6x|x6s4|x6s6) echo '{"rules":[{"ip_cidr":["::/0"],"outbound":"warp-out"}],"final":"direct"}' ;;
+    s4|s4x4|s4x6|sx4|xs4|x4s|s4x|x4s4|x4s6) echo '{"rules":[{"ip_cidr":["0.0.0.0/0"],"outbound":"warp-out"}],"final":"direct"}' ;;
+    s6|s6x4|s6x6|sx6|xs6|x6s|s6x|x6s4|x6s6) echo '{"rules":[{"ip_cidr":["::/0"],"outbound":"warp-out"}],"final":"direct"}' ;;
     *) echo '{"final":"direct"}' ;;
   esac
 }
@@ -116,10 +116,10 @@ build_singbox_route_json() {
       global|s|sx|xs)
         base_final="warp-out"
         ;;
-      s4|s4x4|s4x6|sx4|x4s|s4x|x4s4|x4s6)
+      s4|s4x4|s4x6|sx4|xs4|x4s|s4x|x4s4|x4s6)
         base_rules='{"ip_cidr":["0.0.0.0/0"],"outbound":"warp-out"}'
         ;;
-      s6|s6x4|s6x6|sx6|x6s|s6x|x6s4|x6s6)
+      s6|s6x4|s6x6|sx6|xs6|x6s|s6x|x6s4|x6s6)
         base_rules='{"ip_cidr":["::/0"],"outbound":"warp-out"}'
         ;;
       *)

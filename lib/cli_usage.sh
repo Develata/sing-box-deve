@@ -42,7 +42,7 @@ Usage:
   sing-box-deve.sh cfg rebuild
   sing-box-deve.sh kernel show
   sing-box-deve.sh kernel set <sing-box|xray> [tag|latest]
-  sing-box-deve.sh warp status|register|unlock|socks5-start [port]|socks5-stop|socks5-status
+  sing-box-deve.sh warp status|register|unlock|socks5-start [port]|socks5-stop|socks5-status|config|account-show|account-set [private_key local_v6 reserved local_v4 peer_public_key client_id]|mode <value>|countries|region <auto|cc>
   sing-box-deve.sh psiphon status|start|stop|set-region <auto|cc>
   sing-box-deve.sh sys bbr-status
   sing-box-deve.sh sys bbr-enable

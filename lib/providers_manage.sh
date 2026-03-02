@@ -172,13 +172,16 @@ provider_warp_status() {
 
 provider_warp_register() {
   ensure_root
-  local keypair private_key public_key response reserved_str reserved_hex reserved_dec
+  local keypair private_key public_key response client_id reserved_hex reserved_dec
+  local local_v4 local_v6
   keypair="$(openssl genpkey -algorithm X25519 | openssl pkey -text -noout)"
   private_key="$(echo "$keypair" | awk '/priv:/{flag=1;next}/pub:/{flag=0}flag' | tr -d '[:space:]' | xxd -r -p | base64)"
   public_key="$(echo "$keypair" | awk '/pub:/{flag=1}flag' | tr -d '[:space:]' | xxd -r -p | base64)"
   response="$(curl -fsSL --tlsv1.3 -X POST 'https://api.cloudflareclient.com/v0a2158/reg' -H 'CF-Client-Version: a-7.21-0721' -H 'Content-Type: application/json' -d '{"key":"'"$public_key"'","tos":"'"$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"'"}')"
-  reserved_str="$(echo "$response" | jq -r '.config.client_id // empty')"
-  reserved_hex="$(echo "$reserved_str" | base64 -d 2>/dev/null | xxd -p -c 256 || true)"
+  client_id="$(echo "$response" | jq -r '.config.client_id // empty')"
+  local_v4="$(echo "$response" | jq -r '.config.interface.addresses.v4 // empty')"
+  local_v6="$(echo "$response" | jq -r '.config.interface.addresses.v6 // empty')"
+  reserved_hex="$(echo "$client_id" | base64 -d 2>/dev/null | xxd -p -c 256 || true)"
   reserved_dec="$(python3 - <<PY
 h='${reserved_hex}'
 try:
@@ -188,12 +191,29 @@ except Exception:
     print('[0,0,0]')
 PY
 )"
+  [[ -n "$local_v4" ]] || local_v4="172.16.0.2"
+  [[ -n "$local_v6" ]] || local_v6="2606:4700:110:876d:4d3c:4206:c90c:6bd0"
+  [[ "$local_v4" == */* ]] || local_v4="${local_v4}/32"
+  [[ "$local_v6" == */* ]] || local_v6="${local_v6}/128"
   mkdir -p "$SBD_DATA_DIR"
   cat > "${SBD_DATA_DIR}/warp-account.env" <<EOF
 WARP_PRIVATE_KEY=${private_key}
 WARP_PEER_PUBLIC_KEY=bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
 WARP_RESERVED=${reserved_dec:-[0,0,0]}
+WARP_CLIENT_ID=${client_id}
+WARP_LOCAL_V4=${local_v4}
+WARP_LOCAL_V6=${local_v6}
 EOF
+  if [[ -n "$client_id" ]]; then
+    printf '%s\n' "$client_id" > "${SBD_DATA_DIR}/warp-client-id"
+    chmod 600 "${SBD_DATA_DIR}/warp-client-id"
+  fi
   chmod 600 "${SBD_DATA_DIR}/warp-account.env"
+  log_info "$(msg "WARP 地址 ipv4=${local_v4} ipv6=${local_v6}" "WARP addresses ipv4=${local_v4} ipv6=${local_v6}")"
   log_success "$(msg "WARP 账户已生成: ${SBD_DATA_DIR}/warp-account.env" "WARP account generated: ${SBD_DATA_DIR}/warp-account.env")"
+  if declare -F provider_warp_rebuild_runtime_from_account >/dev/null 2>&1; then
+    if ! ( provider_warp_rebuild_runtime_from_account "auto" ); then
+      log_warn "$(msg "WARP 账户已生成，但自动应用到运行时失败；可稍后执行 warp config 手动应用" "WARP account generated, but auto-apply to runtime failed; run warp config to apply manually later")"
+    fi
+  fi
 }

@@ -14,11 +14,13 @@ menu_ops() {
     echo "8) $(msg "启动 WARP Socks5（warp socks5-start）" "Start WARP Socks5 (warp socks5-start)")"
     echo "9) $(msg "查看 WARP Socks5 状态（warp socks5-status）" "Show WARP Socks5 status (warp socks5-status)")"
     echo "10) $(msg "停止 WARP Socks5（warp socks5-stop）" "Stop WARP Socks5 (warp socks5-stop)")"
-    echo "11) $(msg "查看 BBR 状态（sys bbr-status）" "Show BBR status (sys bbr-status)")"
-    echo "12) $(msg "启用 BBR（sys bbr-enable）" "Enable BBR (sys bbr-enable)")"
-    echo "13) $(msg "安装 acme.sh（sys acme-install）" "Install acme.sh (sys acme-install)")"
-    echo "14) $(msg "申请证书（sys acme-issue）" "Issue certificate (sys acme-issue)")"
-    echo "15) $(msg "应用证书到运行时（sys acme-apply）" "Apply cert to runtime (sys acme-apply)")"
+    echo "11) $(msg "WARP 交互配置菜单（warp config）" "WARP interactive config menu (warp config)")"
+    echo "12) $(msg "WARP 地区代码设置（warp region）" "WARP region code setting (warp region)")"
+    echo "13) $(msg "查看 BBR 状态（sys bbr-status）" "Show BBR status (sys bbr-status)")"
+    echo "14) $(msg "启用 BBR（sys bbr-enable）" "Enable BBR (sys bbr-enable)")"
+    echo "15) $(msg "安装 acme.sh（sys acme-install）" "Install acme.sh (sys acme-install)")"
+    echo "16) $(msg "申请证书（sys acme-issue）" "Issue certificate (sys acme-issue)")"
+    echo "17) $(msg "应用证书到运行时（sys acme-apply）" "Apply cert to runtime (sys acme-apply)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -41,17 +43,23 @@ menu_ops() {
         ;;
       9) provider_warp_socks5_status; menu_pause ;;
       10) provider_warp_socks5_stop; menu_pause ;;
-      11) provider_sys_command bbr-status; menu_pause ;;
-      12) provider_sys_command bbr-enable; menu_pause ;;
-      13) provider_sys_command acme-install; menu_pause ;;
-      14)
+      11) provider_warp_config; menu_pause ;;
+      12)
+        read -r -p "$(msg "地区代码(如 US/JP/SG，auto 自动)" "region code(e.g. US/JP/SG, auto for automatic)"): " wr
+        provider_warp_region_set "${wr:-auto}"
+        menu_pause
+        ;;
+      13) provider_sys_command bbr-status; menu_pause ;;
+      14) provider_sys_command bbr-enable; menu_pause ;;
+      15) provider_sys_command acme-install; menu_pause ;;
+      16)
         read -r -p "$(msg "域名" "domain"): " d
         read -r -p "$(msg "邮箱" "email"): " e
         read -r -p "$(msg "DNS Provider(泛域名可选，如 dns_cf)" "DNS provider(optional for wildcard, e.g. dns_cf)"): " dp
         provider_sys_command acme-issue "$d" "$e" "$dp"
         menu_pause
         ;;
-      15)
+      17)
         read -r -p "$(msg "证书路径" "cert path"): " cpath
         read -r -p "$(msg "私钥路径" "key path"): " kpath
         provider_sys_command acme-apply "$cpath" "$kpath"
