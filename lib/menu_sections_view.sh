@@ -36,6 +36,64 @@ menu_protocol_runtime_summary() {
   echo
 }
 
+menu_protocol_runtime_engine_detect() {
+  local runtime_file runtime_engine
+  runtime_file="$(provider_cfg_runtime_file)"
+  if [[ -f "$runtime_file" ]]; then
+    runtime_engine="$(grep -E '^engine=' "$runtime_file" | head -n1 | cut -d= -f2-)"
+  fi
+  echo "${runtime_engine:-${engine:-sing-box}}"
+}
+
+menu_protocol_runtime_protocols_detect() {
+  local runtime_file runtime_protocols
+  runtime_file="$(provider_cfg_runtime_file)"
+  if [[ -f "$runtime_file" ]]; then
+    runtime_protocols="$(grep -E '^protocols=' "$runtime_file" | head -n1 | cut -d= -f2-)"
+  fi
+  echo "${runtime_protocols:-${protocols:-vless-reality}}"
+}
+
+menu_protocol_show_csv_help() {
+  log_info "$(msg "CSV = 逗号分隔列表。多个协议请用英文逗号 ',' 连接。" "CSV = comma-separated list. Use English comma ',' between items.")"
+  log_info "$(msg "输入示例: vmess-ws,vless-ws   或   vless-reality" "Input example: vmess-ws,vless-ws   or   vless-reality")"
+}
+
+menu_protocol_show_add_candidates() {
+  local runtime_engine runtime_protocols p
+  local supported=() unsupported=()
+  local supported_csv unsupported_csv
+
+  runtime_engine="$(menu_protocol_runtime_engine_detect)"
+  runtime_protocols="$(menu_protocol_runtime_protocols_detect)"
+
+  for p in "${ALL_PROTOCOLS[@]}"; do
+    if engine_supports_protocol "$runtime_engine" "$p"; then
+      supported+=("$p")
+    else
+      unsupported+=("$p")
+    fi
+  done
+
+  supported_csv="$(IFS=','; echo "${supported[*]}")"
+  unsupported_csv="$(IFS=','; echo "${unsupported[*]}")"
+
+  menu_protocol_show_csv_help
+  log_info "$(msg "当前已启用协议: ${runtime_protocols}" "Currently enabled protocols: ${runtime_protocols}")"
+  log_info "$(msg "当前引擎(${runtime_engine})可选协议: ${supported_csv}" "Available protocols for engine(${runtime_engine}): ${supported_csv}")"
+  [[ -n "$unsupported_csv" ]] && \
+    log_warn "$(msg "以下协议当前引擎不支持，请不要输入: ${unsupported_csv}" "These protocols are not supported by current engine, do not input: ${unsupported_csv}")"
+}
+
+menu_protocol_show_remove_candidates() {
+  local runtime_protocols
+  runtime_protocols="$(menu_protocol_runtime_protocols_detect)"
+
+  menu_protocol_show_csv_help
+  log_info "$(msg "可移除协议(当前已启用): ${runtime_protocols}" "Removable protocols (currently enabled): ${runtime_protocols}")"
+  log_info "$(msg "也可输入序号CSV（来自选项2矩阵的“序号”列），例如: 1,3" "You can also input index CSV from option 2 matrix, e.g. 1,3")"
+}
+
 menu_protocol() {
   while true; do
     menu_status_header
@@ -51,13 +109,30 @@ menu_protocol() {
       1) provider_protocol_matrix_show all; menu_pause ;;
       2) provider_protocol_matrix_show enabled; menu_pause ;;
       3)
+        menu_protocol_show_add_candidates
         read -r -p "$(msg "新增协议列表(csv)" "protocols to add(csv)"): " ap
+        if [[ -z "${ap// }" ]]; then
+          log_warn "$(msg "未输入新增协议，已取消本次操作" "No protocol input, operation cancelled")"
+          menu_pause
+          continue
+        fi
         read -r -p "$(msg "端口模式[random/manual] (默认 random)" "port mode[random/manual] (default random)"): " am
         am="${am:-random}"
+        am="${am,,}"
+        if [[ "$am" != "random" && "$am" != "manual" ]]; then
+          log_warn "$(msg "端口模式无效，仅支持 random 或 manual" "Invalid port mode, only random/manual are supported")"
+          menu_pause
+          continue
+        fi
         local add_args=()
         add_args=("protocol-add" "$ap" "$am")
         if [[ "$am" == "manual" ]]; then
           read -r -p "$(msg "手动端口映射(proto:port,proto:port...)" "manual port map(proto:port,proto:port...)"): " amap
+          if [[ -z "${amap// }" ]]; then
+            log_warn "$(msg "manual 模式必须输入端口映射，已取消本次操作" "manual mode requires port map, operation cancelled")"
+            menu_pause
+            continue
+          fi
           add_args+=("$amap")
         fi
         provider_cfg_command preview "${add_args[@]}"
@@ -69,7 +144,13 @@ menu_protocol() {
         menu_pause
         ;;
       4)
+        menu_protocol_show_remove_candidates
         read -r -p "$(msg "移除协议列表(csv)" "protocols to remove(csv)"): " rp
+        if [[ -z "${rp// }" ]]; then
+          log_warn "$(msg "未输入移除协议，已取消本次操作" "No protocol input, operation cancelled")"
+          menu_pause
+          continue
+        fi
         provider_cfg_command preview protocol-remove "$rp"
         if prompt_yes_no "$(msg "确认应用该协议移除变更？" "Apply this protocol-remove change?")" "N"; then
           provider_cfg_command apply protocol-remove "$rp"
