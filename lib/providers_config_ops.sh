@@ -79,7 +79,8 @@ provider_cfg_rebuild_runtime() {
 provider_cfg_rotate_identity() {
   ensure_root
   provider_cfg_load_runtime_exports
-  ensure_uuid > "${SBD_DATA_DIR}/uuid"
+  rm -f "${SBD_DATA_DIR}/uuid"
+  ensure_uuid >/dev/null
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 4 > "${SBD_DATA_DIR}/reality_short_id" 2>/dev/null || true
     openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id" 2>/dev/null || true

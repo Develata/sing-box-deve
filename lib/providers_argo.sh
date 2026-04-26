@@ -82,6 +82,9 @@ Requires=sing-box-deve.service
 [Service]
 Type=simple
 ExecStart=${exec_cmd}
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
 StandardOutput=append:${argo_log}
 StandardError=append:${argo_log}
 Restart=always

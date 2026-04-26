@@ -305,3 +305,60 @@ sbd_load_runtime_env() {
   [[ -f "$runtime_file" ]] || return 1
   sbd_safe_load_env_file "$runtime_file"
 }
+
+sbd_json_string() {
+  local input="${1-}"
+  if command -v jq >/dev/null 2>&1; then
+    jq -Rn --arg v "$input" '$v'
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$input"
+    return 0
+  fi
+
+  input="${input//\\/\\\\}"
+  input="${input//\"/\\\"}"
+  input="${input//$'\n'/\\n}"
+  input="${input//$'\r'/\\r}"
+  input="${input//$'\t'/\\t}"
+  printf '"%s"\n' "$input"
+}
+
+sbd_mask_secret() {
+  local value="${1-}" len
+  [[ -n "$value" ]] || {
+    printf ''
+    return 0
+  }
+  len="${#value}"
+  if (( len <= 8 )); then
+    printf '***'
+  else
+    printf '%s...%s' "${value:0:4}" "${value:len-4:4}"
+  fi
+}
+
+sbd_print_env_file_redacted() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  local raw key value lower_key
+  while IFS= read -r raw || [[ -n "$raw" ]]; do
+    if [[ "$raw" == *=* && ! "$raw" =~ ^[[:space:]]*# ]]; then
+      key="${raw%%=*}"
+      value="${raw#*=}"
+      lower_key="${key,,}"
+      case "$lower_key" in
+        *token*|*password*|*pass*|*private_key*|*secret*)
+          printf '%s=%s\n' "$key" "$(sbd_mask_secret "$value")"
+          ;;
+        *)
+          printf '%s\n' "$raw"
+          ;;
+      esac
+    else
+      printf '%s\n' "$raw"
+    fi
+  done < "$file"
+}

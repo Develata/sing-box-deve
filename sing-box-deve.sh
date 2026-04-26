@@ -67,5 +67,6 @@ source "${PROJECT_ROOT}/lib/cli_wizard.sh"
 source "${PROJECT_ROOT}/lib/cli_main_handlers.sh"
 source "${PROJECT_ROOT}/lib/cli_main.sh"
 
+detect_privilege_level
 init_i18n
 main "$@"

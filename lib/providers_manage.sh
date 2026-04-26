@@ -6,7 +6,7 @@ provider_list() {
   if [[ "$mode" == "runtime" || "$mode" == "all" ]]; then
     if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
       log_info "$(msg "当前运行时状态:" "Current runtime state:")"
-      cat "${SBD_CONFIG_DIR}/runtime.env"
+      sbd_print_env_file_redacted "${SBD_CONFIG_DIR}/runtime.env"
     else
       log_warn "$(msg "未找到运行时状态" "No runtime state found")"
     fi

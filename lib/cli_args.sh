@@ -56,6 +56,7 @@ parse_install_args() {
   DIRECT_SHARE_ENDPOINTS="${DIRECT_SHARE_ENDPOINTS:-}"
   PROXY_SHARE_ENDPOINTS="${PROXY_SHARE_ENDPOINTS:-}"
   WARP_SHARE_ENDPOINTS="${WARP_SHARE_ENDPOINTS:-}"
+  SBD_UUID="${SBD_UUID:-${UUID:-}}"
 
   if declare -F legacy_apply_install_defaults >/dev/null 2>&1; then
     legacy_apply_install_defaults
@@ -66,13 +67,14 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vmess-ws-path|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vmess|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vmess|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
+      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vmess-ws-path|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vmess|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vmess|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
         require_option_value "$1" "$#"
         case "$1" in
           --provider) PROVIDER="$2" ;;
           --profile) PROFILE="$2" ;;
           --engine) ENGINE="$2" ;;
           --protocols) PROTOCOLS="$2"; protocols_explicit="true" ;;
+          --uuid) SBD_UUID="$2" ;;
           --port-mode) PORT_MODE="$2" ;;
           --port-map) MANUAL_PORT_MAP="$2" ;;
           --main-port) INSTALL_MAIN_PORT="$2" ;;
@@ -147,6 +149,9 @@ parse_install_args() {
   fi
   if [[ "$RANDOM_MAIN_PORT" == "true" && "$PORT_MODE" == "manual" ]]; then
     die "--random-main-port conflicts with --port-mode manual"
+  fi
+  if [[ -n "${SBD_UUID:-}" ]]; then
+    [[ "$SBD_UUID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]] || die "--uuid must be a valid UUID"
   fi
   case "${PSIPHON_ENABLE,,}" in
     1|true|yes|on|enabled)

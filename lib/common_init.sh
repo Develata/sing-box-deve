@@ -14,7 +14,6 @@ detect_privilege_level() {
 
   # Non-root — switch to user-mode paths
   SBD_USER_MODE="true"
-  log_info "$(msg "以非 root 模式运行（用户模式）" "Running as non-root (user mode)")"
   init_user_mode_paths
 }
 

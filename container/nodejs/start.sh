@@ -21,6 +21,29 @@ esac
 
 mkdir -p "${SBD_DIR}/bin" "${SBD_DIR}/data" "${SBD_DIR}/config"
 
+verify_sha256() {
+  local file="$1" expected="$2" actual
+  [[ -n "$expected" ]] || return 1
+  actual="$(sha256sum "$file" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]]
+}
+
+download_verified_binary() {
+  local url="$1" sha_url="$2" out="$3" sha_file="/tmp/sbd-download.sha256" expected
+  curl -fsSL "$url" -o "$out" || return 1
+  curl -fsSL "$sha_url" -o "$sha_file" || {
+    rm -f "$out" "$sha_file"
+    return 1
+  }
+  expected="$(awk '{print $1}' "$sha_file" | head -n1)"
+  if ! verify_sha256 "$out" "$expected"; then
+    rm -f "$out" "$sha_file"
+    echo "Checksum mismatch for $(basename "$out")"
+    return 1
+  fi
+  rm -f "$sha_file"
+}
+
 detect_ip() {
   local url="https://icanhazip.com"
   local v4 v6
@@ -58,23 +81,36 @@ download_engine() {
   echo "Downloading ${engine} for ${ARCH}..."
   local base_url="https://github.com/Develata/sing-box-deve/releases/download/binaries"
   if [[ "$engine" == "sing-box" ]]; then
-    curl -fsSL "${base_url}/sing-box-${ARCH}" -o "$bin_path" || {
+    download_verified_binary "${base_url}/sing-box-${ARCH}" "${base_url}/sing-box-${ARCH}.sha256" "$bin_path" || {
       echo "Failed to download sing-box, trying official release..."
-      local ver
-      ver=$(curl -fsSL "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | grep -oP '"tag_name":\s*"v\K[^"]+' || echo "1.11.0")
-      curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/v${ver}/sing-box-${ver}-linux-${ARCH}.tar.gz" -o /tmp/sb.tar.gz
+      local tag ver filename expected
+      tag=$(curl -fsSL "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | jq -r '.tag_name // empty')
+      [[ -n "$tag" && "$tag" != "null" ]] || tag="v1.11.0"
+      ver="${tag#v}"
+      filename="sing-box-${ver}-linux-${ARCH}.tar.gz"
+      curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${tag}/${filename}" -o /tmp/sb.tar.gz
+      curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${ver}-checksums.txt" -o /tmp/sb-checksums.txt
+      expected="$(awk -v f="$filename" '$2==f {print $1; exit}' /tmp/sb-checksums.txt)"
+      verify_sha256 /tmp/sb.tar.gz "$expected" || { echo "Checksum mismatch for ${filename}"; exit 1; }
       tar -xzf /tmp/sb.tar.gz -C /tmp/
       mv /tmp/sing-box-*/sing-box "$bin_path"
-      rm -rf /tmp/sb.tar.gz /tmp/sing-box-*
+      rm -rf /tmp/sb.tar.gz /tmp/sb-checksums.txt /tmp/sing-box-*
     }
   elif [[ "$engine" == "xray" ]]; then
-    curl -fsSL "${base_url}/xray-${ARCH}" -o "$bin_path" || {
+    download_verified_binary "${base_url}/xray-${ARCH}" "${base_url}/xray-${ARCH}.sha256" "$bin_path" || {
       echo "Failed to download xray, trying official release..."
-      local ver
-      ver=$(curl -fsSL "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | grep -oP '"tag_name":\s*"v\K[^"]+' || echo "25.1.1")
-      curl -fsSL "https://github.com/XTLS/Xray-core/releases/download/v${ver}/Xray-linux-${ARCH}.zip" -o /tmp/xray.zip
+      local tag x_arch filename expected
+      tag=$(curl -fsSL "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | jq -r '.tag_name // empty')
+      [[ -n "$tag" && "$tag" != "null" ]] || tag="v25.1.1"
+      x_arch="64"
+      [[ "$ARCH" == "arm64" ]] && x_arch="arm64-v8a"
+      filename="Xray-linux-${x_arch}.zip"
+      curl -fsSL "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}" -o /tmp/xray.zip
+      curl -fsSL "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}.dgst" -o /tmp/xray.zip.dgst
+      expected="$(awk '/SHA256/{print $NF; exit}' /tmp/xray.zip.dgst)"
+      verify_sha256 /tmp/xray.zip "$expected" || { echo "Checksum mismatch for ${filename}"; exit 1; }
       unzip -o /tmp/xray.zip xray -d "${SBD_DIR}/bin/"
-      rm -f /tmp/xray.zip
+      rm -f /tmp/xray.zip /tmp/xray.zip.dgst
     }
   fi
   chmod +x "$bin_path"
@@ -90,7 +126,10 @@ install_cloudflared() {
     return 0
   fi
   echo "Downloading cloudflared for ${ARCH}..."
-  curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" -o "$cf_bin"
+  download_verified_binary \
+    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}" \
+    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}.sha256" \
+    "$cf_bin"
   chmod +x "$cf_bin"
   echo "cloudflared installed."
 }

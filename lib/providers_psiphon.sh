@@ -166,6 +166,9 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/bin/bash -lc '${exec_cmd}'
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
 StandardOutput=append:${log_file}
 StandardError=append:${log_file}
 Restart=always

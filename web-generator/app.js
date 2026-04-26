@@ -98,6 +98,17 @@ function getSelectedCdnEndpoints() {
   return eps.join(",");
 }
 
+function shQuote(value) {
+  value = String(value == null ? "" : value);
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(value)) return value;
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
+function pushArg(args, flag, value) {
+  args.push(flag);
+  args.push(shQuote(value));
+}
+
 /* ── Toggle fields ── */
 function toggleAdvancedFields() {
   var provider = document.getElementById("provider").value;
@@ -175,22 +186,25 @@ function buildCommand() {
   var outUser = (document.getElementById("outboundProxyUser").value || "").trim();
   var outPass = (document.getElementById("outboundProxyPass").value || "").trim();
   var uuidVal = (document.getElementById("uuid").value || "").trim();
-  var nodeName = (document.getElementById("nodeName").value || "").trim();
   var cdnEps = getSelectedCdnEndpoints();
 
-  var args = ["install", "--provider " + provider, "--profile " + profile, "--engine " + engine,
-    "--protocols " + protocols.join(","), "--argo " + argoMode, "--warp-mode " + warpMode,
-    "--outbound-proxy-mode " + outMode];
-  if (uuidVal) args.push("--uuid " + uuidVal);
-  if (nodeName) args.push("--name " + nodeName);
-  if (argoDomain) args.push("--argo-domain " + argoDomain);
-  if (argoToken) args.push("--argo-token " + argoToken);
-  if (cdnEps) args.push("--cdn-endpoints " + cdnEps);
+  var args = ["install"];
+  pushArg(args, "--provider", provider);
+  pushArg(args, "--profile", profile);
+  pushArg(args, "--engine", engine);
+  pushArg(args, "--protocols", protocols.join(","));
+  pushArg(args, "--argo", argoMode);
+  pushArg(args, "--warp-mode", warpMode);
+  pushArg(args, "--outbound-proxy-mode", outMode);
+  if (uuidVal) pushArg(args, "--uuid", uuidVal);
+  if (argoDomain) pushArg(args, "--argo-domain", argoDomain);
+  if (argoToken) pushArg(args, "--argo-token", argoToken);
+  if (cdnEps) pushArg(args, "--cdn-endpoints", cdnEps);
   if (outMode !== "direct") {
-    args.push("--outbound-proxy-host " + outHost);
-    args.push("--outbound-proxy-port " + outPort);
-    if (outUser) args.push("--outbound-proxy-user " + outUser);
-    if (outPass) args.push("--outbound-proxy-pass " + outPass);
+    pushArg(args, "--outbound-proxy-host", outHost);
+    pushArg(args, "--outbound-proxy-port", outPort);
+    if (outUser) pushArg(args, "--outbound-proxy-user", outUser);
+    if (outPass) pushArg(args, "--outbound-proxy-pass", outPass);
   }
   var cmd = "bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) " + args.join(" ");
   document.getElementById("resultHint").textContent = "生成安装命令：";
@@ -219,13 +233,12 @@ function buildEnvTemplate() {
   var outUser = (document.getElementById("outboundProxyUser").value || "").trim();
   var outPass = (document.getElementById("outboundProxyPass").value || "").trim();
   var uuidVal = (document.getElementById("uuid").value || "").trim();
-  var nodeName = (document.getElementById("nodeName").value || "").trim();
   var cdnEps = getSelectedCdnEndpoints();
 
   var lines = [
     "# sing-box-deve env template", "provider=" + provider, "profile=" + profile,
     "engine=" + engine, "protocols=" + protocols.join(","), "",
-    "# UUID (leave empty to auto-generate)", "UUID=" + uuidVal, "NODE_NAME=" + nodeName, "",
+    "# UUID (leave empty to auto-generate)", "UUID=" + uuidVal, "",
     "# Argo", "argo_mode=" + argoMode, "argo_domain=" + argoDomain, "argo_token=" + argoToken,
     "ARGO_CDN_ENDPOINTS=" + cdnEps, "",
     "# WARP", "warp_mode=" + warpMode, "WARP_PRIVATE_KEY=" + warpPK, "WARP_PEER_PUBLIC_KEY=" + warpPub, "",

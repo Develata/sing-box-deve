@@ -91,7 +91,7 @@ menu_protocol_show_remove_candidates() {
 
   menu_protocol_show_csv_help
   log_info "$(msg "可移除协议(当前已启用): ${runtime_protocols}" "Removable protocols (currently enabled): ${runtime_protocols}")"
-  log_info "$(msg "也可输入序号CSV（来自选项2矩阵的“序号”列），例如: 1,3" "You can also input index CSV from option 2 matrix, e.g. 1,3")"
+  log_info "$(msg "也可输入序号CSV（来自选项2矩阵的'序号'列），例如: 1,3" "You can also input index CSV from option 2 matrix, e.g. 1,3")"
 }
 
 menu_protocol() {

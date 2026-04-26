@@ -171,6 +171,9 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=${exec_cmd}
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
 Restart=always
 RestartSec=3
 LimitNOFILE=1048576

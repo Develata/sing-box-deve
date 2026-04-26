@@ -18,16 +18,28 @@ csv_to_json_array() {
   local csv="$1" out="[" first=true item
   IFS=',' read -r -a _items <<< "$csv"
   for item in "${_items[@]}"; do
-    item="$(echo "$item" | xargs)"
+    item="$(sbd_trim_whitespace "$item")"
     [[ -n "$item" ]] || continue
     if [[ "$first" == true ]]; then
-      out+="\"${item}\""
+      out+="$(sbd_json_string "$item")"
       first=false
     else
-      out+=",\"${item}\""
+      out+=",$(sbd_json_string "$item")"
     fi
   done
   out+="]"
+  echo "$out"
+}
+
+csv_to_xray_domain_array() {
+  local csv="$1" out="" item domain
+  IFS=',' read -r -a _items <<< "$csv"
+  for item in "${_items[@]}"; do
+    item="$(sbd_trim_whitespace "$item")"
+    [[ -n "$item" ]] || continue
+    domain="domain:${item}"
+    out+="${out:+,}$(sbd_json_string "$domain")"
+  done
   echo "$out"
 }
 
@@ -53,20 +65,24 @@ build_custom_domain_rules_singbox() {
 
 build_custom_domain_rules_xray() {
   local primary_tag="$1" rules="" direct_csv proxy_csv block_csv
+  local direct_arr proxy_arr block_arr
   direct_csv="${DOMAIN_SPLIT_DIRECT:-}"
   proxy_csv="${DOMAIN_SPLIT_PROXY:-}"
   block_csv="${DOMAIN_SPLIT_BLOCK:-}"
+  direct_arr="$(csv_to_xray_domain_array "$direct_csv")"
+  proxy_arr="$(csv_to_xray_domain_array "$proxy_csv")"
+  block_arr="$(csv_to_xray_domain_array "$block_csv")"
 
-  if [[ -n "$direct_csv" ]]; then
-    rules+="{\"type\":\"field\",\"domain\":[$(printf '%s' "$direct_csv" | awk -F, '{for(i=1;i<=NF;i++){gsub(/^ +| +$/, "", $i); if(length($i)){printf "%s\"domain:%s\"", (j++?",":""), $i}}}')],\"outboundTag\":\"direct\"}"
+  if [[ -n "$direct_arr" ]]; then
+    rules+="{\"type\":\"field\",\"domain\":[${direct_arr}],\"outboundTag\":\"direct\"}"
   fi
-  if [[ -n "$proxy_csv" && "$primary_tag" != "direct" ]]; then
+  if [[ -n "$proxy_arr" && "$primary_tag" != "direct" ]]; then
     [[ -n "$rules" ]] && rules+=","
-    rules+="{\"type\":\"field\",\"domain\":[$(printf '%s' "$proxy_csv" | awk -F, '{for(i=1;i<=NF;i++){gsub(/^ +| +$/, "", $i); if(length($i)){printf "%s\"domain:%s\"", (j++?",":""), $i}}}')],\"outboundTag\":\"${primary_tag}\"}"
+    rules+="{\"type\":\"field\",\"domain\":[${proxy_arr}],\"outboundTag\":\"${primary_tag}\"}"
   fi
-  if [[ -n "$block_csv" ]]; then
+  if [[ -n "$block_arr" ]]; then
     [[ -n "$rules" ]] && rules+=","
-    rules+="{\"type\":\"field\",\"domain\":[$(printf '%s' "$block_csv" | awk -F, '{for(i=1;i<=NF;i++){gsub(/^ +| +$/, "", $i); if(length($i)){printf "%s\"domain:%s\"", (j++?",":""), $i}}}')],\"outboundTag\":\"block\"}"
+    rules+="{\"type\":\"field\",\"domain\":[${block_arr}],\"outboundTag\":\"block\"}"
   fi
   echo "$rules"
 }

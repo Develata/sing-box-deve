@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 
 validate_feature_modes() {
+  local key value
+  for key in \
+    ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS \
+    PSIPHON_ENABLE PSIPHON_MODE PSIPHON_REGION WARP_MODE ROUTE_MODE IP_PREFERENCE \
+    CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH \
+    REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME \
+    VMESS_WS_PATH VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE \
+    XRAY_VLESS_ENC XRAY_XHTTP_REALITY \
+    CDN_HOST_VMESS CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP \
+    PROXYIP_VMESS PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP \
+    DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK PORT_EGRESS_MAP \
+    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS \
+    DIRECT_SHARE_ENDPOINTS PROXY_SHARE_ENDPOINTS WARP_SHARE_ENDPOINTS; do
+    value="${!key:-}"
+    if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+      die "${key} must be a single-line value"
+    fi
+  done
+  if [[ "${ARGO_TOKEN:-}" =~ [[:space:]] ]]; then
+    die "ARGO_TOKEN must not contain whitespace"
+  fi
+
   case "${ARGO_MODE:-off}" in
     off|temp|fixed) ;;
     *) die "Invalid ARGO_MODE: ${ARGO_MODE}" ;;
@@ -107,7 +129,11 @@ detect_public_ip() {
 ensure_uuid() {
   local uuid_file="${SBD_DATA_DIR}/uuid"
   if [[ ! -f "$uuid_file" ]]; then
-    if command -v uuidgen >/dev/null 2>&1; then
+    local supplied_uuid="${SBD_UUID:-${UUID:-}}"
+    if [[ -n "$supplied_uuid" ]]; then
+      [[ "$supplied_uuid" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]] || die "Invalid UUID: ${supplied_uuid}"
+      printf '%s\n' "$supplied_uuid" > "$uuid_file"
+    elif command -v uuidgen >/dev/null 2>&1; then
       uuidgen > "$uuid_file"
     elif [[ -r /proc/sys/kernel/random/uuid ]]; then
       cat /proc/sys/kernel/random/uuid > "$uuid_file"

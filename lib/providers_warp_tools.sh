@@ -230,12 +230,12 @@ provider_warp_config() {
     case "${c:-0}" in
       1) provider_warp_account_show ;;
       2) provider_warp_register ;;
-      3) provider_warp_account_set ;;
+      3) provider_warp_account_set "" ;;
       4)
         read -r -p "$(msg "输入 WARP_MODE" "Input WARP_MODE"): " wm
         provider_warp_set_mode "$wm"
         ;;
-      5) provider_warp_region_set ;;
+      5) provider_warp_region_set "" ;;
       6) provider_warp_rebuild_runtime_from_account "force" ;;
       7) provider_warp_countries ;;
       0) return 0 ;;
@@ -322,6 +322,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 ExecStart=${exec_cmd}
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
 Restart=always
 RestartSec=2
 

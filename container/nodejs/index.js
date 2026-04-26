@@ -26,7 +26,7 @@ fs.access("start.sh", fs.constants.F_OK, (err) => {
     console.log("start.sh not found, skipping protocol bootstrap.");
     return;
   }
-  fs.chmod("start.sh", 0o777, (chmodErr) => {
+  fs.chmod("start.sh", 0o755, (chmodErr) => {
     if (chmodErr) {
       console.error(`start.sh chmod failed: ${chmodErr}`);
       return;
