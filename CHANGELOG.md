@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.0-dev.12
+
+- Updated GitHub Actions checkout usage to `actions/checkout@v6` with least-privilege `contents: read` permissions
+- Hardened container bootstrap fallback downloads with release digest verification for sing-box
+- Expanded CI coverage for container startup scripts, JavaScript syntax, Clash ruleset generation, non-root dry-run, and checksum validation
+
 ## v1.0.0-dev.9
 
 - Replaced all 46 direct `systemctl`/`journalctl` calls with init-system-aware `sbd_service_*` wrappers (systemd / OpenRC / nohup dispatch)

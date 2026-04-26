@@ -4,6 +4,9 @@ name: SAP Deploy + Keepalive
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: sap-deploy
   cancel-in-progress: true
@@ -32,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install CF CLI v8
         run: |
