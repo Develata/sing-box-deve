@@ -30,8 +30,8 @@ verify_sha256() {
 
 download_verified_binary() {
   local url="$1" sha_url="$2" out="$3" sha_file="/tmp/sbd-download.sha256" expected
-  curl -fsSL "$url" -o "$out" || return 1
-  curl -fsSL "$sha_url" -o "$sha_file" || {
+  curl -fsSL "$url" -o "$out" 2>/dev/null || return 1
+  curl -fsSL "$sha_url" -o "$sha_file" 2>/dev/null || {
     rm -f "$out" "$sha_file"
     return 1
   }
@@ -42,6 +42,16 @@ download_verified_binary() {
     return 1
   fi
   rm -f "$sha_file"
+}
+
+verify_engine_binary_runs() {
+  local engine="$1" bin_path="$2" version_out
+  if ! version_out="$("$bin_path" version 2>&1)"; then
+    echo "${engine} binary is not executable in this container:"
+    printf '%s\n' "$version_out"
+    return 1
+  fi
+  echo "${engine} installed: $(printf '%s\n' "$version_out" | head -1)"
 }
 
 detect_ip() {
@@ -83,18 +93,23 @@ download_engine() {
   if [[ "$engine" == "sing-box" ]]; then
     download_verified_binary "${base_url}/sing-box-${ARCH}" "${base_url}/sing-box-${ARCH}.sha256" "$bin_path" || {
       echo "Failed to download sing-box, trying official release..."
-      local tag ver filename expected
-      tag=$(curl -fsSL "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | jq -r '.tag_name // empty')
+      local release_json tag ver filename url digest expected sb_arch
+      release_json="$(curl -fsSL "https://api.github.com/repos/SagerNet/sing-box/releases/latest")"
+      tag="$(printf '%s' "$release_json" | jq -r '.tag_name // empty')"
       [[ -n "$tag" && "$tag" != "null" ]] || tag="v1.11.0"
       ver="${tag#v}"
-      filename="sing-box-${ver}-linux-${ARCH}.tar.gz"
-      curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${tag}/${filename}" -o /tmp/sb.tar.gz
-      curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${ver}-checksums.txt" -o /tmp/sb-checksums.txt
-      expected="$(awk -v f="$filename" '$2==f {print $1; exit}' /tmp/sb-checksums.txt)"
+      sb_arch="$ARCH"
+      [[ -f /etc/alpine-release ]] && sb_arch="${ARCH}-musl"
+      filename="sing-box-${ver}-linux-${sb_arch}.tar.gz"
+      url="$(printf '%s' "$release_json" | jq -r --arg name "$filename" '.assets[] | select(.name==$name) | .browser_download_url' | head -n1)"
+      digest="$(printf '%s' "$release_json" | jq -r --arg name "$filename" '.assets[] | select(.name==$name) | .digest // empty' | head -n1)"
+      expected="${digest#sha256:}"
+      [[ -n "$url" && -n "$expected" && "$expected" != "$digest" ]] || { echo "Missing sing-box release URL or sha256 digest for ${filename}"; exit 1; }
+      curl -fsSL "$url" -o /tmp/sb.tar.gz
       verify_sha256 /tmp/sb.tar.gz "$expected" || { echo "Checksum mismatch for ${filename}"; exit 1; }
       tar -xzf /tmp/sb.tar.gz -C /tmp/
       mv /tmp/sing-box-*/sing-box "$bin_path"
-      rm -rf /tmp/sb.tar.gz /tmp/sb-checksums.txt /tmp/sing-box-*
+      rm -rf /tmp/sb.tar.gz /tmp/sing-box-*
     }
   elif [[ "$engine" == "xray" ]]; then
     download_verified_binary "${base_url}/xray-${ARCH}" "${base_url}/xray-${ARCH}.sha256" "$bin_path" || {
@@ -114,7 +129,7 @@ download_engine() {
     }
   fi
   chmod +x "$bin_path"
-  echo "${engine} installed: $("$bin_path" version 2>/dev/null | head -1 || echo 'unknown')"
+  verify_engine_binary_runs "$engine" "$bin_path"
 }
 
 install_cloudflared() {

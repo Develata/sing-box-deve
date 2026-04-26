@@ -12,6 +12,7 @@ const uuid = process.env.UUID || process.env.uuid || "79411d85-b0dc-4cd2-b46c-01
 const DOMAIN = process.env.DOMAIN || process.env.domain || "";
 const NAME = process.env.NAME || process.env.name || os.hostname();
 const uuidKey = uuid.replace(/-/g, "");
+const bootstrap = { status: "starting", code: null };
 
 const vlessInfo = DOMAIN
   ? `vless://${uuid}@${DOMAIN}:443?encryption=none&security=tls&sni=${DOMAIN}&fp=chrome&type=ws&host=${DOMAIN}&path=%2F#sbd-vl-ws-tls-${NAME}`
@@ -24,11 +25,14 @@ if (vlessInfo) {
 fs.access("start.sh", fs.constants.F_OK, (err) => {
   if (err) {
     console.log("start.sh not found, skipping protocol bootstrap.");
+    bootstrap.status = "skipped";
     return;
   }
   fs.chmod("start.sh", 0o755, (chmodErr) => {
     if (chmodErr) {
       console.error(`start.sh chmod failed: ${chmodErr}`);
+      bootstrap.status = "failed";
+      bootstrap.error = String(chmodErr);
       return;
     }
     console.log("Launching start.sh ...");
@@ -37,6 +41,8 @@ fs.access("start.sh", fs.constants.F_OK, (err) => {
     child.stderr.on("data", (data) => process.stderr.write(data));
     child.on("close", (code) => {
       console.log(`start.sh exited with code ${code}`);
+      bootstrap.code = code;
+      bootstrap.status = code === 0 ? "ok" : "failed";
     });
   });
 });
@@ -48,8 +54,9 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok", uptime: process.uptime() }));
+    const ok = bootstrap.status !== "failed";
+    res.writeHead(ok ? 200 : 503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: ok ? "ok" : "error", bootstrap, uptime: process.uptime() }));
     return;
   }
   if (req.url === `/${uuid}`) {
