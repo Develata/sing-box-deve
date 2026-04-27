@@ -85,7 +85,7 @@ cat > /tmp/sbd-mock/curl <<'"'"'MOCK'"'"'
 #!/usr/bin/env bash
 last="${@: -1}"
 if [[ "$last" == *"/version" ]]; then
-  echo "v1.0.0-dev.999"
+  echo "1.0.999"
   exit 0
 fi
 if [[ "$last" == *"icanhazip.com" ]]; then
@@ -99,7 +99,7 @@ if [[ "$last" == *"api.telegram.org"* ]]; then
   echo "{\"ok\":true}"
   exit 0
 fi
-echo "v1.0.0-dev.999"
+echo "1.0.999"
 exit 0
 MOCK
 

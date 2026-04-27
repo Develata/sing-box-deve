@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.1
+
+- Switched script release versions to plain numeric `major.minor.patch` format
+- Replaced development-suffix version ordering with simple numeric dotted version comparison
+- Added a regression check for version comparisons used by script self-update
+
 ## v1.0.0-dev.12
 
 - Updated GitHub Actions checkout usage to `actions/checkout@v6` with least-privilege `contents: read` permissions

@@ -138,6 +138,7 @@ UPDATE_MANIFEST_FILES=(
   "scripts/consistency-check.sh"
   "scripts/regression-docker.sh"
   "scripts/test-clash-ruleset.sh"
+  "scripts/test-version-compare.sh"
   "scripts/update-checksums.sh"
   ".github/workflows/main.yml"
   ".github/workflows/mainh.yml"
@@ -165,5 +166,6 @@ UPDATE_MANIFEST_EXECUTABLES=(
   "scripts/consistency-check.sh"
   "scripts/regression-docker.sh"
   "scripts/test-clash-ruleset.sh"
+  "scripts/test-version-compare.sh"
   "scripts/update-checksums.sh"
 )

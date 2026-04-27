@@ -1,16 +1,37 @@
 #!/usr/bin/env bash
 
 normalize_version_for_compare() {
-  printf '%s' "${1#v}"
+  local raw="${1#v}" core major minor patch extra
+  core="${raw%%[-+]*}"
+  IFS=. read -r major minor patch extra <<< "$core"
+  [[ -z "${extra:-}" ]] || return 1
+  [[ "${major:-}" =~ ^[0-9]+$ ]] || return 1
+  [[ "${minor:-0}" =~ ^[0-9]+$ ]] || return 1
+  [[ "${patch:-0}" =~ ^[0-9]+$ ]] || return 1
+  printf '%d.%d.%d' "$major" "${minor:-0}" "${patch:-0}"
+}
+
+version_eq() {
+  local left right
+  left="$(normalize_version_for_compare "${1:-}")" || return 1
+  right="$(normalize_version_for_compare "${2:-}")" || return 1
+  [[ "$left" == "$right" ]]
 }
 
 version_lt() {
   local left right
-  left="$(normalize_version_for_compare "${1:-}")"
-  right="$(normalize_version_for_compare "${2:-}")"
+  local left_major left_minor left_patch right_major right_minor right_patch
+  left="$(normalize_version_for_compare "${1:-}")" || return 1
+  right="$(normalize_version_for_compare "${2:-}")" || return 1
   [[ -n "$left" && -n "$right" ]] || return 1
   [[ "$left" == "$right" ]] && return 1
-  [[ "$(printf '%s\n%s\n' "$left" "$right" | sort -V | head -n1)" == "$left" ]]
+  IFS=. read -r left_major left_minor left_patch <<< "$left"
+  IFS=. read -r right_major right_minor right_patch <<< "$right"
+  (( left_major < right_major )) && return 0
+  (( left_major > right_major )) && return 1
+  (( left_minor < right_minor )) && return 0
+  (( left_minor > right_minor )) && return 1
+  (( left_patch < right_patch ))
 }
 
 show_version() {
@@ -50,7 +71,7 @@ update_command() {
       else
         log_warn "$(msg "已跳过脚本更新" "Skipped script update")"
       fi
-    elif [[ "$remote_ver" == "$local_ver" ]]; then
+    elif version_eq "$remote_ver" "$local_ver"; then
       log_info "$(msg "脚本已是最新版本" "Script is already up to date") (${local_ver})"
     else
       log_info "$(msg "本地版本" "Local version"): ${local_ver}"
