@@ -117,12 +117,9 @@ build_xray_config() {
   xray_outbounds="${xray_outbounds//\\n/$'\n'}"
   xray_routing="${xray_routing//\\n/$'\n'}"
 
-  local config_backup="${config_file}.bak"
-  if [[ -f "$config_file" ]]; then
-    cp "$config_file" "$config_backup"
-  fi
-
-  cat > "$config_file" <<EOF
+  local tmp_config
+  tmp_config="$(mktemp "${config_file}.tmp.XXXXXX")"
+  cat > "$tmp_config" <<EOF
 {
   "log": {"loglevel": "warning"},
   "inbounds": [
@@ -133,6 +130,7 @@ ${xray_outbounds}
   ]${xray_routing}
 }
 EOF
+  sbd_commit_file_with_backups "$config_file" "$tmp_config" 600
 
   multi_ports_runtime_append_xray "$protocols_csv"
   echo "$public_key" > "${SBD_DATA_DIR}/xray_public.key"

@@ -137,12 +137,9 @@ build_sing_box_config() {
   local route_json
   route_json="$(build_singbox_route_json "$final_tag" "$inbound_map" "$available_outbounds")"
 
-  local config_backup="${config_file}.bak"
-  if [[ -f "$config_file" ]]; then
-    cp "$config_file" "$config_backup"
-  fi
-
-  cat > "$config_file" <<EOF_JSON
+  local tmp_config
+  tmp_config="$(mktemp "${config_file}.tmp.XXXXXX")"
+  cat > "$tmp_config" <<EOF_JSON
 {
   "log": {"level": "info"},
   "inbounds": [
@@ -154,6 +151,7 @@ ${outbounds}
   "route": ${route_json}
 }
 EOF_JSON
+  sbd_commit_file_with_backups "$config_file" "$tmp_config" 600
 
   multi_ports_runtime_append_singbox "$protocols_csv"
   echo "$public_key" > "${SBD_DATA_DIR}/reality_public.key"

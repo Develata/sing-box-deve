@@ -177,7 +177,6 @@ persist_runtime_state() {
   local runtime_file="${SBD_CONFIG_DIR}/runtime.env" tmp_runtime
   mkdir -p "$(dirname "$runtime_file")"
   tmp_runtime="$(mktemp "${runtime_file}.tmp.XXXXXX")"
-  trap 'rm -f "$tmp_runtime" 2>/dev/null || true' RETURN
   cat > "$tmp_runtime" <<EOF
 provider=${provider}
 profile=${profile}
@@ -228,8 +227,5 @@ warp_share_endpoints=${WARP_SHARE_ENDPOINTS:-}
 script_root=${PROJECT_ROOT}
 installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
-  chmod 600 "$tmp_runtime" 2>/dev/null || true
-  mv "$tmp_runtime" "$runtime_file"
-  chmod 600 "$runtime_file" 2>/dev/null || true
-  trap - RETURN
+  sbd_commit_file_with_backups "$runtime_file" "$tmp_runtime" 600
 }

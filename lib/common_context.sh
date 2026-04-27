@@ -117,7 +117,10 @@ auto_generate_config_snapshot() {
   local file_path="$1"
   load_install_context || die "Install context not found"
 
-  cat > "$file_path" <<EOF
+  local tmp_snapshot
+  mkdir -p "$(dirname "$file_path")"
+  tmp_snapshot="$(mktemp "${file_path}.tmp.XXXXXX")"
+  cat > "$tmp_snapshot" <<EOF
 version: v1
 generated_at: ${created_at}
 provider: ${provider}
@@ -175,6 +178,7 @@ features:
 resources:
   default_profile: ${profile}
 EOF
+  sbd_commit_file_with_backups "$file_path" "$tmp_snapshot" 600
 
   log_info "$(msg "已自动生成配置快照: ${file_path}" "Auto-generated config snapshot: ${file_path}")"
 }

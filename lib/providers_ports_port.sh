@@ -80,13 +80,12 @@ provider_set_port() {
     provider_multi_ports_reject_conflict "$protocol" "$new_port"
     rollback_cfg="${SBD_RUNTIME_DIR}/set-port.${tag}.bak.$$"
     cp "$cfg" "$rollback_cfg"
-    cp "$cfg" "${cfg}.bak"
     tmp_cfg="${SBD_RUNTIME_DIR}/config.json.tmp"
     jq --arg t "$tag" --argjson p "$new_port" \
       '(.inbounds[] | select(.tag==$t) | .listen_port) = $p
        | ((.inbounds[] | select(.tag==$t)) |= del(.port))' \
       "$cfg" > "$tmp_cfg"
-    mv "$tmp_cfg" "$cfg"
+    sbd_commit_file_with_backups "$cfg" "$tmp_cfg" 600
     validate_generated_config "sing-box" "true"
   else
     cfg="${SBD_CONFIG_DIR}/xray-config.json"
@@ -100,10 +99,9 @@ provider_set_port() {
     provider_multi_ports_reject_conflict "$protocol" "$new_port"
     rollback_cfg="${SBD_RUNTIME_DIR}/set-port.${tag}.bak.$$"
     cp "$cfg" "$rollback_cfg"
-    cp "$cfg" "${cfg}.bak"
     tmp_cfg="${SBD_RUNTIME_DIR}/xray-config.json.tmp"
     jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .port) = $p' "$cfg" > "$tmp_cfg"
-    mv "$tmp_cfg" "$cfg"
+    sbd_commit_file_with_backups "$cfg" "$tmp_cfg" 600
     validate_generated_config "xray" "true"
   fi
 

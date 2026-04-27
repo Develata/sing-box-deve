@@ -140,36 +140,30 @@ EOF
 validate_generated_config() {
   local engine="$1"
   local with_rollback="${2:-false}"
-  local output backup_file config_file
+  local output config_file
 
   case "$engine" in
     sing-box)
       config_file="${SBD_CONFIG_DIR}/config.json"
-      backup_file="${config_file}.bak"
       [[ -x "${SBD_BIN_DIR}/sing-box" ]] || die "sing-box binary not found"
       if ! output="$("${SBD_BIN_DIR}/sing-box" check -c "$config_file" 2>&1)"; then
-        if [[ "$with_rollback" == "true" && -f "$backup_file" ]]; then
-          mv "$backup_file" "$config_file"
+        if [[ "$with_rollback" == "true" ]] && sbd_restore_latest_file_backup "$config_file"; then
           log_warn "$(msg "配置验证失败，已回滚到上一版本" "Config validation failed, rolled back to previous version")"
         fi
         log_error "$output"
         die "sing-box config validation failed"
       fi
-      rm -f "$backup_file"
       ;;
     xray)
       config_file="${SBD_CONFIG_DIR}/xray-config.json"
-      backup_file="${config_file}.bak"
       [[ -x "${SBD_BIN_DIR}/xray" ]] || die "xray binary not found"
       if ! output="$("${SBD_BIN_DIR}/xray" run -test -config "$config_file" 2>&1)"; then
-        if [[ "$with_rollback" == "true" && -f "$backup_file" ]]; then
-          mv "$backup_file" "$config_file"
+        if [[ "$with_rollback" == "true" ]] && sbd_restore_latest_file_backup "$config_file"; then
           log_warn "$(msg "配置验证失败，已回滚到上一版本" "Config validation failed, rolled back to previous version")"
         fi
         log_error "$output"
         die "xray config validation failed"
       fi
-      rm -f "$backup_file"
       ;;
     *)
       die "Unsupported engine for config validation: $engine"
