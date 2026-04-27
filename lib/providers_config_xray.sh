@@ -46,11 +46,14 @@ build_xray_config() {
 
   local inbounds=""
   local inbound_map=""
-  sbd_inbounds_append inbounds inbound_map "vless-reality" "$port_vless_reality" \
-    "$(xray_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
-
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
+
+  if protocol_enabled "vless-reality" "${protocols[@]}"; then
+    sbd_inbounds_append inbounds inbound_map "vless-reality" "$port_vless_reality" \
+      "$(xray_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
+  fi
+
   local has_warp="false"
   if warp_mode_targets_xray "${WARP_MODE:-off}"; then
     has_warp="true"

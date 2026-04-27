@@ -62,7 +62,9 @@ write_nodes_output() {
   p_wg="$(resolve_protocol_port_for_engine "$engine" "wireguard")"
   p_socks="$(resolve_protocol_port_for_engine "$engine" "socks5")"
 
-  node_link_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id" >> "$SBD_NODES_BASE_FILE"
+  if protocol_enabled "vless-reality" "${protocols[@]}"; then
+    node_link_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id" >> "$SBD_NODES_BASE_FILE"
+  fi
 
   if protocol_enabled "vmess-ws" "${protocols[@]}"; then
     node_link_vmess_ws "$uuid" "$ip_vmess" "$p_vmess" "$vm_cdn_host" "$vm_path" >> "$SBD_NODES_BASE_FILE"

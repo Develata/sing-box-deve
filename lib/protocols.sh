@@ -76,13 +76,17 @@ validate_protocols_csv() {
 validate_profile_protocols() {
   local profile="$1"
   local protocols_csv="$2"
+  local protocols=()
 
   validate_protocols_csv "$protocols_csv"
+  protocols_to_array "$protocols_csv" protocols
+  if (( ${#protocols[@]} == 0 )); then
+    die "At least one listener protocol is required"
+  fi
 
   case "$profile" in
     lite)
-      local count protocols=()
-      protocols_to_array "$protocols_csv" protocols
+      local count
       count="${#protocols[@]}"
       if (( count > 2 )); then
         die "Lite profile allows up to 2 protocols"

@@ -7,7 +7,7 @@ SBD_LAST_ACME_KEY_PATH=""
 sbd_valid_domain_name() {
   local domain="${1:-}" label
   local -a labels
-  domain="${domain#*.}"
+  [[ "$domain" == "*."* ]] && domain="${domain#*.}"
   [[ -n "$domain" && ${#domain} -le 253 ]] || return 1
   [[ "$domain" == *.* ]] || return 1
   [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || return 1
