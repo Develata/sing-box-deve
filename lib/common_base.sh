@@ -182,7 +182,7 @@ systemd_reload_and_enable() {
   detect_init_system 2>/dev/null || true
   case "${SBD_INIT_SYSTEM:-systemd}" in
     systemd)
-      systemctl daemon-reload
+      sbd_service_daemon_reload
       systemctl enable sing-box-deve.service >/dev/null
       ;;
     openrc)

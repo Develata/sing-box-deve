@@ -35,7 +35,7 @@ sbd_port_is_in_use() {
       ;;
     udp)
       command -v ss >/dev/null 2>&1 || return 1
-      ss -H -lnu 2>/dev/null | awk '{print $5}' | grep -Eq "(^|[^0-9])${port}$"
+      ss -H -lnu 2>/dev/null | awk '{print $4}' | grep -Eq "(^|[^0-9])${port}$"
       ;;
     *)
       return 1

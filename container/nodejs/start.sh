@@ -7,6 +7,7 @@ set -euo pipefail
 export LANG=en_US.UTF-8
 export HOME="${HOME:-/root}"
 SBD_DIR="${HOME}/sing-box-deve"
+APP_DIR="${APP_DIR:-/app}"
 
 echo "================================================="
 echo "  sing-box-deve container bootstrap"
@@ -20,6 +21,24 @@ case "$(uname -m)" in
 esac
 
 mkdir -p "${SBD_DIR}/bin" "${SBD_DIR}/data" "${SBD_DIR}/config"
+
+prepare_script_tree() {
+  local src="${APP_DIR}" dst="${SBD_DIR}/script"
+  [[ -f "${src}/sing-box-deve.sh" ]] || {
+    echo "Unable to locate sing-box-deve.sh in ${src}"
+    return 1
+  }
+  mkdir -p "$dst"
+  cp -f "${src}/sing-box-deve.sh" "$dst/"
+  [[ -f "${src}/version" ]] && cp -f "${src}/version" "$dst/"
+  [[ -f "${src}/checksums.txt" ]] && cp -f "${src}/checksums.txt" "$dst/"
+  for dir in lib providers rulesets; do
+    [[ -d "${src}/${dir}" ]] || continue
+    rm -rf "${dst:?}/${dir}"
+    cp -R "${src}/${dir}" "$dst/"
+  done
+  chmod +x "${dst}/sing-box-deve.sh"
+}
 
 verify_sha256() {
   local file="$1" expected="$2" actual
@@ -182,21 +201,85 @@ start_argo() {
 
 generate_config() {
   local engine="${ENGINE:-sing-box}"
-  local protocols="${PROTOCOLS:-vless-reality,vmess-ws}"
-  echo "Generating ${engine} config for protocols: ${protocols}"
-  # Delegate to the main sing-box-deve script if available
-  if [[ -f "${SBD_DIR}/script/sing-box-deve.sh" ]]; then
-    bash "${SBD_DIR}/script/sing-box-deve.sh" apply --runtime 2>/dev/null || true
-  fi
+  local protocols_csv="${PROTOCOLS:-vless-reality,vmess-ws}"
+  local profile="${PROFILE:-full}"
+  local script_root="${SBD_DIR}/script"
+  echo "Generating ${engine} config for protocols: ${protocols_csv}"
+  prepare_script_tree
+
+  export PROJECT_ROOT="$script_root"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/lib/common.sh"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/lib/legacy_compat.sh"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/lib/protocols.sh"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/lib/security.sh"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/lib/providers.sh"
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/lib/output.sh"
+
+  SBD_STATE_DIR="${SBD_DIR}/state"
+  SBD_CONFIG_DIR="${SBD_DIR}/config"
+  SBD_RUNTIME_DIR="${SBD_DIR}/run"
+  SBD_RULES_FILE="${SBD_STATE_DIR}/firewall-rules.db"
+  SBD_CONTEXT_FILE="${SBD_STATE_DIR}/context.env"
+  SBD_FW_SNAPSHOT_FILE="${SBD_STATE_DIR}/firewall-rules.snapshot"
+  SBD_CFG_LOCK_FILE="${SBD_STATE_DIR}/cfg.lock"
+  CONFIG_SNAPSHOT_FILE="${SBD_CONFIG_DIR}/config.yaml"
+  SBD_SETTINGS_FILE="${SBD_CONFIG_DIR}/settings.conf"
+  SBD_INSTALL_DIR="${SBD_DIR}"
+  SBD_BIN_DIR="${SBD_DIR}/bin"
+  SBD_DATA_DIR="${SBD_DIR}/data"
+  SBD_CACHE_DIR="${SBD_DIR}/cache"
+  SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
+  SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
+  SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
+
+  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR"
+  export UUID SBD_UUID="${UUID:-}"
+  export TLS_MODE="${TLS_MODE:-self-signed}"
+  export ARGO_MODE="${ARGO_MODE:-off}"
+  export WARP_MODE="${WARP_MODE:-off}"
+  export PSIPHON_ENABLE="${PSIPHON_ENABLE:-off}"
+  export PSIPHON_MODE="${PSIPHON_MODE:-off}"
+  export PSIPHON_REGION="${PSIPHON_REGION:-auto}"
+  export ROUTE_MODE="${ROUTE_MODE:-direct}"
+  export OUTBOUND_PROXY_MODE="${OUTBOUND_PROXY_MODE:-direct}"
+  export IP_PREFERENCE="${IP_PREFERENCE:-auto}"
+
+  validate_profile_protocols "$profile" "$protocols_csv"
+  assert_engine_protocol_compatibility "$engine" "$protocols_csv"
+  validate_feature_modes
+  case "$engine" in
+    sing-box) build_sing_box_config "$protocols_csv" ;;
+    xray) build_xray_config "$protocols_csv" ;;
+    *) echo "Unsupported engine: $engine"; return 1 ;;
+  esac
+  validate_generated_config "$engine" "true"
+  write_nodes_output "$engine" "$protocols_csv"
 }
 
 start_engine() {
   local engine="${ENGINE:-sing-box}"
   local bin_path="${SBD_DIR}/bin/${engine}"
-  local config_file="${SBD_DIR}/config/${engine}.json"
+  local config_file run_args=()
+  case "$engine" in
+    sing-box)
+      config_file="${SBD_DIR}/config/config.json"
+      run_args=(run -c "$config_file")
+      ;;
+    xray)
+      config_file="${SBD_DIR}/config/xray-config.json"
+      run_args=(run -config "$config_file")
+      ;;
+    *) echo "Unsupported engine: $engine"; return 1 ;;
+  esac
   [[ -f "$config_file" ]] || { echo "No config file found at $config_file"; return 1; }
   echo "Starting ${engine}..."
-  nohup "$bin_path" run -c "$config_file" > "${SBD_DIR}/data/${engine}.log" 2>&1 &
+  nohup "$bin_path" "${run_args[@]}" > "${SBD_DIR}/data/${engine}.log" 2>&1 &
   echo "${engine} started (PID: $!)"
 }
 
@@ -213,5 +296,5 @@ start_argo
 echo "--- Generating config ---"
 generate_config
 echo "--- Starting engine ---"
-start_engine || echo "Engine start deferred (config may be generated later)."
+start_engine
 echo "=== Container bootstrap complete ==="

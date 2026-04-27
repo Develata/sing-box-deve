@@ -6,7 +6,7 @@ const { exec } = require("child_process");
 const { WebSocket, createWebSocketStream } = require("ws");
 
 const HOME = process.env.HOME || "/root";
-const SUB_FILE = `${HOME}/sing-box-deve/data/jhdy.txt`;
+const SUB_FILE = `${HOME}/sing-box-deve/data/nodes.txt`;
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const uuid = process.env.UUID || process.env.uuid || "79411d85-b0dc-4cd2-b46c-01789a18c650";
 const DOMAIN = process.env.DOMAIN || process.env.domain || "";
@@ -54,7 +54,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.url === "/health") {
-    const ok = bootstrap.status !== "failed";
+    const ok = bootstrap.status === "ok";
     res.writeHead(ok ? 200 : 503, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: ok ? "ok" : "error", bootstrap, uptime: process.uptime() }));
     return;

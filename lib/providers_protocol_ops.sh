@@ -117,6 +117,7 @@ provider_cfg_protocol_sync_argo_service() {
 provider_cfg_protocol_open_firewall_for_added() {
   local added_csv="$1"
   [[ -n "$added_csv" ]] || return 0
+  SBD_LAST_ADDED_FW_RECORDS=""
   mkdir -p "$SBD_STATE_DIR"
   touch "$SBD_RULES_FILE"
   if ! load_install_context; then
@@ -124,14 +125,27 @@ provider_cfg_protocol_open_firewall_for_added() {
   fi
   fw_detect_backend
 
-  local added=() p mapping proto port
+  local added=() p mapping proto port tag preexisting applied_records=""
   protocols_to_array "$added_csv" added
   for p in "${added[@]}"; do
     protocol_needs_local_listener "$p" || continue
     mapping="$(protocol_port_map "$p")"
     proto="${mapping%%:*}"
     port="$(get_protocol_port "$p")"
-    fw_apply_rule "$proto" "$port"
+    tag="$(fw_tag "core" "$proto" "$port")"
+    preexisting="false"
+    fw_rule_exists_record "$tag" && preexisting="true"
+    if ! ( fw_apply_rule "$proto" "$port" ); then
+      provider_cfg_protocol_close_firewall_records "$applied_records" || true
+      return 1
+    fi
+    if [[ "$preexisting" != "true" ]]; then
+      if [[ -n "$applied_records" ]]; then
+        applied_records+=$'\n'
+      fi
+      applied_records+="${FW_BACKEND}|${proto}|${port}|${tag}"
+      SBD_LAST_ADDED_FW_RECORDS="$applied_records"
+    fi
   done
 }
 
@@ -188,11 +202,15 @@ provider_cfg_protocol_add() {
   assert_engine_protocol_compatibility "${engine:-sing-box}" "$target_csv"
   added_csv="$(provider_cfg_protocol_csv_added "$current_csv" "$target_csv")"
   prepare_incremental_protocol_ports "${engine:-sing-box}" "$current_csv" "$target_csv" "$port_mode" "$port_map"
-  provider_cfg_protocol_open_firewall_for_added "$added_csv"
+  provider_cfg_protocol_open_firewall_for_added "$added_csv" || die "Failed to apply firewall rules for added protocols: ${added_csv}"
 
+  local added_fw_records
+  added_fw_records="${SBD_LAST_ADDED_FW_RECORDS:-}"
   protocols="$target_csv"
-  provider_cfg_protocol_sync_argo_service "$target_csv"
-  provider_cfg_rebuild_runtime "$target_csv"
+  if ! ( provider_cfg_protocol_sync_argo_service "$target_csv"; provider_cfg_rebuild_runtime "$target_csv" ); then
+    provider_cfg_protocol_close_firewall_records "$added_fw_records" || true
+    return 1
+  fi
   log_success "$(msg "已新增协议: ${added_csv}" "Protocols added: ${added_csv}")"
 }
 

@@ -111,6 +111,7 @@ install_sing_box_binary() {
   else
     if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
       log_warn "$(msg "下载 sing-box ${tag} 失败，复用本地已有二进制" "Failed to download sing-box ${tag}; reusing existing local binary")"
+      SBD_ENGINE_INSTALL_REUSED_EXISTING="true"
       return 0
     fi
     die "$(msg "无法下载 sing-box，且本地不存在可用二进制" "Unable to download sing-box and no local binary available")"
@@ -162,6 +163,7 @@ install_xray_binary() {
   else
     if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
       log_warn "$(msg "下载 xray ${tag} 失败，复用本地已有二进制" "Failed to download xray ${tag}; reusing existing local binary")"
+      SBD_ENGINE_INSTALL_REUSED_EXISTING="true"
       return 0
     fi
     die "$(msg "无法下载 xray，且本地不存在可用二进制" "Unable to download xray and no local binary available")"
@@ -173,6 +175,9 @@ install_xray_binary() {
 install_engine_binary() {
   local engine="$1"
   local tag="${2:-latest}"
+  # Read by provider_update after this function returns.
+  # shellcheck disable=SC2034
+  SBD_ENGINE_INSTALL_REUSED_EXISTING="false"
   case "$engine" in
     sing-box) install_sing_box_binary "$tag" ;;
     xray) install_xray_binary "$tag" ;;

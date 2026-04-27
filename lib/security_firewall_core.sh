@@ -21,14 +21,19 @@ fw_validate_tag() {
 }
 
 fw_detect_backend() {
-  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+  if [[ -n "${SBD_FW_BACKEND:-}" ]]; then
+    case "$SBD_FW_BACKEND" in
+      ufw|firewalld|iptables|nftables) FW_BACKEND="$SBD_FW_BACKEND" ;;
+      *) die "$(msg "不支持的防火墙后端: ${SBD_FW_BACKEND}" "Unsupported firewall backend: ${SBD_FW_BACKEND}")" ;;
+    esac
+  elif command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     FW_BACKEND="ufw"
-  elif command -v nft >/dev/null 2>&1 && nft list ruleset >/dev/null 2>&1; then
-    FW_BACKEND="nftables"
   elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
     FW_BACKEND="firewalld"
-  elif command -v iptables >/dev/null 2>&1; then
+  elif command -v iptables >/dev/null 2>&1 && iptables -S >/dev/null 2>&1; then
     FW_BACKEND="iptables"
+  elif command -v nft >/dev/null 2>&1 && nft list ruleset >/dev/null 2>&1; then
+    FW_BACKEND="nftables"
   else
     die "$(msg "未找到受支持的防火墙后端" "No supported firewall backend found")"
   fi

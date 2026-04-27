@@ -118,6 +118,9 @@ provider_update() {
   }
 
   install_engine_binary "$engine"
+  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" ]]; then
+    die "$(msg "核心下载失败，已保留本地旧内核；未执行更新" "Core download failed; existing local engine was kept and no update was applied")"
+  fi
   if ! safe_service_restart; then
     log_warn "$(msg "核心服务重启失败，正在恢复更新前内核" "Core service restart failed; restoring previous engine binary")"
     provider_restore_core_backup

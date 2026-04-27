@@ -68,6 +68,22 @@ detect_init_system() {
                "No systemd or OpenRC detected, using nohup+crontab fallback")"
 }
 
+sbd_systemd_daemon_reload() {
+  local required="${1:-false}" context="${2:-systemd daemon-reload}"
+  local rc
+  systemctl daemon-reload
+  rc=$?
+  if (( rc == 0 )); then
+    return 0
+  fi
+
+  log_warn "$(msg \
+    "${context} 失败。若提示 /run/systemd 空间不足，请清理 /run 或重启 VPS 后重试；当前脚本会继续处理可继续的步骤。" \
+    "${context} failed. If /run/systemd is out of space, clean /run or reboot the VPS and retry; continuing where possible.")"
+  [[ "$required" == "true" ]] && return "$rc"
+  return 0
+}
+
 # Write an OpenRC init script for the given service name and exec command
 write_openrc_service() {
   local svc_name="$1"
@@ -208,7 +224,7 @@ sbd_service_enable_and_start() {
 
   case "$SBD_INIT_SYSTEM" in
     systemd)
-      systemctl daemon-reload
+      sbd_systemd_daemon_reload false "systemd daemon-reload"
       systemctl enable "${svc_name}.service" >/dev/null 2>&1 || true
       systemctl restart "${svc_name}.service"
       ;;
@@ -307,7 +323,7 @@ sbd_service_logs() {
 sbd_service_daemon_reload() {
   detect_init_system
   if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
-    systemctl daemon-reload
+    sbd_systemd_daemon_reload false "systemd daemon-reload"
   fi
 }
 
@@ -341,7 +357,7 @@ sbd_service_enable_oneshot() {
   case "$SBD_INIT_SYSTEM" in
     systemd)
       # Caller must have already written the systemd unit file
-      systemctl daemon-reload
+      sbd_systemd_daemon_reload false "systemd daemon-reload"
       systemctl enable "${svc_name}.service" >/dev/null 2>&1 || true
       ;;
     openrc|nohup)

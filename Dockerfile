@@ -16,6 +16,7 @@ RUN npm install --production
 COPY container/nodejs/index.js ./
 COPY container/nodejs/start.sh ./
 COPY sing-box-deve.sh ./
+COPY version checksums.txt ./
 COPY lib/ ./lib/
 COPY providers/ ./providers/
 COPY rulesets/ ./rulesets/
