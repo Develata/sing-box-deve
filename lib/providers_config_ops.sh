@@ -33,6 +33,9 @@ provider_cfg_load_runtime_exports() {
   export TLS_MODE="${tls_mode:-self-signed}"
   export ACME_CERT_PATH="${acme_cert_path:-}"
   export ACME_KEY_PATH="${acme_key_path:-}"
+  export ACME_DOMAIN="${acme_domain:-}"
+  export ACME_EMAIL="${acme_email:-}"
+  export ACME_DNS_PROVIDER="${acme_dns_provider:-}"
   export REALITY_SERVER_NAME="${reality_server_name:-}"
   export REALITY_FINGERPRINT="${reality_fingerprint:-}"
   export REALITY_HANDSHAKE_PORT="${reality_handshake_port:-}"
@@ -174,12 +177,14 @@ provider_cfg_set_domain_split() {
 provider_cfg_set_tls() {
   ensure_root
   local mode="$1" cert="${2:-}" key="${3:-}" dns_provider="${4:-${ACME_DNS_PROVIDER:-}}"
+  local domain="" email=""
   case "$mode" in self-signed|acme|acme-auto) ;;
     *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]")" ;;
   esac
   provider_cfg_load_runtime_exports
   if [[ "$mode" == "acme-auto" ]]; then
-    local domain="$cert" email="$key"
+    domain="$cert"
+    email="$key"
     [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: cfg tls acme-auto <domain> <email> [dns_provider]" "Usage: cfg tls acme-auto <domain> <email> [dns_provider]")"
     provider_sys_acme_issue "$domain" "$email" "$dns_provider"
     cert="${SBD_LAST_ACME_CERT_PATH:-}"
@@ -199,9 +204,15 @@ provider_cfg_set_tls() {
       TLS_SERVER_NAME="${domain:-}"
       [[ -n "$TLS_SERVER_NAME" ]] || TLS_SERVER_NAME="$(sbd_domain_from_acme_path "$ACME_CERT_PATH" 2>/dev/null || true)"
     fi
+    [[ -n "${domain:-}" ]] && ACME_DOMAIN="$domain"
+    [[ -n "${email:-}" ]] && ACME_EMAIL="$email"
+    [[ -n "${dns_provider:-}" ]] && ACME_DNS_PROVIDER="$dns_provider"
   else
     ACME_CERT_PATH=""
     ACME_KEY_PATH=""
+    ACME_DOMAIN=""
+    ACME_EMAIL=""
+    ACME_DNS_PROVIDER=""
   fi
   provider_cfg_rebuild_runtime
   log_success "$(msg "TLS 模式已更新: ${mode}" "TLS mode updated: ${mode}")"

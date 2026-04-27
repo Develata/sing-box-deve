@@ -4,6 +4,23 @@
 SBD_LAST_ACME_CERT_PATH=""
 SBD_LAST_ACME_KEY_PATH=""
 
+sbd_valid_domain_name() {
+  local domain="${1:-}" label
+  local -a labels
+  domain="${domain#*.}"
+  [[ -n "$domain" && ${#domain} -le 253 ]] || return 1
+  [[ "$domain" == *.* ]] || return 1
+  [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || return 1
+  [[ "$domain" != .* && "$domain" != *. && "$domain" != *..* ]] || return 1
+
+  local IFS='.'
+  read -r -a labels <<< "$domain"
+  for label in "${labels[@]}"; do
+    [[ -n "$label" && ${#label} -le 63 ]] || return 1
+    [[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]] || return 1
+  done
+}
+
 acme_base_domain() {
   local domain="$1"
   if [[ "$domain" == "*."* ]]; then
@@ -68,6 +85,8 @@ provider_sys_acme_issue() {
   ensure_root
   local domain="$1" email="$2" dns_provider="${3:-${ACME_DNS_PROVIDER:-}}"
   [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email> [dns_provider]" "Usage: sys acme-issue <domain> <email> [dns_provider]")"
+  sbd_valid_domain_name "$domain" || die "Invalid ACME domain: ${domain}"
+  [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "Invalid ACME account email: ${email}"
   SBD_LAST_ACME_CERT_PATH=""
   SBD_LAST_ACME_KEY_PATH=""
 
@@ -91,14 +110,24 @@ provider_sys_acme_issue() {
       fi
     fi
     [[ -n "$dns_provider" ]] || die "$(msg "泛域名证书需要 DNS 验证，请设置 ACME_DNS_PROVIDER（如 dns_cf）及对应凭据" "Wildcard cert requires DNS challenge. Set ACME_DNS_PROVIDER (e.g. dns_cf) and provider credentials.")"
-    /root/.acme.sh/acme.sh --issue --dns "$dns_provider" -d "$cert_domain" -d "*.${cert_domain}"
+    /root/.acme.sh/acme.sh --issue --keylength ec-256 --dns "$dns_provider" -d "$cert_domain" -d "*.${cert_domain}"
     log_info "$(msg "已使用 DNS 验证签发泛域名证书: provider=${dns_provider}" "Issued wildcard cert via DNS challenge: provider=${dns_provider}")"
+  elif [[ -n "$dns_provider" ]]; then
+    /root/.acme.sh/acme.sh --issue --keylength ec-256 --dns "$dns_provider" -d "$domain"
+    log_info "$(msg "已使用 DNS 验证签发证书: provider=${dns_provider}" "Issued cert via DNS challenge: provider=${dns_provider}")"
   else
-    /root/.acme.sh/acme.sh --issue -d "$domain" --standalone
+    if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :80 )" 2>/dev/null | tail -n +2 | grep -q .; then
+      die "ACME standalone mode requires TCP port 80 to be free; stop the service using port 80 or use DNS challenge"
+    fi
+    /root/.acme.sh/acme.sh --issue --keylength ec-256 -d "$domain" --standalone
   fi
 
-  local cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
-  local key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
+  local cert="" key=""
+  acme_resolve_existing_cert "$cert_domain" cert key || true
+  [[ -n "$cert" && -n "$key" ]] || {
+    cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
+    key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
+  }
   [[ -f "$cert" && -f "$key" ]] || die "$(msg "ACME 签发成功但证书文件缺失" "ACME issue succeeded but cert files missing")"
   SBD_LAST_ACME_CERT_PATH="$cert"
   SBD_LAST_ACME_KEY_PATH="$key"

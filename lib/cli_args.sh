@@ -28,6 +28,9 @@ parse_install_args() {
   TLS_MODE="${TLS_MODE:-self-signed}"
   ACME_CERT_PATH="${ACME_CERT_PATH:-}"
   ACME_KEY_PATH="${ACME_KEY_PATH:-}"
+  ACME_DOMAIN="${ACME_DOMAIN:-}"
+  ACME_EMAIL="${ACME_EMAIL:-}"
+  ACME_DNS_PROVIDER="${ACME_DNS_PROVIDER:-}"
   REALITY_SERVER_NAME="${REALITY_SERVER_NAME:-}"
   REALITY_FINGERPRINT="${REALITY_FINGERPRINT:-}"
   REALITY_HANDSHAKE_PORT="${REALITY_HANDSHAKE_PORT:-443}"
@@ -67,7 +70,7 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vmess-ws-path|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vmess|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vmess|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
+      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--acme-dns-provider|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vmess-ws-path|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vmess|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vmess|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
         require_option_value "$1" "$#"
         case "$1" in
           --provider) PROVIDER="$2" ;;
@@ -92,6 +95,9 @@ parse_install_args() {
           --tls-mode) TLS_MODE="$2" ;;
           --acme-cert-path) ACME_CERT_PATH="$2" ;;
           --acme-key-path) ACME_KEY_PATH="$2" ;;
+          --acme-domain) ACME_DOMAIN="$2" ;;
+          --acme-email) ACME_EMAIL="$2" ;;
+          --acme-dns-provider) ACME_DNS_PROVIDER="$2" ;;
           --reality-sni) REALITY_SERVER_NAME="$2" ;;
           --reality-fp) REALITY_FINGERPRINT="$2" ;;
           --reality-port) REALITY_HANDSHAKE_PORT="$2" ;;

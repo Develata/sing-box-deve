@@ -81,6 +81,7 @@ provider_sap_install() {
   local engine="$2"
   local protocols_csv="$3"
 
+  reject_tls_auto_for_provider "sap"
   validate_feature_modes
   mkdir -p "${SBD_CONFIG_DIR}"
   cat > "${SBD_CONFIG_DIR}/sap.env" <<EOF

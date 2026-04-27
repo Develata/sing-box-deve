@@ -5,7 +5,7 @@ validate_feature_modes() {
   for key in \
     ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS \
     PSIPHON_ENABLE PSIPHON_MODE PSIPHON_REGION WARP_MODE ROUTE_MODE IP_PREFERENCE \
-    CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH \
+    CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER \
     REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME \
     VMESS_WS_PATH VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE \
     XRAY_VLESS_ENC XRAY_XHTTP_REALITY \
@@ -59,9 +59,14 @@ validate_feature_modes() {
   esac
 
   case "${TLS_MODE:-self-signed}" in
-    self-signed|acme) ;;
+    self-signed|acme|acme-auto) ;;
     *) die "Invalid TLS_MODE: ${TLS_MODE}" ;;
   esac
+
+  if [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]]; then
+    [[ -n "${ACME_DOMAIN:-${TLS_SERVER_NAME:-}}" ]] || die "TLS_MODE=acme-auto requires --acme-domain or --tls-sni"
+    [[ -n "${ACME_EMAIL:-}" ]] || die "TLS_MODE=acme-auto requires --acme-email"
+  fi
 
   case "${XRAY_VLESS_ENC:-${xray_vless_enc:-false}}" in
     true|false) ;;

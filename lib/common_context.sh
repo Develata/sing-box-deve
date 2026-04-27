@@ -19,6 +19,9 @@ create_install_context() {
   local tls_mode="${TLS_MODE:-self-signed}"
   local acme_cert_path="${ACME_CERT_PATH:-}"
   local acme_key_path="${ACME_KEY_PATH:-}"
+  local acme_domain="${ACME_DOMAIN:-}"
+  local acme_email="${ACME_EMAIL:-}"
+  local acme_dns_provider="${ACME_DNS_PROVIDER:-}"
   local reality_server_name="${REALITY_SERVER_NAME:-}"
   local reality_fingerprint="${REALITY_FINGERPRINT:-}"
   local reality_handshake_port="${REALITY_HANDSHAKE_PORT:-443}"
@@ -74,6 +77,9 @@ cdn_template_host=${cdn_template_host}
 tls_mode=${tls_mode}
 acme_cert_path=${acme_cert_path}
 acme_key_path=${acme_key_path}
+acme_domain=${acme_domain}
+acme_email=${acme_email}
+acme_dns_provider=${acme_dns_provider}
 reality_server_name=${reality_server_name}
 reality_fingerprint=${reality_fingerprint}
 reality_handshake_port=${reality_handshake_port}
@@ -147,6 +153,9 @@ features:
   tls_mode: ${tls_mode:-self-signed}
   acme_cert_path: ${acme_cert_path:-""}
   acme_key_path: ${acme_key_path:-""}
+  acme_domain: ${acme_domain:-""}
+  acme_email_set: $([[ -n "${acme_email}" ]] && echo true || echo false)
+  acme_dns_provider: ${acme_dns_provider:-""}
   reality_server_name: ${reality_server_name:-www.microsoft.com}
   reality_fingerprint: ${reality_fingerprint:-chrome}
   reality_handshake_port: ${reality_handshake_port:-443}

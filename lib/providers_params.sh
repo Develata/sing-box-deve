@@ -73,6 +73,7 @@ sbd_domain_from_acme_path() {
 sbd_tls_server_name() {
   local host
   host="$(param_get "TLS_SERVER_NAME" "tls_server_name" "")"
+  [[ -n "$host" ]] || host="$(param_get "ACME_DOMAIN" "acme_domain" "")"
   [[ -n "$host" ]] || host="$(sbd_domain_from_acme_path "${ACME_CERT_PATH:-${acme_cert_path:-}}" 2>/dev/null || true)"
   [[ -n "$host" ]] || host="$(param_get "CDN_TEMPLATE_HOST" "cdn_template_host" "")"
   [[ -n "$host" ]] || host="www.bing.com"

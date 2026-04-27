@@ -88,6 +88,30 @@ provider_install() {
   esac
 }
 
+reject_tls_auto_for_provider() {
+  local provider="$1"
+  [[ "${TLS_MODE:-self-signed}" != "acme-auto" ]] || \
+    die "TLS_MODE=acme-auto is not supported for provider=${provider}; use provider=vps or cfg tls acme-auto on an installed VPS"
+}
+
+resolve_tls_auto_for_install() {
+  [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]] || return 0
+
+  local domain="${ACME_DOMAIN:-${TLS_SERVER_NAME:-}}"
+  local email="${ACME_EMAIL:-}"
+  [[ -n "$domain" ]] || die "TLS_MODE=acme-auto requires --acme-domain or --tls-sni"
+  [[ -n "$email" ]] || die "TLS_MODE=acme-auto requires --acme-email"
+
+  provider_sys_acme_issue "$domain" "$email" "${ACME_DNS_PROVIDER:-}"
+  [[ -n "${SBD_LAST_ACME_CERT_PATH:-}" && -n "${SBD_LAST_ACME_KEY_PATH:-}" ]] || die "ACME auto issue did not return cert/key paths"
+
+  TLS_MODE="acme"
+  ACME_DOMAIN="$domain"
+  ACME_CERT_PATH="$SBD_LAST_ACME_CERT_PATH"
+  ACME_KEY_PATH="$SBD_LAST_ACME_KEY_PATH"
+  [[ -n "${TLS_SERVER_NAME:-}" ]] || TLS_SERVER_NAME="$domain"
+}
+
 provider_vps_install() {
   local profile="$1"
   local engine="$2"
@@ -95,6 +119,7 @@ provider_vps_install() {
 
   log_info "$(msg "开始安装: provider=vps profile=${profile} engine=${engine}" "Installing for provider=vps profile=${profile} engine=${engine}")"
   install_apt_dependencies
+  resolve_tls_auto_for_install
   validate_feature_modes
   assert_engine_protocol_compatibility "$engine" "$protocols_csv"
 
@@ -196,6 +221,9 @@ cdn_template_host=${CDN_TEMPLATE_HOST:-}
 tls_mode=${TLS_MODE:-self-signed}
 acme_cert_path=${ACME_CERT_PATH:-}
 acme_key_path=${ACME_KEY_PATH:-}
+acme_domain=${ACME_DOMAIN:-}
+acme_email=${ACME_EMAIL:-}
+acme_dns_provider=${ACME_DNS_PROVIDER:-}
 reality_server_name=${REALITY_SERVER_NAME:-${reality_server_name:-}}
 reality_fingerprint=${REALITY_FINGERPRINT:-${reality_fingerprint:-}}
 reality_handshake_port=${REALITY_HANDSHAKE_PORT:-${reality_handshake_port:-}}

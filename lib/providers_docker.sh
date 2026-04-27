@@ -5,6 +5,7 @@ provider_docker_install() {
   local engine="$2"
   local protocols_csv="$3"
 
+  reject_tls_auto_for_provider "docker"
   validate_feature_modes
   mkdir -p "${SBD_CONFIG_DIR}"
   local docker_image

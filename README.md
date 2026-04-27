@@ -610,6 +610,7 @@ sb warp socks5-stop
 2. 证书签发失败或即将到期
    - 安装 acme：`sb sys acme-install`
    - 自动签发：`sb cfg tls acme-auto <domain> <email> [dns_provider]`
+   - 提供 `dns_provider` 时使用 DNS 验证；未提供时使用 standalone 验证，需要服务器 80 端口空闲
    - 复用已签证书：脚本会自动检测并优先复用同域名/泛域名证书
    - `sb panel --full` 与 `sb doctor` 会给出到期预警（30/15/7 天）
 

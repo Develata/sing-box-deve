@@ -24,6 +24,7 @@ provider_serv00_install() {
   local engine="$2"
   local protocols_csv="$3"
 
+  reject_tls_auto_for_provider "serv00"
   validate_feature_modes
   install_apt_dependencies
   mkdir -p "${SBD_CONFIG_DIR}"
