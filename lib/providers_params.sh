@@ -59,8 +59,24 @@ sbd_reality_handshake_port() {
   param_get "REALITY_HANDSHAKE_PORT" "reality_handshake_port" "443"
 }
 
+sbd_domain_from_acme_path() {
+  local path="${1:-}" dir base
+  [[ -n "$path" ]] || return 1
+  dir="$(dirname "$path")"
+  base="$(basename "$dir")"
+  base="${base%_ecc}"
+  [[ "$base" == \*.* ]] && base="${base#*.}"
+  [[ -n "$base" && "$base" == *.* ]] || return 1
+  printf '%s' "$base"
+}
+
 sbd_tls_server_name() {
-  param_get "TLS_SERVER_NAME" "tls_server_name" "www.bing.com"
+  local host
+  host="$(param_get "TLS_SERVER_NAME" "tls_server_name" "")"
+  [[ -n "$host" ]] || host="$(sbd_domain_from_acme_path "${ACME_CERT_PATH:-${acme_cert_path:-}}" 2>/dev/null || true)"
+  [[ -n "$host" ]] || host="$(param_get "CDN_TEMPLATE_HOST" "cdn_template_host" "")"
+  [[ -n "$host" ]] || host="www.bing.com"
+  printf '%s' "$host"
 }
 
 sbd_vmess_ws_path() {

@@ -195,6 +195,10 @@ provider_cfg_set_tls() {
   if [[ "$TLS_MODE" == "acme" ]]; then
     ACME_CERT_PATH="$cert"
     ACME_KEY_PATH="$key"
+    if [[ -z "${TLS_SERVER_NAME:-}" ]]; then
+      TLS_SERVER_NAME="${domain:-}"
+      [[ -n "$TLS_SERVER_NAME" ]] || TLS_SERVER_NAME="$(sbd_domain_from_acme_path "$ACME_CERT_PATH" 2>/dev/null || true)"
+    fi
   else
     ACME_CERT_PATH=""
     ACME_KEY_PATH=""

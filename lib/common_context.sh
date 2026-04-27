@@ -150,7 +150,7 @@ features:
   reality_server_name: ${reality_server_name:-www.microsoft.com}
   reality_fingerprint: ${reality_fingerprint:-chrome}
   reality_handshake_port: ${reality_handshake_port:-443}
-  tls_server_name: ${tls_server_name:-www.bing.com}
+  tls_server_name: ${tls_server_name:-$(sbd_tls_server_name)}
   vmess_ws_path: ${vmess_ws_path:-/vmess}
   vless_ws_path: ${vless_ws_path:-/vless}
   vless_xhttp_path: ${vless_xhttp_path:-""}
