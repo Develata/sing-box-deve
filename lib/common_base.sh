@@ -148,7 +148,7 @@ install_apt_dependencies() {
   # Alpine — use apk
   if [[ "${OS_ID:-}" == "alpine" ]]; then
     apk update >/dev/null 2>&1 || true
-    apk add --no-cache curl jq tar openssl util-linux iproute2 ca-certificates unzip wireguard-tools libqrencode-tools >/dev/null 2>&1 || true
+    apk add --no-cache curl jq tar openssl util-linux iproute2 ca-certificates unzip wireguard-tools libqrencode-tools xxd >/dev/null 2>&1 || true
     return 0
   fi
 
@@ -165,10 +165,10 @@ install_apt_dependencies() {
   )
   if command -v timeout >/dev/null 2>&1; then
     timeout 90s apt-get "${apt_opts[@]}" update -y >/dev/null || die "$(msg "apt-get update 超时或失败" "apt-get update timed out/failed")"
-    timeout 120s apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "$(msg "apt-get install 超时或失败" "apt-get install timed out/failed")"
+    timeout 120s apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode xxd >/dev/null || die "$(msg "apt-get install 超时或失败" "apt-get install timed out/failed")"
   else
     apt-get "${apt_opts[@]}" update -y >/dev/null || die "$(msg "apt-get update 失败" "apt-get update failed")"
-    apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode >/dev/null || die "$(msg "apt-get install 失败" "apt-get install failed")"
+    apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip wireguard-tools qrencode xxd >/dev/null || die "$(msg "apt-get install 失败" "apt-get install failed")"
   fi
 }
 

@@ -50,6 +50,7 @@ show_version() {
 
 update_command() {
   parse_update_args "$@"
+  local script_refreshed="false"
 
   if [[ "${UPDATE_ROLLBACK:-false}" == "true" ]]; then
     log_warn "$(msg "正在执行脚本回滚..." "Performing script rollback...")"
@@ -67,6 +68,7 @@ update_command() {
       log_warn "$(msg "无法获取远程版本，将直接尝试更新" "Unable to fetch remote version, will attempt update directly")"
       if prompt_yes_no "$(msg "继续更新脚本本体与模块文件吗？" "Continue updating script and module files?")" "Y"; then
         perform_script_self_update
+        script_refreshed="true"
         log_success "$(msg "脚本更新完成，请重新执行命令" "Script update completed, please rerun command")"
       else
         log_warn "$(msg "已跳过脚本更新" "Skipped script update")"
@@ -85,11 +87,21 @@ update_command() {
       if prompt_yes_no "$(msg "更新脚本本体与模块文件吗？" "Update script and module files?")" "Y"; then
         [[ -n "${SBD_ACTIVE_UPDATE_BASE_URL:-}" ]] && log_info "$(msg "更新源" "Update source"): ${SBD_ACTIVE_UPDATE_BASE_URL}"
         perform_script_self_update
+        script_refreshed="true"
         log_success "$(msg "脚本更新完成，请重新执行命令" "Script update completed, please rerun command")"
       else
         log_warn "$(msg "已跳过脚本更新" "Skipped script update")"
       fi
     fi
+  fi
+
+  if [[ "$script_refreshed" == "true" && "$UPDATE_CORE" == "true" ]]; then
+    local next_script="${PROJECT_ROOT}/sing-box-deve.sh"
+    local -a next_args=("update" "--core")
+    [[ "${AUTO_YES:-false}" == "true" ]] && next_args+=("--yes")
+    [[ -x "$next_script" || -f "$next_script" ]] || die "$(msg "脚本已更新，但找不到新入口: ${next_script}；请重新执行 sb update --core" "Script updated but new entrypoint is missing: ${next_script}; rerun sb update --core")"
+    log_info "$(msg "脚本已刷新，将使用新脚本继续核心更新" "Script refreshed; continuing core update with the refreshed script")"
+    exec bash "$next_script" "${next_args[@]}"
   fi
 
   if [[ "$UPDATE_CORE" == "true" ]]; then

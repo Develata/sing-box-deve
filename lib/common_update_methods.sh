@@ -69,8 +69,45 @@ perform_git_update() {
     chmod +x "${PROJECT_ROOT}/${rel}" 2>/dev/null || true
   done
 
+  if sync_installed_script_root_from_project; then
+    SBD_SCRIPT_SYNC_DONE="true"
+  fi
+
   restore_stashed_changes
   return 0
+}
+
+sync_installed_script_root_from_project() {
+  local runtime_file target_root rel copied=0
+  local runtime_files=(
+    "/etc/sing-box-deve/runtime.env"
+    "${HOME:-}/sing-box-deve/config/runtime.env"
+  )
+
+  [[ -f "${PROJECT_ROOT}/sing-box-deve.sh" ]] || return 0
+  if [[ -z "${UPDATE_MANIFEST_FILES[*]:-}" ]]; then
+    # shellcheck source=lib/update_manifest.sh
+    source "${PROJECT_ROOT}/lib/update_manifest.sh"
+  fi
+
+  for runtime_file in "${runtime_files[@]}"; do
+    [[ -f "$runtime_file" ]] || continue
+    target_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$runtime_file" 2>/dev/null || true)"
+    [[ -n "$target_root" && "$target_root" != "$PROJECT_ROOT" ]] || continue
+
+    mkdir -p "$target_root" 2>/dev/null || continue
+    copied=0
+    for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
+      [[ -f "${PROJECT_ROOT}/${rel}" ]] || continue
+      install -D -m 0644 "${PROJECT_ROOT}/${rel}" "${target_root}/${rel}" || return 1
+      ((copied++))
+    done
+    [[ -f "${PROJECT_ROOT}/checksums.txt" ]] && install -D -m 0644 "${PROJECT_ROOT}/checksums.txt" "${target_root}/checksums.txt"
+    for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
+      chmod +x "${target_root}/${rel}" 2>/dev/null || true
+    done
+    log_success "$(msg "已同步持久化脚本副本: ${target_root} (${copied} 个文件)" "Persistent script copy synced: ${target_root} (${copied} files)")"
+  done
 }
 
 perform_download_update() {
@@ -179,6 +216,13 @@ perform_script_self_update() {
     perform_git_update
   else
     perform_download_update
+  fi
+
+  if [[ "${SBD_SCRIPT_SYNC_DONE:-false}" != "true" ]]; then
+    sync_installed_script_root_from_project || log_warn "$(msg "同步持久化脚本副本失败，可重新执行 install 或 update --script" "Failed to sync persistent script copy; rerun install or update --script")"
+  fi
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]] && declare -F write_sb_launcher >/dev/null 2>&1; then
+    write_sb_launcher || log_warn "$(msg "刷新 sb 启动器失败" "Failed to refresh sb launcher")"
   fi
 
   release_update_lock

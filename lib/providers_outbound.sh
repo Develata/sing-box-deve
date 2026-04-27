@@ -8,6 +8,15 @@ build_warp_outbound_singbox() {
   local reserved="${WARP_RESERVED:-[0,0,0]}"
   local private_key_json peer_public_key_json local_v4_json local_v6_json
 
+  if [[ -z "$private_key" ]] && declare -F provider_warp_account_load_optional >/dev/null 2>&1; then
+    provider_warp_account_load_optional
+    private_key="${WARP_PRIVATE_KEY:-}"
+    peer_public_key="${WARP_PEER_PUBLIC_KEY:-$peer_public_key}"
+    local_v4="${WARP_LOCAL_V4:-$local_v4}"
+    local_v6="${WARP_LOCAL_V6:-$local_v6}"
+    reserved="${WARP_RESERVED:-$reserved}"
+  fi
+
   [[ -n "$private_key" ]] || die "WARP_PRIVATE_KEY is required when warp protocol is enabled"
   [[ -n "$peer_public_key" ]] || die "WARP_PEER_PUBLIC_KEY is required when warp protocol is enabled"
   [[ "$local_v4" == */* ]] || local_v4="${local_v4}/32"
@@ -123,6 +132,12 @@ build_warp_outbound_xray() {
   local domain_strategy
   local private_key_json local_v6_json domain_strategy_json
   domain_strategy="$(xray_domain_strategy_from_warp_mode)"
+  if [[ -z "$private_key" ]] && declare -F provider_warp_account_load_optional >/dev/null 2>&1; then
+    provider_warp_account_load_optional
+    private_key="${WARP_PRIVATE_KEY:-}"
+    local_v6_raw="${WARP_LOCAL_V6:-$local_v6_raw}"
+    reserved="${WARP_RESERVED:-$reserved}"
+  fi
   local_v6="${local_v6_raw%%/*}"
   [[ -n "$local_v6" ]] || local_v6="2606:4700:110:876d:4d3c:4206:c90c:6bd0"
 

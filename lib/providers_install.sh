@@ -1,5 +1,70 @@
 #!/usr/bin/env bash
 
+write_sb_launcher() {
+  cat > /usr/local/bin/sb <<'SBEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+is_sbd_project_root() {
+  local root="$1"
+  [[ -x "$root/sing-box-deve.sh" && -f "$root/lib/common.sh" ]]
+}
+
+is_sbd_git_checkout() {
+  local root="$1" origin=""
+  is_sbd_project_root "$root" || return 1
+  [[ -d "$root/.git" ]] || return 1
+  if command -v git >/dev/null 2>&1; then
+    origin="$(git -C "$root" config --get remote.origin.url 2>/dev/null || true)"
+    [[ -z "$origin" || "$origin" == *sing-box-deve* ]] || return 1
+  fi
+}
+
+script_root=""
+
+# When the operator is inside a freshly pulled checkout, prefer that tree.
+for candidate in "$PWD" "$PWD/sing-box-deve"; do
+  if is_sbd_git_checkout "$candidate"; then
+    script_root="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$script_root" ]]; then
+  for _p in "/etc/sing-box-deve/runtime.env" "${HOME:-}/sing-box-deve/config/runtime.env"; do
+    if [[ -f "$_p" ]]; then
+      script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$_p" 2>/dev/null || true)"
+      [[ -n "$script_root" ]] && break
+    fi
+  done
+fi
+
+if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
+  :
+else
+  script_root=""
+  for candidate in "/opt/sing-box-deve/script" "/opt/sing-box-deve" "/usr/local/share/sing-box-deve" "$PWD/sing-box-deve"; do
+    if is_sbd_project_root "$candidate"; then
+      script_root="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$script_root" || ! -x "$script_root/sing-box-deve.sh" ]]; then
+  echo "[ERROR] Unable to locate sing-box-deve.sh. Reinstall with: sudo bash ./sing-box-deve.sh install ..." >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  exec "$script_root/sing-box-deve.sh" menu
+fi
+
+exec "$script_root/sing-box-deve.sh" "$@"
+SBEOF
+  chmod +x /usr/local/bin/sb
+}
+
 # Persist script files to a fixed location for reliable sb command access
 # This is critical when running via bash <(curl ...) from a temporary directory
 persist_script_installation() {
@@ -94,6 +159,25 @@ reject_tls_auto_for_provider() {
     die "TLS_MODE=acme-auto is not supported for provider=${provider}; use provider=vps or cfg tls acme-auto on an installed VPS"
 }
 
+provider_vps_prepare_warp_account() {
+  [[ "${WARP_MODE:-off}" != "off" ]] || return 0
+  [[ -z "${WARP_PRIVATE_KEY:-}" ]] || return 0
+
+  if declare -F provider_warp_account_load_optional >/dev/null 2>&1; then
+    provider_warp_account_load_optional
+    if [[ -n "${WARP_PRIVATE_KEY:-}" ]]; then
+      log_info "$(msg "已加载现有 WARP 账户参数" "Loaded existing WARP account settings")"
+      export WARP_PRIVATE_KEY WARP_PEER_PUBLIC_KEY WARP_RESERVED WARP_LOCAL_V4 WARP_LOCAL_V6 WARP_CLIENT_ID
+      return 0
+    fi
+  fi
+
+  log_info "$(msg "未检测到 WARP 账户，正在自动注册" "WARP account not found, registering automatically")"
+  provider_warp_register
+  provider_warp_load_account
+  export WARP_PRIVATE_KEY WARP_PEER_PUBLIC_KEY WARP_RESERVED WARP_LOCAL_V4 WARP_LOCAL_V6 WARP_CLIENT_ID
+}
+
 resolve_tls_auto_for_install() {
   [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]] || return 0
 
@@ -124,6 +208,7 @@ provider_vps_install() {
   install_apt_dependencies
   resolve_tls_auto_for_install
   validate_feature_modes
+  provider_vps_prepare_warp_account
   assert_engine_protocol_compatibility "$engine" "$protocols_csv"
 
   local protocols=()
@@ -157,42 +242,7 @@ provider_vps_install() {
   
   persist_runtime_state "vps" "$profile" "$engine" "$protocols_csv"
 
-  cat > /usr/local/bin/sb <<'SBEOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-script_root=""
-for _p in "/etc/sing-box-deve/runtime.env" "$HOME/sing-box-deve/config/runtime.env"; do
-  if [[ -f "$_p" ]]; then
-    script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$_p" 2>/dev/null || true)"
-    [[ -n "$script_root" ]] && break
-  fi
-done
-
-if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
-  :
-else
-  script_root=""
-  for candidate in "/opt/sing-box-deve/script" "/opt/sing-box-deve" "/usr/local/share/sing-box-deve" "$PWD/sing-box-deve"; do
-    if [[ -x "$candidate/sing-box-deve.sh" ]]; then
-      script_root="$candidate"
-      break
-    fi
-  done
-fi
-
-if [[ -z "$script_root" || ! -x "$script_root/sing-box-deve.sh" ]]; then
-  echo "[ERROR] Unable to locate sing-box-deve.sh. Reinstall with: sudo bash ./sing-box-deve.sh install ..." >&2
-  exit 1
-fi
-
-if [[ $# -eq 0 ]]; then
-  exec "$script_root/sing-box-deve.sh" menu
-fi
-
-exec "$script_root/sing-box-deve.sh" "$@"
-SBEOF
-  chmod +x /usr/local/bin/sb
+  write_sb_launcher
 
   log_success "$(msg "VPS 场景部署完成" "VPS provider setup complete")"
 }

@@ -219,15 +219,11 @@ provider_warp_register() {
   local_v4="$(echo "$response" | jq -r '.config.interface.addresses.v4 // empty')"
   local_v6="$(echo "$response" | jq -r '.config.interface.addresses.v6 // empty')"
   reserved_hex="$(echo "$client_id" | base64 -d 2>/dev/null | xxd -p -c 256 || true)"
-  reserved_dec="$(python3 - <<PY
-h='${reserved_hex}'
-try:
-    vals=[int(h[i:i+2],16) for i in range(0,6,2)]
-    print(f'[{vals[0]},{vals[1]},{vals[2]}]')
-except Exception:
-    print('[0,0,0]')
-PY
-)"
+  if [[ "$reserved_hex" =~ ^[0-9A-Fa-f]{6,} ]]; then
+    reserved_dec="[$((16#${reserved_hex:0:2})),$((16#${reserved_hex:2:2})),$((16#${reserved_hex:4:2}))]"
+  else
+    reserved_dec="[0,0,0]"
+  fi
   [[ -n "$local_v4" ]] || local_v4="172.16.0.2"
   [[ -n "$local_v6" ]] || local_v6="2606:4700:110:876d:4d3c:4206:c90c:6bd0"
   [[ "$local_v4" == */* ]] || local_v4="${local_v4}/32"
