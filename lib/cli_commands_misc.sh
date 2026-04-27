@@ -71,11 +71,14 @@ update_command() {
       else
         log_warn "$(msg "已跳过脚本更新" "Skipped script update")"
       fi
-    elif version_eq "$remote_ver" "$local_ver"; then
+    elif version_eq "$remote_ver" "$local_ver" && [[ "${UPDATE_FORCE:-false}" != "true" ]]; then
       log_info "$(msg "脚本已是最新版本" "Script is already up to date") (${local_ver})"
     else
       log_info "$(msg "本地版本" "Local version"): ${local_ver}"
       log_info "$(msg "远程版本" "Remote version"): ${remote_ver}"
+      if [[ "${UPDATE_FORCE:-false}" == "true" && "$remote_ver" == "$local_ver" ]]; then
+        log_info "$(msg "已启用强制刷新，将重新同步脚本文件" "Force refresh enabled; script files will be re-synced")"
+      fi
       if version_lt "$remote_ver" "$local_ver"; then
         log_warn "$(msg "远程版本低于本地版本，可能是切换了分支或更新源" "Remote version is older than local, possibly due to branch/source change")"
       fi

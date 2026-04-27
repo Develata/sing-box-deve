@@ -9,27 +9,11 @@ fw_replay() {
   local backend proto port tag _created
   while IFS='|' read -r backend proto port tag _created; do
     [[ -n "$backend" && -n "$proto" && -n "$port" && -n "$tag" ]] || continue
-    FW_BACKEND="$backend"
-    case "$backend" in
-      ufw)
-        ufw allow "${port}/${proto}" comment "$tag" >/dev/null 2>&1 || true
-        ;;
-      nftables)
-        nft list table inet sing_box_deve >/dev/null 2>&1 || nft add table inet sing_box_deve
-        nft list chain inet sing_box_deve input >/dev/null 2>&1 || nft add chain inet sing_box_deve input '{ type filter hook input priority 0; policy accept; }'
-        nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \""$tag"\" >/dev/null 2>&1 || true
-        ;;
-      firewalld)
-        firewall-cmd --permanent --add-port="${port}/${proto}" >/dev/null 2>&1 || true
-        firewall-cmd --add-port="${port}/${proto}" >/dev/null 2>&1 || true
-        ;;
-      iptables)
-        iptables -N SING_BOX_DEVE_INPUT >/dev/null 2>&1 || true
-        iptables -C INPUT -j SING_BOX_DEVE_INPUT >/dev/null 2>&1 || iptables -I INPUT -j SING_BOX_DEVE_INPUT
-        iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || \
-          iptables -A SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT
-        ;;
-    esac
+    if ! ( fw_validate_port_proto "$port" "$proto"; fw_validate_tag "$tag" ); then
+      log_warn "$(msg "跳过非法防火墙规则记录: ${backend}|${proto}|${port}|${tag}" "Skipping invalid firewall rule record: ${backend}|${proto}|${port}|${tag}")"
+      continue
+    fi
+    fw_apply_rule_to_backend "$backend" "$proto" "$port" "$tag" >/dev/null 2>&1 || true
   done < "$SBD_RULES_FILE"
   log_success "$(msg "托管防火墙规则重放完成" "Managed firewall rules replayed")"
 }
@@ -40,11 +24,11 @@ fw_remove_rule_by_record() {
   case "$backend" in
     ufw)
       local rule_numbers
-      rule_numbers="$(ufw status numbered | grep -nF "$tag" | sed 's/:.*//' || true)"
+      rule_numbers="$(ufw status numbered 2>/dev/null | grep -F "$tag" | sed -E 's/^\[ *([0-9]+)\].*/\1/' | grep -E '^[0-9]+$' | sort -rn || true)"
       if [[ -n "$rule_numbers" ]]; then
         local num ufw_num
         while read -r num; do
-          ufw_num="$(ufw status numbered | sed -n "${num}p" | sed -E 's/^\[ *([0-9]+)\].*/\1/')"
+          ufw_num="$num"
           if [[ -n "$ufw_num" ]]; then
             ufw --force delete "$ufw_num" >/dev/null || true
           fi
@@ -115,27 +99,11 @@ fw_rollback() {
     local backend proto port tag _created
     while IFS='|' read -r backend proto port tag _created; do
       [[ -z "$backend" ]] && continue
-      FW_BACKEND="$backend"
-      case "$FW_BACKEND" in
-        ufw)
-          ufw allow "${port}/${proto}" comment "$tag" >/dev/null || true
-          ;;
-        nftables)
-          nft list table inet sing_box_deve >/dev/null 2>&1 || nft add table inet sing_box_deve
-          nft list chain inet sing_box_deve input >/dev/null 2>&1 || nft add chain inet sing_box_deve input '{ type filter hook input priority 0; policy accept; }'
-          nft add rule inet sing_box_deve input "$proto" dport "$port" counter accept comment \""$tag"\" >/dev/null 2>&1 || true
-          ;;
-        firewalld)
-          firewall-cmd --permanent --add-port="${port}/${proto}" >/dev/null 2>&1 || true
-          firewall-cmd --add-port="${port}/${proto}" >/dev/null 2>&1 || true
-          ;;
-        iptables)
-          iptables -N SING_BOX_DEVE_INPUT >/dev/null 2>&1 || true
-          iptables -C INPUT -j SING_BOX_DEVE_INPUT >/dev/null 2>&1 || iptables -I INPUT -j SING_BOX_DEVE_INPUT
-          iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || \
-            iptables -A SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT
-          ;;
-      esac
+      if ! ( fw_validate_port_proto "$port" "$proto"; fw_validate_tag "$tag" ); then
+        log_warn "$(msg "跳过非法防火墙快照记录: ${backend}|${proto}|${port}|${tag}" "Skipping invalid firewall snapshot record: ${backend}|${proto}|${port}|${tag}")"
+        continue
+      fi
+      fw_apply_rule_to_backend "$backend" "$proto" "$port" "$tag" >/dev/null 2>&1 || true
       printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "rollback" >> "$SBD_RULES_FILE"
     done < "$SBD_FW_SNAPSHOT_FILE"
   fi

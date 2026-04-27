@@ -221,6 +221,7 @@ sudo sb doctor
 ./sing-box-deve.sh update --core
 ./sing-box-deve.sh update --script --source primary
 ./sing-box-deve.sh update --script --source backup
+./sing-box-deve.sh update --script --force
 ```
 
 `update --source` 说明：
@@ -397,6 +398,12 @@ sb version
 
 ```bash
 sb update --script --source primary
+```
+
+同版本热修复或需要重新同步脚本文件时：
+
+```bash
+sb update --script --force
 ```
 
 更新失败排查顺序：
@@ -628,6 +635,7 @@ sb warp socks5-stop
    - 使用主源：`sb update --script --source primary`
    - 使用备源：`sb update --script --source backup`
    - 自动回退：`sb update --script --source auto`
+   - 同版本强制刷新：`sb update --script --force`
 
 ## 常见问题
 

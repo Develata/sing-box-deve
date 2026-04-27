@@ -143,9 +143,15 @@ provider_psiphon_exec_command() {
 provider_psiphon_sync_service() {
   ensure_root
   if ! provider_psiphon_enabled; then
-    sbd_service_stop "sing-box-deve-psiphon"
-    rm -f "$SBD_PSIPHON_SERVICE_FILE"
-    sbd_service_daemon_reload
+    if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]] || sbd_service_is_active "sing-box-deve-psiphon"; then
+      sbd_service_stop "sing-box-deve-psiphon"
+      rm -f "$SBD_PSIPHON_SERVICE_FILE"
+      if ! sbd_service_daemon_reload; then
+        log_warn "$(msg "Psiphon 已关闭，但 systemd daemon-reload 失败；主核心更新不受影响" "Psiphon is disabled, but systemd daemon-reload failed; core update is unaffected")"
+      fi
+    else
+      rm -f "$SBD_PSIPHON_SERVICE_FILE"
+    fi
     return 0
   fi
 

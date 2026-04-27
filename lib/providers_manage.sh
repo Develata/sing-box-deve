@@ -91,8 +91,39 @@ provider_update() {
   fi
 
   sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  local engine_bin="${SBD_BIN_DIR}/${engine}"
+  local engine_version_file="${SBD_DATA_DIR}/engine-version"
+  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
+  local backup_bin="${rollback_dir}/${engine}.bak"
+  local backup_version="${rollback_dir}/engine-version.bak"
+  mkdir -p "$rollback_dir"
+  if [[ -x "$engine_bin" ]]; then
+    cp -p "$engine_bin" "$backup_bin"
+  else
+    rm -f "$backup_bin"
+  fi
+  if [[ -f "$engine_version_file" ]]; then
+    cp -p "$engine_version_file" "$backup_version"
+  else
+    rm -f "$backup_version"
+  fi
+
+  provider_restore_core_backup() {
+    if [[ -f "$backup_bin" ]]; then
+      install -m 0755 "$backup_bin" "$engine_bin"
+    fi
+    if [[ -f "$backup_version" ]]; then
+      install -m 0644 "$backup_version" "$engine_version_file"
+    fi
+  }
+
   install_engine_binary "$engine"
-  safe_service_restart
+  if ! safe_service_restart; then
+    log_warn "$(msg "核心服务重启失败，正在恢复更新前内核" "Core service restart failed; restoring previous engine binary")"
+    provider_restore_core_backup
+    safe_service_restart >/dev/null 2>&1 || true
+    die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
+  fi
 
   if [[ -f "$SBD_SERVICE_FILE" ]]; then
     local wait_count=0
@@ -101,7 +132,10 @@ provider_update() {
       ((wait_count++))
     done
     if (( wait_count >= 15 )); then
-      log_warn "$(msg "核心服务启动超时" "Core service start timeout")"
+      log_warn "$(msg "核心服务启动超时，正在恢复更新前内核" "Core service start timeout; restoring previous engine binary")"
+      provider_restore_core_backup
+      safe_service_restart >/dev/null 2>&1 || true
+      die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
     else
       log_info "$(msg "核心服务已就绪" "Core service ready")"
     fi

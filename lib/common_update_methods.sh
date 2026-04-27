@@ -24,6 +24,8 @@ perform_git_update() {
   log_info "$(msg "当前分支" "Current branch"): ${branch}"
   log_info "$(msg "当前提交" "Current commit"): ${old_commit}"
 
+  backup_for_rollback
+
   if [[ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2>/dev/null)" ]]; then
     log_warn "$(msg "检测到本地修改，将尝试 stash 保存" "Local modifications detected, will stash changes")"
     pre_stash_head="$(git -C "$PROJECT_ROOT" stash list -n1 --format='%H' 2>/dev/null || true)"

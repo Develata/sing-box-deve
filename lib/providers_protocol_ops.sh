@@ -135,6 +135,41 @@ provider_cfg_protocol_open_firewall_for_added() {
   done
 }
 
+provider_cfg_protocol_firewall_records_for_removed() {
+  local drop_csv="$1"
+  [[ -n "$drop_csv" ]] || return 0
+  mkdir -p "$SBD_STATE_DIR"
+  touch "$SBD_RULES_FILE"
+  if ! load_install_context; then
+    create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  fi
+
+  local removed=() p mapping proto port tag
+  protocols_to_array "$drop_csv" removed
+  for p in "${removed[@]}"; do
+    protocol_needs_local_listener "$p" || continue
+    mapping="$(protocol_port_map "$p")"
+    proto="${mapping%%:*}"
+    port="$(resolve_protocol_port_for_engine "${engine:-sing-box}" "$p" 2>/dev/null || true)"
+    [[ "$port" =~ ^[0-9]+$ ]] || continue
+    tag="$(fw_tag "core" "$proto" "$port")"
+    awk -F'|' -v t="$tag" '$4 == t {print $1 "|" $2 "|" $3 "|" $4; exit}' "$SBD_RULES_FILE"
+  done
+}
+
+provider_cfg_protocol_close_firewall_records() {
+  local records="$1"
+  [[ -n "$records" ]] || return 0
+
+  local backend proto port tag
+  while IFS='|' read -r backend proto port tag; do
+    [[ -n "$backend" && -n "$proto" && -n "$port" && -n "$tag" ]] || continue
+    fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag"
+    fw_remove_record_by_tag "$tag"
+    log_success "$(msg "已移除协议防火墙规则: ${proto}/${port}" "Removed protocol firewall rule: ${proto}/${port}")"
+  done <<< "$records"
+}
+
 provider_cfg_protocol_add() {
   ensure_root
   local add_csv="$1" port_mode="${2:-random}" port_map="${3:-}"
@@ -180,8 +215,11 @@ provider_cfg_protocol_remove() {
 
   validate_profile_protocols "${profile:-lite}" "$target_csv"
   assert_engine_protocol_compatibility "${engine:-sing-box}" "$target_csv"
+  local removed_fw_records
+  removed_fw_records="$(provider_cfg_protocol_firewall_records_for_removed "$drop_csv")"
   protocols="$target_csv"
   provider_cfg_protocol_sync_argo_service "$target_csv"
   provider_cfg_rebuild_runtime "$target_csv"
+  provider_cfg_protocol_close_firewall_records "$removed_fw_records"
   log_success "$(msg "已移除协议: ${drop_csv}" "Protocols removed: ${drop_csv}")"
 }

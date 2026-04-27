@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 parse_update_args() {
   UPDATE_SCRIPT="false"
   UPDATE_CORE="false"
   UPDATE_ROLLBACK="false"
+  UPDATE_FORCE="false"
   UPDATE_SOURCE="${UPDATE_SOURCE:-auto}"
   AUTO_YES="${AUTO_YES:-false}"
   while [[ $# -gt 0 ]]; do
@@ -12,6 +14,7 @@ parse_update_args() {
       --core) UPDATE_CORE="true"; shift ;;
       --all) UPDATE_SCRIPT="true"; UPDATE_CORE="true"; shift ;;
       --rollback) UPDATE_ROLLBACK="true"; shift ;;
+      --force) UPDATE_FORCE="true"; shift ;;
       --source)
         require_option_value "$1" "$#"
         UPDATE_SOURCE="$2"
@@ -31,6 +34,7 @@ parse_update_args() {
   if [[ "$UPDATE_ROLLBACK" == "true" ]]; then
     UPDATE_SCRIPT="false"
     UPDATE_CORE="false"
+    UPDATE_FORCE="false"
     return 0
   fi
 

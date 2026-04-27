@@ -38,10 +38,10 @@ menu_update() {
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) update_command --core --yes; menu_pause ;;
-      2) update_command --script --yes; menu_pause ;;
-      3) update_command --all --yes; menu_pause ;;
-      4) update_command --script --source primary --yes; menu_pause ;;
-      5) update_command --script --source backup --yes; menu_pause ;;
+      2) update_command --script --force --yes; menu_pause ;;
+      3) update_command --all --force --yes; menu_pause ;;
+      4) update_command --script --source primary --force --yes; menu_pause ;;
+      5) update_command --script --source backup --force --yes; menu_pause ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac

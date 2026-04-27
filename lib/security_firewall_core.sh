@@ -36,7 +36,12 @@ fw_detect_backend() {
 }
 
 fw_snapshot_create() {
-  cp -f "$SBD_RULES_FILE" "$SBD_FW_SNAPSHOT_FILE"
+  mkdir -p "$(dirname "$SBD_FW_SNAPSHOT_FILE")"
+  if [[ -f "$SBD_RULES_FILE" ]]; then
+    cp -f "$SBD_RULES_FILE" "$SBD_FW_SNAPSHOT_FILE"
+  else
+    : > "$SBD_FW_SNAPSHOT_FILE"
+  fi
   log_info "$(msg "已创建防火墙快照: $SBD_FW_SNAPSHOT_FILE" "Firewall snapshot created: $SBD_FW_SNAPSHOT_FILE")"
 }
 
@@ -55,8 +60,11 @@ fw_record_rule() {
 
   created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   tmp_rules="${SBD_RULES_FILE}.tmp.$$"
+  mkdir -p "$(dirname "$SBD_RULES_FILE")"
   {
-    [[ -f "$SBD_RULES_FILE" ]] && cat "$SBD_RULES_FILE"
+    if [[ -f "$SBD_RULES_FILE" ]]; then
+      awk -F'|' -v t="$tag" '$4 != t' "$SBD_RULES_FILE"
+    fi
     printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "$created_at"
   } > "$tmp_rules"
   mv "$tmp_rules" "$SBD_RULES_FILE"
@@ -85,22 +93,50 @@ EOF
 
 fw_rule_exists_record() {
   local tag="$1"
-  grep -Fq "|${tag}|" "$SBD_RULES_FILE"
+  [[ -f "$SBD_RULES_FILE" ]] && grep -Fq "|${tag}|" "$SBD_RULES_FILE"
 }
 
-fw_apply_rule() {
-  local proto="$1" port="$2" service="core" tag
+fw_remove_record_by_tag() {
+  local tag="$1" tmp_rules
+  [[ -n "$tag" && -f "$SBD_RULES_FILE" ]] || return 0
+  tmp_rules="${SBD_RULES_FILE}.tmp.$$"
+  awk -F'|' -v t="$tag" '$4 != t' "$SBD_RULES_FILE" > "$tmp_rules"
+  mv "$tmp_rules" "$SBD_RULES_FILE"
+}
+
+fw_backend_rule_present() {
+  local backend="$1" proto="$2" port="$3" tag="$4"
+  case "$backend" in
+    ufw)
+      ufw status numbered 2>/dev/null | grep -Fq "$tag"
+      ;;
+    nftables)
+      nft -a list chain inet sing_box_deve input 2>/dev/null | grep -Fq "$tag"
+      ;;
+    firewalld)
+      firewall-cmd --query-port="${port}/${proto}" >/dev/null 2>&1 && \
+        firewall-cmd --permanent --query-port="${port}/${proto}" >/dev/null 2>&1
+      ;;
+    iptables)
+      iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+fw_apply_rule_to_backend() {
+  local backend="$1" proto="$2" port="$3" tag="$4"
 
   fw_validate_port_proto "$port" "$proto"
-  tag="$(fw_tag "$service" "$proto" "$port")"
   fw_validate_tag "$tag"
 
-  if fw_rule_exists_record "$tag"; then
-    log_info "$(msg "防火墙规则已存在记录: $tag" "Firewall rule already tracked: $tag")"
+  if fw_backend_rule_present "$backend" "$proto" "$port" "$tag"; then
     return 0
   fi
 
-  case "$FW_BACKEND" in
+  case "$backend" in
     ufw)
       ufw allow "${port}/${proto}" comment "$tag" >/dev/null
       ;;
@@ -116,11 +152,25 @@ fw_apply_rule() {
     iptables)
       iptables -N SING_BOX_DEVE_INPUT >/dev/null 2>&1 || true
       iptables -C INPUT -j SING_BOX_DEVE_INPUT >/dev/null 2>&1 || iptables -I INPUT -j SING_BOX_DEVE_INPUT
-      iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || \
-        iptables -A SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT
+      iptables -A SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT
       ;;
-    *) die "$(msg "不支持的防火墙后端: $FW_BACKEND" "Unsupported firewall backend: $FW_BACKEND")" ;;
+    *) die "$(msg "不支持的防火墙后端: $backend" "Unsupported firewall backend: $backend")" ;;
   esac
+}
+
+fw_apply_rule() {
+  local proto="$1" port="$2" service="core" tag
+
+  fw_validate_port_proto "$port" "$proto"
+  tag="$(fw_tag "$service" "$proto" "$port")"
+  fw_validate_tag "$tag"
+
+  if fw_rule_exists_record "$tag"; then
+    log_info "$(msg "防火墙规则已存在记录: $tag" "Firewall rule already tracked: $tag")"
+    return 0
+  fi
+
+  fw_apply_rule_to_backend "$FW_BACKEND" "$proto" "$port" "$tag"
 
   fw_record_rule "$FW_BACKEND" "$proto" "$port" "$tag"
   fw_enable_replay_service

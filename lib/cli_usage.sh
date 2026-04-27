@@ -50,7 +50,7 @@ Usage:
   sing-box-deve.sh sys acme-issue <domain> <email> [dns_provider]
   sing-box-deve.sh sys acme-apply <cert_path> <key_path>
   sing-box-deve.sh regen-nodes
-  sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--yes] [--rollback]
+  sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--force] [--yes] [--rollback]
   sing-box-deve.sh version
   sing-box-deve.sh protocol matrix [--enabled]
   sing-box-deve.sh settings show
