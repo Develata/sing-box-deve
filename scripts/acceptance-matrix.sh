@@ -48,7 +48,7 @@ echo
 echo "1) VPS lite baseline"
 echo "   sudo ${SCRIPT} install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes"
 echo "2) VPS full + argo"
-echo "   sudo ${SCRIPT} install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws,argo --argo temp --yes"
+echo "   sudo ${SCRIPT} install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes"
 echo "3) VPS outbound socks"
 echo "   sudo ${SCRIPT} install --provider vps --profile lite --engine sing-box --protocols vless-reality --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 --yes"
 echo "4) Serv00/SAP/Docker require credentials and should be executed with corresponding env templates from examples/."

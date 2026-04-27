@@ -6,12 +6,11 @@ const protocolMeta = {
   "vless-xhttp": "风险: 中 | 资源: 中 | 需 xray",
   "vless-ws": "风险: 中 | 资源: 低 | 结构简单",
   "shadowsocks-2022": "风险: 低 | 资源: 低 | 需安全保管密码",
+  "naive": "风险: 中 | 资源: 中 | 需 sing-box 和可信证书",
   "hysteria2": "风险: 中 | 资源: 中 | 高吞吐下 UDP 开销较高",
   "tuic": "风险: 中 | 资源: 中 | UDP + TLS",
   "anytls": "风险: 中 | 资源: 中 | 客户端生态较少",
   "any-reality": "风险: 中 | 资源: 中 | 需管理 Reality 密钥",
-  "argo": "风险: 中 | 资源: 低 | 依赖 cloudflared",
-  "warp": "风险: 中 | 资源: 低 | 需有效 WG key",
   "trojan": "风险: 低 | 资源: 低 | 证书管理要规范",
   "wireguard": "风险: 中 | 资源: 低 | 对端配置要正确"
 };
@@ -148,11 +147,10 @@ function validateForm() {
   if (!protocols.length) return "至少选择一个协议";
   if (profile === "lite" && protocols.length > 2) return "Lite 模式最多 2 个协议";
   if (engine === "sing-box" && protocols.indexOf("vless-xhttp") >= 0) return "sing-box 暂不支持 vless-xhttp";
+  if (engine === "xray" && protocols.indexOf("naive") >= 0) return "xray 暂不支持 naive";
   if (engine === "xray" && protocols.indexOf("anytls") >= 0) return "xray 暂不支持 anytls";
   if (engine === "xray" && protocols.indexOf("any-reality") >= 0) return "xray 暂不支持 any-reality";
-  if (protocols.indexOf("argo") >= 0 && argoMode === "off") return "启用 argo 协议时，Argo 模式不能为 off";
   if (argoMode === "fixed" && !argoToken) return "Argo fixed 模式必须填写 token";
-  if (protocols.indexOf("warp") >= 0 && warpMode !== "global") return "启用 warp 协议时，WARP 模式建议 global";
   if (warpMode === "global" && outMode !== "direct") return "WARP global 与上游出站代理不能同时启用";
   if (warpMode === "global" && (!warpPK || !warpPub)) return "WARP global 模式必须填写两项 key";
   if (outMode !== "direct" && (!outHost || !outPort)) return "出站代理启用时必须填写 host 和 port";

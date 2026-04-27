@@ -48,7 +48,7 @@ PY
 }
 
 sbd_reality_server_name() {
-  param_get "REALITY_SERVER_NAME" "reality_server_name" "apple.com"
+  param_get "REALITY_SERVER_NAME" "reality_server_name" "www.microsoft.com"
 }
 
 sbd_reality_fingerprint() {

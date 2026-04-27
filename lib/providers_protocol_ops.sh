@@ -100,7 +100,7 @@ provider_cfg_protocol_sync_argo_service() {
   local plist=()
   protocols_to_array "$protocols_csv" plist
 
-  if ! protocol_enabled "argo" "${plist[@]}" || [[ "${ARGO_MODE:-off}" == "off" ]]; then
+  if [[ "${ARGO_MODE:-off}" == "off" ]]; then
     sbd_service_stop "sing-box-deve-argo"
     rm -f "$SBD_ARGO_SERVICE_FILE" "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
     sbd_service_daemon_reload
@@ -108,7 +108,7 @@ provider_cfg_protocol_sync_argo_service() {
   fi
 
   if ! protocol_enabled "vmess-ws" "${plist[@]}" && ! protocol_enabled "vless-ws" "${plist[@]}"; then
-    die "Argo protocol requires vmess-ws or vless-ws when ARGO_MODE is enabled"
+    die "Argo requires vmess-ws or vless-ws when ARGO_MODE is enabled"
   fi
 
   configure_argo_tunnel "$protocols_csv" "${engine:-sing-box}"

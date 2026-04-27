@@ -144,7 +144,7 @@ features:
   tls_mode: ${tls_mode:-self-signed}
   acme_cert_path: ${acme_cert_path:-""}
   acme_key_path: ${acme_key_path:-""}
-  reality_server_name: ${reality_server_name:-apple.com}
+  reality_server_name: ${reality_server_name:-www.microsoft.com}
   reality_fingerprint: ${reality_fingerprint:-chrome}
   reality_handshake_port: ${reality_handshake_port:-443}
   tls_server_name: ${tls_server_name:-www.bing.com}

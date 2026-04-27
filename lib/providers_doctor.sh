@@ -78,7 +78,7 @@ provider_doctor_check_nodes() {
     return
   fi
   local bad_nodes
-  bad_nodes="$(awk '!/^(vless|vmess|hysteria2|trojan|wireguard|anytls|socks|ss|tuic|argo-domain|warp-mode):\/\//{print NR":"$0}' "$SBD_NODES_FILE" || true)"
+  bad_nodes="$(awk '!(/^(vless|vmess|hysteria2|trojan|wireguard|anytls|socks|ss|tuic|argo-domain|warp-mode):\/\// || /^naive\+https:\/\//){print NR":"$0}' "$SBD_NODES_FILE" || true)"
   if [[ -n "$bad_nodes" ]]; then
     log_warn "$(msg "节点文件中存在异常行" "Node output contains unrecognized lines")"
     printf '%s\n' "$bad_nodes"

@@ -8,6 +8,7 @@ protocol_port_map() {
     vless-xhttp) echo "tcp:9443" ;;
     vless-ws) echo "tcp:8444" ;;
     shadowsocks-2022) echo "tcp:2443" ;;
+    naive) echo "tcp:22443" ;;
     hysteria2) echo "udp:8443" ;;
     tuic) echo "udp:10443" ;;
     anytls) echo "tcp:20443" ;;
@@ -43,6 +44,7 @@ protocol_inbound_tag() {
     vless-ws) echo "vless-ws" ;;
     vless-xhttp) echo "vless-xhttp" ;;
     shadowsocks-2022) echo "ss-2022" ;;
+    naive) echo "naive" ;;
     hysteria2) echo "hy2" ;;
     tuic) echo "tuic" ;;
     trojan) echo "trojan" ;;
@@ -99,13 +101,13 @@ engine_supports_protocol() {
   case "$engine" in
     sing-box)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|shadowsocks-2022|hysteria2|tuic|trojan|wireguard|argo|warp|anytls|any-reality) return 0 ;;
+        vless-reality|vmess-ws|vless-ws|shadowsocks-2022|naive|hysteria2|tuic|trojan|wireguard|anytls|any-reality) return 0 ;;
         *) return 1 ;;
       esac
       ;;
     xray)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|argo|socks5|warp) return 0 ;;
+        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|socks5) return 0 ;;
         *) return 1 ;;
       esac
       ;;

@@ -29,6 +29,11 @@ node_link_ss2022() {
   echo "ss://$(printf '%s' "2022-blake3-aes-128-gcm:${uuid}" | base64 -w 0)@$ip:${port}#sbd-shadowsocks-2022"
 }
 
+node_link_naive() {
+  local uuid="$1" ip="$2" port="$3" sni="$4"
+  echo "naive+https://$uuid:$uuid@$ip:${port}?sni=$sni#sbd-naive"
+}
+
 node_link_hysteria2() {
   local uuid="$1" ip="$2" port="$3" sni="$4"
   echo "hysteria2://$uuid@$ip:${port}?security=tls&sni=$sni&insecure=1#sbd-hysteria2"

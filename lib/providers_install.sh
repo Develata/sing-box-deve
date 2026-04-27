@@ -102,9 +102,6 @@ provider_vps_install() {
   protocols_to_array "$protocols_csv" protocols
   local protocol mapping proto port
   for protocol in "${protocols[@]}"; do
-    if [[ "$protocol" == "argo" || "$protocol" == "warp" ]]; then
-      continue
-    fi
     mapping="$(protocol_port_map "$protocol")"
     proto="${mapping%%:*}"
     port="$(get_protocol_port "$protocol")"

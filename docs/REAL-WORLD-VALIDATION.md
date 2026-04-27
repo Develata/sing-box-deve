@@ -54,7 +54,7 @@ FAIL：
 ## 2) VPS Full + Argo（必测）
 
 ```bash
-sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws,argo --argo temp --yes
+sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes
 sudo ./sing-box-deve.sh panel --full
 sudo ./sing-box-deve.sh doctor
 ```
@@ -97,7 +97,7 @@ FAIL：
 
 ```bash
 sudo WARP_PRIVATE_KEY=<key> WARP_PEER_PUBLIC_KEY=<peer> \
-./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,warp --warp-mode global --yes
+./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality --warp-mode global --yes
 sudo ./sing-box-deve.sh restart --all
 ```
 

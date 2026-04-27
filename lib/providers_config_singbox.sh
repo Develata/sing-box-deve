@@ -18,12 +18,13 @@ build_sing_box_config() {
   tls_server_name="$(sbd_tls_server_name)"
   ws_path_vmess="$(sbd_vmess_ws_path)"
   ws_path_vless="$(sbd_vless_ws_path)"
-  local port_vless_reality port_vmess_ws port_vless_ws port_ss2022 port_hysteria2
+  local port_vless_reality port_vmess_ws port_vless_ws port_ss2022 port_naive port_hysteria2
   local port_tuic port_trojan port_anytls port_anyreality port_wireguard
   port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")"
   port_vmess_ws="$(resolve_protocol_port_for_engine "sing-box" "vmess-ws")"
   port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")"
   port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")"
+  port_naive="$(resolve_protocol_port_for_engine "sing-box" "naive")"
   port_hysteria2="$(resolve_protocol_port_for_engine "sing-box" "hysteria2")"
   port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")"
   port_trojan="$(resolve_protocol_port_for_engine "sing-box" "trojan")"
@@ -57,6 +58,11 @@ build_sing_box_config() {
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "ss-2022" "$port_ss2022" \
       "$(singbox_fragment_ss2022 "$uuid" "$port_ss2022")"
+  fi
+
+  if protocol_enabled "naive" "${protocols[@]}"; then
+    sbd_inbounds_append inbounds inbound_map "naive" "$port_naive" \
+      "$(singbox_fragment_naive "$uuid" "$port_naive" "$tls_server_name" "$cert_file" "$key_file")"
   fi
 
   if protocol_enabled "hysteria2" "${protocols[@]}"; then

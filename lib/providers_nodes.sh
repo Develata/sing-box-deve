@@ -14,7 +14,7 @@ write_nodes_output() {
   local reality_sni reality_fp tls_sni vm_path vless_ws_path vless_ws_path_uri
   local xhttp_path xhttp_path_uri xhttp_mode enc_vless vm_cdn_host
   local ip_vmess ip_vless_ws ip_xhttp public_key short_id
-  local p_vless_reality p_vmess p_vless_ws p_xhttp p_ss p_hy2 p_tuic
+  local p_vless_reality p_vmess p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic
   local p_trojan p_anytls p_anyreality p_wg p_socks
   local protocols=()
 
@@ -53,6 +53,7 @@ write_nodes_output() {
   p_vless_ws="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
   p_xhttp="$(resolve_protocol_port_for_engine "$engine" "vless-xhttp")"
   p_ss="$(resolve_protocol_port_for_engine "$engine" "shadowsocks-2022")"
+  p_naive="$(resolve_protocol_port_for_engine "$engine" "naive")"
   p_hy2="$(resolve_protocol_port_for_engine "$engine" "hysteria2")"
   p_tuic="$(resolve_protocol_port_for_engine "$engine" "tuic")"
   p_trojan="$(resolve_protocol_port_for_engine "$engine" "trojan")"
@@ -75,6 +76,9 @@ write_nodes_output() {
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
     node_link_ss2022 "$uuid" "$ip" "$p_ss" >> "$SBD_NODES_BASE_FILE"
   fi
+  if [[ "$engine" == "sing-box" ]] && protocol_enabled "naive" "${protocols[@]}"; then
+    node_link_naive "$uuid" "$ip" "$p_naive" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
+  fi
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
     node_link_hysteria2 "$uuid" "$ip" "$p_hy2" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
   fi
@@ -96,11 +100,11 @@ write_nodes_output() {
   if protocol_enabled "socks5" "${protocols[@]}"; then
     node_link_socks5 "$uuid" "$ip" "$p_socks" >> "$SBD_NODES_BASE_FILE"
   fi
-  if protocol_enabled "warp" "${protocols[@]}"; then
+  if [[ "${WARP_MODE:-off}" != "off" ]]; then
     node_link_warp_mode "${WARP_MODE:-off}" >> "$SBD_NODES_BASE_FILE"
   fi
 
-  if protocol_enabled "argo" "${protocols[@]}" && [[ -f "${SBD_DATA_DIR}/argo_domain" ]]; then
+  if [[ "${ARGO_MODE:-off}" != "off" && -f "${SBD_DATA_DIR}/argo_domain" ]]; then
     append_argo_primary_links "$SBD_NODES_BASE_FILE" "$protocols_csv" "$uuid" "$(<"${SBD_DATA_DIR}/argo_domain")" "$enc_vless"
   fi
 

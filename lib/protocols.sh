@@ -6,12 +6,11 @@ ALL_PROTOCOLS=(
   vless-xhttp
   vless-ws
   shadowsocks-2022
+  naive
   hysteria2
   tuic
   anytls
   any-reality
-  argo
-  warp
   trojan
   wireguard
   socks5
@@ -41,7 +40,15 @@ contains_protocol() {
       return 0
     fi
   done
+  protocol_is_feature_token "$protocol" && return 0
   return 1
+}
+
+protocol_is_feature_token() {
+  case "$1" in
+    argo|warp) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 validate_protocols_csv() {
@@ -74,8 +81,9 @@ validate_profile_protocols() {
 
   case "$profile" in
     lite)
-      local count
-      count="$(echo "$protocols_csv" | tr ',' '\n' | grep -c .)"
+      local count protocols=()
+      protocols_to_array "$protocols_csv" protocols
+      count="${#protocols[@]}"
       if (( count > 2 )); then
         die "Lite profile allows up to 2 protocols"
       fi
@@ -98,7 +106,9 @@ protocols_to_array() {
   local protocol
   for protocol in "${items[@]}"; do
     protocol="$(echo "$protocol" | xargs)"
-    [[ -n "$protocol" ]] && cleaned+=("$protocol")
+    [[ -n "$protocol" ]] || continue
+    protocol_is_feature_token "$protocol" && continue
+    cleaned+=("$protocol")
   done
 
   # shellcheck disable=SC2034
@@ -135,6 +145,9 @@ protocol_hint() {
     shadowsocks-2022)
       echo "risk=low;resource=low;note=password management required"
       ;;
+    naive)
+      echo "risk=medium;resource=medium;note=sing-box only; production needs a trusted certificate"
+      ;;
     hysteria2)
       echo "risk=medium;resource=medium;note=udp heavy at high throughput"
       ;;
@@ -146,12 +159,6 @@ protocol_hint() {
       ;;
     any-reality)
       echo "risk=medium;resource=medium;note=reality key management required"
-      ;;
-    argo)
-      echo "risk=medium;resource=low;note=depends on cloudflared stability"
-      ;;
-    warp)
-      echo "risk=medium;resource=low;note=requires valid wireguard keys"
       ;;
     trojan)
       echo "risk=low;resource=low;note=tls cert hygiene required"
@@ -176,6 +183,7 @@ protocol_capability() {
     vless-xhttp) echo "tls=yes;reality=optional;multi-port=yes;warp-egress=yes;share=yes" ;;
     vless-ws) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     shadowsocks-2022) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
+    naive) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=limited" ;;
     hysteria2) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     tuic) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     anytls) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
@@ -183,8 +191,6 @@ protocol_capability() {
     trojan) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     wireguard) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     socks5) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=limited" ;;
-    argo) echo "tls=depends;reality=no;multi-port=n/a;warp-egress=n/a;share=indirect" ;;
-    warp) echo "tls=n/a;reality=no;multi-port=n/a;warp-egress=self;share=mode-only" ;;
     *) echo "tls=unknown;reality=unknown;multi-port=unknown;warp-egress=unknown;share=unknown" ;;
   esac
 }

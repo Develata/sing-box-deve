@@ -36,7 +36,7 @@ configure_argo_tunnel() {
   local engine="${2:-sing-box}"
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
-  if ! protocol_enabled "argo" "${protocols[@]}"; then
+  if [[ "${ARGO_MODE:-off}" == "off" ]]; then
     return 0
   fi
 
@@ -56,10 +56,6 @@ configure_argo_tunnel() {
   local token="${ARGO_TOKEN:-}"
   local domain="${ARGO_DOMAIN:-}"
   local argo_log="${SBD_DATA_DIR}/argo.log"
-
-  if [[ "$mode" == "off" ]]; then
-    die "Protocol 'argo' enabled but ARGO_MODE is off; use --argo temp or --argo fixed"
-  fi
 
   if [[ "$mode" == "fixed" && -z "$token" ]]; then
     die "Argo fixed mode requires ARGO_TOKEN or --argo-token"

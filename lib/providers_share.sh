@@ -7,7 +7,7 @@ SBD_SHARE_GROUP_DIR="${SBD_DATA_DIR}/share-groups"
 share_filter_supported_links() {
   local src="$1" out="$2"
   awk '
-    /^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls):\/\// {print}
+    /^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls):\/\// || /^naive\+https:\/\// {print}
   ' "$src" > "$out"
 }
 
@@ -33,11 +33,11 @@ share_generate_groups() {
   mkdir -p "$SBD_SHARE_GROUP_DIR"
   cp "$SBD_SHARE_RAW_FILE" "$SBD_SHARE_GROUP_DIR/all.txt"
 
-  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls)://' "$SBD_SHARE_GROUP_DIR/v2rayn.txt"
+  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls)://|^naive\+https://' "$SBD_SHARE_GROUP_DIR/v2rayn.txt"
   share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks)://' "$SBD_SHARE_GROUP_DIR/v2rayng.txt"
-  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls)://' "$SBD_SHARE_GROUP_DIR/nekobox.txt"
+  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|socks|wireguard|anytls)://|^naive\+https://' "$SBD_SHARE_GROUP_DIR/nekobox.txt"
   share_build_group_file '^(vless|vmess|trojan|ss)://' "$SBD_SHARE_GROUP_DIR/shadowrocket.txt"
-  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|wireguard|socks|anytls)://' "$SBD_SHARE_GROUP_DIR/singbox.txt"
+  share_build_group_file '^(vless|vmess|trojan|ss|hysteria2|tuic|wireguard|socks|anytls)://|^naive\+https://' "$SBD_SHARE_GROUP_DIR/singbox.txt"
   cat > "$SBD_SHARE_GROUP_DIR/clash-meta.txt" <<EOF_CLASH_META
 # clash-meta 建议直接使用 YAML 配置文件，而不是通用协议链接
 ${SBD_DATA_DIR}/clash_meta_client.yaml

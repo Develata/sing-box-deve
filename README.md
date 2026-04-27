@@ -9,7 +9,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 ## 特性概览
 
-- **14 种协议**：vless-reality, vmess-ws, vless-ws, hysteria2, tuic, anytls, trojan 等
+- **13 种入站协议**：vless-reality, vmess-ws, vless-ws, naive, hysteria2, tuic, anytls, trojan 等
 - **双引擎**：sing-box / xray 自由切换
 - **4 种部署场景**：VPS / Serv00 / SAP Cloud Foundry / Docker
 - **多初始化系统**：systemd / OpenRC / nohup+crontab 自动检测
@@ -459,8 +459,13 @@ sb uninstall
 
 VPS 已支持协议：
 
-- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`argo`、`anytls`、`any-reality`、`warp`
-- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`trojan`、`argo`
+- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`naive`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`anytls`、`any-reality`
+- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`trojan`、`socks5`
+
+功能开关：
+
+- `Argo`：通过 `--argo off|temp|fixed` 或配置中的 `argo_mode` 控制，不再作为 `--protocols` 项。
+- `WARP`：通过 `--warp-mode ...` 控制，不再作为 `--protocols` 项。
 
 补充能力：
 
@@ -519,7 +524,7 @@ Provider 快捷入口（已实现，不再是占位）：
 
 ```bash
 ./providers/vps.sh install --profile lite --engine sing-box --protocols vless-reality --yes
-./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vmess-ws,argo --yes
+./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes
 ./providers/sap.sh install --profile lite --engine sing-box --protocols vless-reality --yes
 ./providers/docker.sh install --profile lite --engine sing-box --protocols vless-reality --yes
 ```
@@ -535,7 +540,7 @@ Provider 快捷入口（已实现，不再是占位）：
 
 ```bash
 XRAY_VLESS_ENC=true \
-REALITY_SERVER_NAME=apple.com \
+REALITY_SERVER_NAME=www.microsoft.com \
 VMESS_WS_PATH=/my-vm \
 VLESS_WS_PATH=/my-vl \
 VLESS_XHTTP_PATH=/my-xh \

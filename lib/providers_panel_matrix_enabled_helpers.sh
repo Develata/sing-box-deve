@@ -90,17 +90,14 @@ protocol_matrix_psiphon_primary_mode() {
 }
 
 protocol_matrix_default_outbound_mode() {
-  local engine="$1" protocols_csv="$2" warp_mode="$3" upstream_mode="$4"
+  local engine="$1" _protocols_csv="$2" warp_mode="$3" upstream_mode="$4"
   local psiphon_enable="$5" psiphon_mode="$6"
-  local protocol_list=() has_warp="false" psiphon_primary mode
+  local has_warp="false" psiphon_primary mode
 
-  protocols_to_array "$protocols_csv" protocol_list
-  if protocol_enabled "warp" "${protocol_list[@]}"; then
-    if [[ "$engine" == "sing-box" ]]; then
-      warp_mode_targets_singbox "$warp_mode" && has_warp="true"
-    else
-      warp_mode_targets_xray "$warp_mode" && has_warp="true"
-    fi
+  if [[ "$engine" == "sing-box" ]]; then
+    warp_mode_targets_singbox "$warp_mode" && has_warp="true"
+  else
+    warp_mode_targets_xray "$warp_mode" && has_warp="true"
   fi
 
   mode="direct"

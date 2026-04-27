@@ -27,7 +27,7 @@
 sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
 
 # VPS full + argo
-sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws,argo --argo temp --yes
+sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes
 
 # VPS egress via upstream socks
 sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality \

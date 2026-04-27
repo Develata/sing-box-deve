@@ -83,7 +83,7 @@ print_nodes_with_qr() {
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     case "$line" in
-      vless://*|vmess://*|hysteria2://*|trojan://*|anytls://*|wireguard://*)
+      vless://*|vmess://*|hysteria2://*|trojan://*|anytls://*|wireguard://*|naive+https://*)
         printf '%s\n' "$line"
         qrencode -o - -t ANSIUTF8 "$line"
         echo

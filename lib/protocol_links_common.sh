@@ -25,7 +25,7 @@ rewrite_link_with_endpoint() {
       [[ -n "$out" ]] || return 1
       echo "vmess://$(printf '%s' "$out" | base64 -w 0)"
       ;;
-    vless://*|trojan://*|hysteria2://*|anytls://*|socks://*|wireguard://*|tuic://*|ss://*)
+    vless://*|trojan://*|hysteria2://*|anytls://*|socks://*|wireguard://*|tuic://*|ss://*|naive+https://*)
       local pre after hp suffix
       if [[ "$link" == *"@"* ]]; then
         pre="${link%%@*}@"; after="${link#*@}"

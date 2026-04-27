@@ -7,6 +7,7 @@ protocol_link_marker_by_protocol() {
     vless-ws) echo "#sbd-vless-ws" ;;
     vless-xhttp) echo "#sbd-vless-xhttp" ;;
     shadowsocks-2022) echo "#sbd-shadowsocks-2022" ;;
+    naive) echo "#sbd-naive" ;;
     hysteria2) echo "#sbd-hysteria2" ;;
     tuic) echo "#sbd-tuic" ;;
     trojan) echo "#sbd-trojan" ;;
