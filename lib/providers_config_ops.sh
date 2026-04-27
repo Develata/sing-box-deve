@@ -177,7 +177,7 @@ provider_cfg_set_domain_split() {
 provider_cfg_set_tls() {
   ensure_root
   local mode="${1:-}" cert="${2:-}" key="${3:-}" dns_provider="${4:-}"
-  local domain="" email=""
+  local domain="" email="" tls_name=""
   case "$mode" in self-signed|acme|acme-auto) ;;
     *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]")" ;;
   esac
@@ -204,8 +204,9 @@ provider_cfg_set_tls() {
     if [[ -z "${domain:-}" ]]; then
       domain="$(sbd_domain_from_acme_path "$ACME_CERT_PATH" 2>/dev/null || true)"
     fi
-    [[ "$domain" == "*."* ]] && domain="${domain#*.}"
-    [[ -n "$domain" ]] && TLS_SERVER_NAME="$domain"
+    tls_name="$domain"
+    [[ "$tls_name" == "*."* ]] && tls_name="${tls_name#*.}"
+    [[ -n "$tls_name" ]] && TLS_SERVER_NAME="$tls_name"
     ACME_DOMAIN="${domain:-}"
     ACME_EMAIL="${email:-}"
     ACME_DNS_PROVIDER="${dns_provider:-}"

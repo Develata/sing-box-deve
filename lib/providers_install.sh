@@ -109,7 +109,7 @@ resolve_tls_auto_for_install() {
   TLS_MODE="acme"
   tls_name="${TLS_SERVER_NAME:-$domain}"
   [[ "$tls_name" == "*."* ]] && tls_name="${tls_name#*.}"
-  ACME_DOMAIN="$tls_name"
+  ACME_DOMAIN="$domain"
   ACME_CERT_PATH="$SBD_LAST_ACME_CERT_PATH"
   ACME_KEY_PATH="$SBD_LAST_ACME_KEY_PATH"
   TLS_SERVER_NAME="$tls_name"
