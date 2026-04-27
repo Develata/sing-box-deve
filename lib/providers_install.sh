@@ -98,6 +98,7 @@ resolve_tls_auto_for_install() {
   [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]] || return 0
 
   local domain="${ACME_DOMAIN:-${TLS_SERVER_NAME:-}}"
+  local tls_name
   local email="${ACME_EMAIL:-}"
   [[ -n "$domain" ]] || die "TLS_MODE=acme-auto requires --acme-domain or --tls-sni"
   [[ -n "$email" ]] || die "TLS_MODE=acme-auto requires --acme-email"
@@ -106,10 +107,12 @@ resolve_tls_auto_for_install() {
   [[ -n "${SBD_LAST_ACME_CERT_PATH:-}" && -n "${SBD_LAST_ACME_KEY_PATH:-}" ]] || die "ACME auto issue did not return cert/key paths"
 
   TLS_MODE="acme"
-  ACME_DOMAIN="$domain"
+  tls_name="${TLS_SERVER_NAME:-$domain}"
+  [[ "$tls_name" == "*."* ]] && tls_name="${tls_name#*.}"
+  ACME_DOMAIN="$tls_name"
   ACME_CERT_PATH="$SBD_LAST_ACME_CERT_PATH"
   ACME_KEY_PATH="$SBD_LAST_ACME_KEY_PATH"
-  [[ -n "${TLS_SERVER_NAME:-}" ]] || TLS_SERVER_NAME="$domain"
+  TLS_SERVER_NAME="$tls_name"
 }
 
 provider_vps_install() {

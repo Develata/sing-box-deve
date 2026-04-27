@@ -22,7 +22,7 @@ sbd_valid_domain_name() {
 }
 
 acme_base_domain() {
-  local domain="$1"
+  local domain="${1:-}"
   if [[ "$domain" == "*."* ]]; then
     domain="${domain#*.}"
   fi
@@ -30,8 +30,9 @@ acme_base_domain() {
 }
 
 acme_resolve_existing_cert() {
-  local domain="$1" out_cert_var="$2" out_key_var="$3"
+  local domain="${1:-}" out_cert_var="${2:-}" out_key_var="${3:-}"
   local base dir cert key
+  [[ -n "$domain" && -n "$out_cert_var" && -n "$out_key_var" ]] || return 1
   base="$(acme_base_domain "$domain")"
 
   local dirs=(
@@ -83,7 +84,7 @@ provider_sys_acme_install() {
 
 provider_sys_acme_issue() {
   ensure_root
-  local domain="$1" email="$2" dns_provider="${3:-${ACME_DNS_PROVIDER:-}}"
+  local domain="${1:-}" email="${2:-}" dns_provider="${3:-${ACME_DNS_PROVIDER:-}}"
   [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email> [dns_provider]" "Usage: sys acme-issue <domain> <email> [dns_provider]")"
   sbd_valid_domain_name "$domain" || die "Invalid ACME domain: ${domain}"
   [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "Invalid ACME account email: ${email}"
@@ -136,7 +137,7 @@ provider_sys_acme_issue() {
 
 provider_sys_acme_apply() {
   ensure_root
-  local cert="$1" key="$2"
+  local cert="${1:-}" key="${2:-}"
   [[ -f "$cert" && -f "$key" ]] || die "$(msg "用法: sys acme-apply <cert_path> <key_path>" "Usage: sys acme-apply <cert_path> <key_path>")"
   provider_cfg_command tls acme "$cert" "$key"
 }

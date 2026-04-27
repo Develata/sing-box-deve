@@ -176,7 +176,7 @@ provider_cfg_set_domain_split() {
 
 provider_cfg_set_tls() {
   ensure_root
-  local mode="$1" cert="${2:-}" key="${3:-}" dns_provider="${4:-${ACME_DNS_PROVIDER:-}}"
+  local mode="${1:-}" cert="${2:-}" key="${3:-}" dns_provider="${4:-}"
   local domain="" email=""
   case "$mode" in self-signed|acme|acme-auto) ;;
     *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]")" ;;
@@ -185,6 +185,7 @@ provider_cfg_set_tls() {
   if [[ "$mode" == "acme-auto" ]]; then
     domain="$cert"
     email="$key"
+    [[ -n "$dns_provider" ]] || dns_provider="${ACME_DNS_PROVIDER:-}"
     [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: cfg tls acme-auto <domain> <email> [dns_provider]" "Usage: cfg tls acme-auto <domain> <email> [dns_provider]")"
     provider_sys_acme_issue "$domain" "$email" "$dns_provider"
     cert="${SBD_LAST_ACME_CERT_PATH:-}"
@@ -200,13 +201,14 @@ provider_cfg_set_tls() {
   if [[ "$TLS_MODE" == "acme" ]]; then
     ACME_CERT_PATH="$cert"
     ACME_KEY_PATH="$key"
-    if [[ -z "${TLS_SERVER_NAME:-}" ]]; then
-      TLS_SERVER_NAME="${domain:-}"
-      [[ -n "$TLS_SERVER_NAME" ]] || TLS_SERVER_NAME="$(sbd_domain_from_acme_path "$ACME_CERT_PATH" 2>/dev/null || true)"
+    if [[ -z "${domain:-}" ]]; then
+      domain="$(sbd_domain_from_acme_path "$ACME_CERT_PATH" 2>/dev/null || true)"
     fi
-    [[ -n "${domain:-}" ]] && ACME_DOMAIN="$domain"
-    [[ -n "${email:-}" ]] && ACME_EMAIL="$email"
-    [[ -n "${dns_provider:-}" ]] && ACME_DNS_PROVIDER="$dns_provider"
+    [[ "$domain" == "*."* ]] && domain="${domain#*.}"
+    [[ -n "$domain" ]] && TLS_SERVER_NAME="$domain"
+    ACME_DOMAIN="${domain:-}"
+    ACME_EMAIL="${email:-}"
+    ACME_DNS_PROVIDER="${dns_provider:-}"
   else
     ACME_CERT_PATH=""
     ACME_KEY_PATH=""
