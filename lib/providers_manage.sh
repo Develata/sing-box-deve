@@ -84,6 +84,53 @@ provider_regen_nodes() {
   log_success "$(msg "节点已重生成: $SBD_NODES_FILE" "Nodes regenerated: $SBD_NODES_FILE")"
 }
 
+provider_core_backup_prepare() {
+  local target_engine="$1"
+  local engine_bin="${SBD_BIN_DIR}/${target_engine}"
+  local engine_version_file="${SBD_DATA_DIR}/engine-version"
+  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
+  mkdir -p "$rollback_dir"
+  rm -f "${rollback_dir}/install-reused-existing"
+  if [[ -x "$engine_bin" ]]; then
+    cp -p "$engine_bin" "${rollback_dir}/${target_engine}.bak"
+  else
+    rm -f "${rollback_dir}/${target_engine}.bak"
+  fi
+  if [[ -f "$engine_version_file" ]]; then
+    cp -p "$engine_version_file" "${rollback_dir}/engine-version.bak"
+  else
+    rm -f "${rollback_dir}/engine-version.bak"
+  fi
+}
+
+provider_core_backup_restore() {
+  local target_engine="$1"
+  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
+  if [[ -f "${rollback_dir}/${target_engine}.bak" ]]; then
+    install -m 0755 "${rollback_dir}/${target_engine}.bak" "${SBD_BIN_DIR}/${target_engine}"
+  fi
+  if [[ -f "${rollback_dir}/engine-version.bak" ]]; then
+    install -m 0644 "${rollback_dir}/engine-version.bak" "${SBD_DATA_DIR}/engine-version"
+  fi
+}
+
+provider_install_engine_safely() {
+  local target_engine="$1" target_tag="${2:-latest}"
+  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
+  local install_reused_file="${rollback_dir}/install-reused-existing"
+
+  provider_core_backup_prepare "$target_engine"
+  if ! ( export SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE="$install_reused_file"; install_engine_binary "$target_engine" "$target_tag" ); then
+    log_warn "$(msg "核心安装失败，正在恢复更新前内核" "Engine install failed; restoring previous engine binary")"
+    provider_core_backup_restore "$target_engine"
+    return 1
+  fi
+  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" || -f "$install_reused_file" ]]; then
+    return 2
+  fi
+  return 0
+}
+
 provider_update() {
   ensure_root
   if [[ ! -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
@@ -91,46 +138,18 @@ provider_update() {
   fi
 
   sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
-  local engine_bin="${SBD_BIN_DIR}/${engine}"
-  local engine_version_file="${SBD_DATA_DIR}/engine-version"
-  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
-  local backup_bin="${rollback_dir}/${engine}.bak"
-  local backup_version="${rollback_dir}/engine-version.bak"
-  local install_reused_file="${rollback_dir}/install-reused-existing"
-  mkdir -p "$rollback_dir"
-  rm -f "$install_reused_file"
-  if [[ -x "$engine_bin" ]]; then
-    cp -p "$engine_bin" "$backup_bin"
-  else
-    rm -f "$backup_bin"
-  fi
-  if [[ -f "$engine_version_file" ]]; then
-    cp -p "$engine_version_file" "$backup_version"
-  else
-    rm -f "$backup_version"
-  fi
-
-  provider_restore_core_backup() {
-    if [[ -f "$backup_bin" ]]; then
-      install -m 0755 "$backup_bin" "$engine_bin"
-    fi
-    if [[ -f "$backup_version" ]]; then
-      install -m 0644 "$backup_version" "$engine_version_file"
-    fi
-  }
-
-  if ! ( export SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE="$install_reused_file"; install_engine_binary "$engine" ); then
-    log_warn "$(msg "核心安装失败，正在恢复更新前内核" "Engine install failed; restoring previous engine binary")"
-    provider_restore_core_backup
+  local install_rc=0
+  provider_install_engine_safely "$engine" || install_rc=$?
+  if (( install_rc == 1 )); then
     safe_service_restart >/dev/null 2>&1 || true
     die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
   fi
-  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" || -f "$install_reused_file" ]]; then
+  if (( install_rc == 2 )); then
     die "$(msg "核心下载失败，已保留本地旧内核；未执行更新" "Core download failed; existing local engine was kept and no update was applied")"
   fi
   if ! safe_service_restart; then
     log_warn "$(msg "核心服务重启失败，正在恢复更新前内核" "Core service restart failed; restoring previous engine binary")"
-    provider_restore_core_backup
+    provider_core_backup_restore "$engine"
     safe_service_restart >/dev/null 2>&1 || true
     die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
   fi
@@ -143,7 +162,7 @@ provider_update() {
     done
     if (( wait_count >= 15 )); then
       log_warn "$(msg "核心服务启动超时，正在恢复更新前内核" "Core service start timeout; restoring previous engine binary")"
-      provider_restore_core_backup
+      provider_core_backup_restore "$engine"
       safe_service_restart >/dev/null 2>&1 || true
       die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
     else
@@ -190,20 +209,31 @@ provider_kernel_set() {
     sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
   fi
 
-  install_engine_binary "$target_engine" "$target_tag"
+  local install_rc=0
+  provider_install_engine_safely "$target_engine" "$target_tag" || install_rc=$?
+  if (( install_rc == 1 )); then
+    die "$(msg "核心设置失败，已尝试恢复旧内核" "Kernel set failed; previous engine restore attempted")"
+  fi
+  if (( install_rc == 2 )); then
+    die "$(msg "核心下载失败，已保留本地旧内核；未执行切换" "Core download failed; existing local engine was kept and kernel switch was not applied")"
+  fi
 
   if [[ "$has_runtime" == "true" ]]; then
-    provider_cfg_load_runtime_exports
-
-    assert_engine_protocol_compatibility "$target_engine" "${protocols:-vless-reality}"
-    case "$target_engine" in
-      sing-box) build_sing_box_config "${protocols:-vless-reality}" ;;
-      xray) build_xray_config "${protocols:-vless-reality}" ;;
-    esac
-    validate_generated_config "$target_engine" "true"
-    write_systemd_service "$target_engine"
-    write_nodes_output "$target_engine" "${protocols:-vless-reality}"
-    persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "${protocols:-vless-reality}"
+    if ! (
+      provider_cfg_load_runtime_exports
+      assert_engine_protocol_compatibility "$target_engine" "${protocols:-vless-reality}"
+      case "$target_engine" in
+        sing-box) build_sing_box_config "${protocols:-vless-reality}" ;;
+        xray) build_xray_config "${protocols:-vless-reality}" ;;
+      esac
+      validate_generated_config "$target_engine" "true"
+      write_systemd_service "$target_engine"
+      write_nodes_output "$target_engine" "${protocols:-vless-reality}"
+      persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "${protocols:-vless-reality}"
+    ); then
+      provider_core_backup_restore "$target_engine"
+      die "$(msg "内核已下载，但运行配置重建失败；已尝试恢复旧内核" "Engine downloaded, but runtime rebuild failed; previous engine restore attempted")"
+    fi
   fi
 
   log_success "$(msg "内核已设置: engine=${target_engine} tag=${target_tag}" "Kernel set: engine=${target_engine} tag=${target_tag}")"
