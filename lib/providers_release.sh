@@ -183,4 +183,7 @@ install_engine_binary() {
     xray) install_xray_binary "$tag" ;;
     *) die "$(msg "不支持的内核: $engine" "Unsupported engine: $engine")" ;;
   esac
+  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" && -n "${SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE:-}" ]]; then
+    : > "$SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE"
+  fi
 }

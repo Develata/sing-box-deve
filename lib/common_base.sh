@@ -175,7 +175,32 @@ install_apt_dependencies() {
 download_file() {
   local url="$1"
   local out="$2"
-  curl -fsSL "$url" -o "$out"
+  local attempts="${SBD_DOWNLOAD_RETRIES:-3}"
+  local delay="${SBD_DOWNLOAD_RETRY_DELAY:-2}"
+  local max_time="${SBD_DOWNLOAD_MAX_TIME:-300}"
+  local tmp err rc attempt
+  tmp="${out}.tmp.$$"
+  err="${out}.err.$$"
+  mkdir -p "$(dirname "$out")"
+  rm -f "$tmp" "$err" 2>/dev/null || true
+
+  for ((attempt = 1; attempt <= attempts; attempt++)); do
+    if curl -fsSL --connect-timeout 15 --max-time "$max_time" "$url" -o "$tmp" 2>"$err"; then
+      mv -f "$tmp" "$out"
+      rm -f "$err" 2>/dev/null || true
+      return 0
+    fi
+    rc=$?
+    log_warn "$(msg "下载失败(${attempt}/${attempts}, rc=${rc}): ${url}" "Download failed (${attempt}/${attempts}, rc=${rc}): ${url}")"
+    if [[ -s "$err" ]]; then
+      log_warn "$(tail -n 2 "$err" | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+    fi
+    rm -f "$tmp" 2>/dev/null || true
+    (( attempt < attempts )) && sleep "$delay"
+  done
+
+  rm -f "$tmp" "$err" 2>/dev/null || true
+  return 1
 }
 
 systemd_reload_and_enable() {

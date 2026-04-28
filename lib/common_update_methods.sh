@@ -110,6 +110,31 @@ sync_installed_script_root_from_project() {
   done
 }
 
+verify_sb_launcher_target() {
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] || return 0
+  [[ -x /usr/local/bin/sb ]] || {
+    log_warn "$(msg "未找到 /usr/local/bin/sb，跳过启动器校验" "/usr/local/bin/sb not found, skipping launcher verification")"
+    return 0
+  }
+
+  local resolved_root resolved_version current_version
+  resolved_root="$(/usr/local/bin/sb --print-root 2>/dev/null || true)"
+  resolved_version="$(/usr/local/bin/sb --print-version 2>/dev/null || true)"
+  current_version="$(current_script_version)"
+
+  if [[ -z "$resolved_root" || ! -x "${resolved_root}/sing-box-deve.sh" ]]; then
+    log_warn "$(msg "sb 启动器目标异常: ${resolved_root:-empty}；请重新执行 update --script --force" "sb launcher target is invalid: ${resolved_root:-empty}; rerun update --script --force")"
+    return 1
+  fi
+
+  if [[ "$resolved_version" != "$current_version" ]]; then
+    log_warn "$(msg "sb 启动器版本与当前更新版本不一致: sb=${resolved_version:-unknown}, current=${current_version}; 目标=${resolved_root}" "sb launcher version differs from current update: sb=${resolved_version:-unknown}, current=${current_version}; target=${resolved_root}")"
+    return 1
+  fi
+
+  log_success "$(msg "sb 启动器校验通过: ${resolved_root} (${resolved_version})" "sb launcher verified: ${resolved_root} (${resolved_version})")"
+}
+
 perform_download_update() {
   local mode="${UPDATE_SOURCE:-auto}" base_url ok="false" cb
   cb="$(date +%s)"
@@ -224,6 +249,7 @@ perform_script_self_update() {
   if [[ "${EUID:-$(id -u)}" -eq 0 ]] && declare -F write_sb_launcher >/dev/null 2>&1; then
     write_sb_launcher || log_warn "$(msg "刷新 sb 启动器失败" "Failed to refresh sb launcher")"
   fi
+  verify_sb_launcher_target || true
 
   release_update_lock
 }

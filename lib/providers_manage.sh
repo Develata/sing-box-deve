@@ -96,7 +96,9 @@ provider_update() {
   local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
   local backup_bin="${rollback_dir}/${engine}.bak"
   local backup_version="${rollback_dir}/engine-version.bak"
+  local install_reused_file="${rollback_dir}/install-reused-existing"
   mkdir -p "$rollback_dir"
+  rm -f "$install_reused_file"
   if [[ -x "$engine_bin" ]]; then
     cp -p "$engine_bin" "$backup_bin"
   else
@@ -117,8 +119,13 @@ provider_update() {
     fi
   }
 
-  install_engine_binary "$engine"
-  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" ]]; then
+  if ! ( export SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE="$install_reused_file"; install_engine_binary "$engine" ); then
+    log_warn "$(msg "核心安装失败，正在恢复更新前内核" "Engine install failed; restoring previous engine binary")"
+    provider_restore_core_backup
+    safe_service_restart >/dev/null 2>&1 || true
+    die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
+  fi
+  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" || -f "$install_reused_file" ]]; then
     die "$(msg "核心下载失败，已保留本地旧内核；未执行更新" "Core download failed; existing local engine was kept and no update was applied")"
   fi
   if ! safe_service_restart; then
@@ -145,9 +152,11 @@ provider_update() {
   fi
 
   if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-    sbd_service_restart "sing-box-deve-argo"
+    if ! sbd_service_restart "sing-box-deve-argo"; then
+      log_warn "$(msg "Argo 边车重启失败；核心更新已完成，可稍后执行 restart --argo 或查看 logs --argo" "Argo sidecar restart failed; core update completed. Run restart --argo or logs --argo later")"
+    fi
   fi
-  provider_psiphon_sync_service
+  provider_psiphon_sync_service || log_warn "$(msg "Psiphon 边车同步失败；核心更新已完成" "Psiphon sidecar sync failed; core update completed")"
   log_success "$(msg "内核已更新并重启服务" "Engine updated and service restarted")"
   provider_panel
 }
