@@ -55,15 +55,15 @@ ping_urls() {
 
     if echo "$response" | grep -iqE 'keepalive|UP|running|保活|重启成功|vless|ok|sing-box'; then
       log "✅ ${url}"
-      ((alive++))
+      ((alive += 1))
     else
       code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || echo "000")"
       if [[ "$code" =~ ^[23] ]]; then
         log "✅ ${url} (HTTP ${code})"
-        ((alive++))
+        ((alive += 1))
       else
         log "❌ ${url} (HTTP ${code})"
-        ((down++))
+        ((down += 1))
       fi
     fi
   done < <(load_urls)

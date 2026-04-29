@@ -70,13 +70,14 @@ detect_init_system() {
 
 sbd_systemd_daemon_reload() {
   local required="${1:-false}" context="${2:-systemd daemon-reload}"
-  local rc
-  systemctl daemon-reload
+  local rc output
+  output="$(systemctl daemon-reload 2>&1)"
   rc=$?
   if (( rc == 0 )); then
     return 0
   fi
 
+  [[ -n "$output" ]] && log_warn "$output"
   log_warn "$(msg \
     "${context} 失败。若提示 /run/systemd 空间不足，请清理 /run 或重启 VPS 后重试；当前脚本会继续处理可继续的步骤。" \
     "${context} failed. If /run/systemd is out of space, clean /run or reboot the VPS and retry; continuing where possible.")"

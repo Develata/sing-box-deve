@@ -105,12 +105,18 @@ provider_core_backup_prepare() {
 
 provider_core_backup_restore() {
   local target_engine="$1"
+  local engine_bin="${SBD_BIN_DIR}/${target_engine}"
+  local engine_version_file="${SBD_DATA_DIR}/engine-version"
   local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
   if [[ -f "${rollback_dir}/${target_engine}.bak" ]]; then
-    install -m 0755 "${rollback_dir}/${target_engine}.bak" "${SBD_BIN_DIR}/${target_engine}"
+    install -m 0755 "${rollback_dir}/${target_engine}.bak" "$engine_bin"
+  else
+    rm -f "$engine_bin"
   fi
   if [[ -f "${rollback_dir}/engine-version.bak" ]]; then
-    install -m 0644 "${rollback_dir}/engine-version.bak" "${SBD_DATA_DIR}/engine-version"
+    install -m 0644 "${rollback_dir}/engine-version.bak" "$engine_version_file"
+  else
+    rm -f "$engine_version_file"
   fi
 }
 
@@ -158,7 +164,7 @@ provider_update() {
     local wait_count=0
     while ! sbd_service_is_active "sing-box-deve" && (( wait_count < 15 )); do
       sleep 1
-      ((wait_count++))
+      ((wait_count += 1))
     done
     if (( wait_count >= 15 )); then
       log_warn "$(msg "核心服务启动超时，正在恢复更新前内核" "Core service start timeout; restoring previous engine binary")"

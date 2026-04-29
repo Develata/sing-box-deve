@@ -177,7 +177,8 @@ if [[ "${1:-}" == "version" ]]; then
   exit 0
 fi
 if [[ "${1:-}" == "generate" ]]; then
-  echo "{\"private_key\":\"a\",\"public_key\":\"b\"}"
+  echo "PrivateKey: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa="
+  echo "PublicKey: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb="
   exit 0
 fi
 exit 0
@@ -194,7 +195,8 @@ exit 0
 MOCK
 chmod +x /opt/sing-box-deve/bin/xray
 
-echo "pubkey-demo" > /opt/sing-box-deve/data/reality_public.key
+echo "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb=" > /opt/sing-box-deve/data/reality_public.key
+echo "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=" > /opt/sing-box-deve/data/reality_private.key
 echo "abcd1234abcd1234" > /opt/sing-box-deve/data/reality_short_id
 
 cat > /etc/sing-box-deve/runtime.env <<EOF

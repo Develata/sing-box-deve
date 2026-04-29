@@ -78,36 +78,25 @@ perform_git_update() {
 }
 
 sync_installed_script_root_from_project() {
-  local runtime_file target_root rel copied=0
-  local runtime_files=(
-    "/etc/sing-box-deve/runtime.env"
-    "${HOME:-}/sing-box-deve/config/runtime.env"
-  )
+  local old_root authoritative_root
 
   [[ -f "${PROJECT_ROOT}/sing-box-deve.sh" ]] || return 0
-  if [[ -z "${UPDATE_MANIFEST_FILES[*]:-}" ]]; then
-    # shellcheck source=lib/update_manifest.sh
-    source "${PROJECT_ROOT}/lib/update_manifest.sh"
+  old_root="$(sbd_read_runtime_script_root 2>/dev/null || true)"
+
+  if sbd_is_ephemeral_script_root "$PROJECT_ROOT"; then
+    sbd_persist_script_root_if_needed "$PROJECT_ROOT" || return 1
   fi
 
-  for runtime_file in "${runtime_files[@]}"; do
-    [[ -f "$runtime_file" ]] || continue
-    target_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$runtime_file" 2>/dev/null || true)"
-    [[ -n "$target_root" && "$target_root" != "$PROJECT_ROOT" ]] || continue
+  authoritative_root="$(sbd_choose_authoritative_script_root "$PROJECT_ROOT" || true)"
+  [[ -n "$authoritative_root" ]] || return 0
+  PROJECT_ROOT="$authoritative_root"
 
-    mkdir -p "$target_root" 2>/dev/null || continue
-    copied=0
-    for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
-      [[ -f "${PROJECT_ROOT}/${rel}" ]] || continue
-      install -D -m 0644 "${PROJECT_ROOT}/${rel}" "${target_root}/${rel}" || return 1
-      ((copied++))
-    done
-    [[ -f "${PROJECT_ROOT}/checksums.txt" ]] && install -D -m 0644 "${PROJECT_ROOT}/checksums.txt" "${target_root}/checksums.txt"
-    for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
-      chmod +x "${target_root}/${rel}" 2>/dev/null || true
-    done
-    log_success "$(msg "已同步持久化脚本副本: ${target_root} (${copied} 个文件)" "Persistent script copy synced: ${target_root} (${copied} files)")"
-  done
+  if [[ "$old_root" != "$authoritative_root" ]]; then
+    sbd_update_runtime_script_root "$authoritative_root" || return 1
+    log_success "$(msg "已更新脚本入口: ${authoritative_root}" "Script entrypoint updated: ${authoritative_root}")"
+  else
+    sbd_update_runtime_script_root "$authoritative_root" 2>/dev/null || true
+  fi
 }
 
 verify_sb_launcher_target() {
@@ -236,6 +225,7 @@ perform_script_self_update() {
   validate_project_root
   check_update_disk_space 10
   acquire_update_lock
+  trap release_update_lock RETURN
 
   if is_git_repo; then
     perform_git_update
@@ -249,7 +239,7 @@ perform_script_self_update() {
   if [[ "${EUID:-$(id -u)}" -eq 0 ]] && declare -F write_sb_launcher >/dev/null 2>&1; then
     write_sb_launcher || log_warn "$(msg "刷新 sb 启动器失败" "Failed to refresh sb launcher")"
   fi
-  verify_sb_launcher_target || true
-
+  verify_sb_launcher_target
+  trap - RETURN
   release_update_lock
 }

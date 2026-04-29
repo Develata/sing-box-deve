@@ -96,11 +96,14 @@ update_command() {
   fi
 
   if [[ "$script_refreshed" == "true" && "$UPDATE_CORE" == "true" ]]; then
-    local next_script="${PROJECT_ROOT}/sing-box-deve.sh"
+    local next_root next_script
+    next_root="$(sbd_choose_authoritative_script_root "$PROJECT_ROOT" || true)"
+    [[ -n "$next_root" ]] || next_root="$PROJECT_ROOT"
+    next_script="${next_root}/sing-box-deve.sh"
     local -a next_args=("update" "--core")
     [[ "${AUTO_YES:-false}" == "true" ]] && next_args+=("--yes")
     [[ -x "$next_script" || -f "$next_script" ]] || die "$(msg "脚本已更新，但找不到新入口: ${next_script}；请重新执行 sb update --core" "Script updated but new entrypoint is missing: ${next_script}; rerun sb update --core")"
-    log_info "$(msg "脚本已刷新，将使用新脚本继续核心更新" "Script refreshed; continuing core update with the refreshed script")"
+    log_info "$(msg "脚本已刷新，将使用新脚本继续核心更新: ${next_script}" "Script refreshed; continuing core update with refreshed script: ${next_script}")"
     exec bash "$next_script" "${next_args[@]}"
   fi
 

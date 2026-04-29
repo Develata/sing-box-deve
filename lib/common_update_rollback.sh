@@ -16,7 +16,7 @@ backup_for_rollback() {
     if [[ -f "${PROJECT_ROOT}/${rel}" ]]; then
       mkdir -p "${rollback_dir}/$(dirname "$rel")"
       cp "${PROJECT_ROOT}/${rel}" "${rollback_dir}/${rel}"
-      ((backup_count++))
+      ((backup_count += 1))
     fi
   done
   [[ -f "${PROJECT_ROOT}/version" ]] && cp "${PROJECT_ROOT}/version" "${rollback_dir}/version"
@@ -49,7 +49,7 @@ perform_script_rollback() {
   for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
     if [[ -f "${rollback_dir}/${rel}" ]]; then
       install -D -m 0644 "${rollback_dir}/${rel}" "${PROJECT_ROOT}/${rel}"
-      ((restored++))
+      ((restored += 1))
     fi
   done
 
@@ -90,7 +90,7 @@ verify_installed_files() {
     if [[ "$expected" != "$actual" ]]; then
       failed_files+=("$rel")
     else
-      ((verified++))
+      ((verified += 1))
     fi
   done
 
