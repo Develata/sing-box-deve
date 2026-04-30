@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.3
+
+- Clarified install/update script authority between Git checkouts and persisted script copies
+- Hardened `sb` launcher verification so script updates fail if the launcher points to the wrong target
+- Improved core update rollback behavior and update regression coverage
+
 ## v1.0.1
 
 - Switched script release versions to plain numeric `major.minor.patch` format

@@ -100,11 +100,13 @@ sync_installed_script_root_from_project() {
 }
 
 verify_sb_launcher_target() {
+  local required="${1:-false}"
   [[ "${EUID:-$(id -u)}" -eq 0 ]] || return 0
-  [[ -x /usr/local/bin/sb ]] || {
-    log_warn "$(msg "未找到 /usr/local/bin/sb，跳过启动器校验" "/usr/local/bin/sb not found, skipping launcher verification")"
+  if [[ ! -x /usr/local/bin/sb ]]; then
+    log_warn "$(msg "未找到 /usr/local/bin/sb" "/usr/local/bin/sb not found")"
+    [[ "$required" == "true" ]] && return 1
     return 0
-  }
+  fi
 
   local resolved_root resolved_version current_version
   resolved_root="$(/usr/local/bin/sb --print-root 2>/dev/null || true)"
@@ -234,12 +236,12 @@ perform_script_self_update() {
   fi
 
   if [[ "${SBD_SCRIPT_SYNC_DONE:-false}" != "true" ]]; then
-    sync_installed_script_root_from_project || log_warn "$(msg "同步持久化脚本副本失败，可重新执行 install 或 update --script" "Failed to sync persistent script copy; rerun install or update --script")"
+    sync_installed_script_root_from_project || die "$(msg "同步脚本入口失败；请检查 runtime.env 权限后重试" "Failed to sync script entrypoint; check runtime.env permissions and retry")"
   fi
   if [[ "${EUID:-$(id -u)}" -eq 0 ]] && declare -F write_sb_launcher >/dev/null 2>&1; then
-    write_sb_launcher || log_warn "$(msg "刷新 sb 启动器失败" "Failed to refresh sb launcher")"
+    write_sb_launcher || die "$(msg "刷新 sb 启动器失败" "Failed to refresh sb launcher")"
   fi
-  verify_sb_launcher_target
+  verify_sb_launcher_target true
   trap - RETURN
   release_update_lock
 }
