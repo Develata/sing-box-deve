@@ -17,11 +17,10 @@ wizard() {
   echo "- vps: $(msg "本机服务器直接运行" "local server runtime")"
   echo "- serv00: $(msg "远程 Serv00 引导部署" "remote Serv00 bootstrap")"
   echo "- sap: $(msg "SAP Cloud Foundry 部署" "SAP Cloud Foundry deployment")"
-  echo "- docker: $(msg "容器化部署" "containerized deployment")"
   if prompt_yes_no "$(msg "使用推荐场景 'vps' 吗？" "Use recommended provider 'vps'?")" "Y"; then
     PROVIDER="vps"
   else
-    prompt_with_default "$(msg "选择场景 [vps/serv00/sap/docker]" "Choose provider [vps/serv00/sap/docker]")" "vps" PROVIDER
+    prompt_with_default "$(msg "选择场景 [vps/serv00/sap]" "Choose provider [vps/serv00/sap]")" "vps" PROVIDER
   fi
 
   echo

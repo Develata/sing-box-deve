@@ -11,14 +11,13 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 - **13 种入站协议**：vless-reality, vmess-ws, vless-ws, naive, hysteria2, tuic, anytls, trojan 等
 - **双引擎**：sing-box / xray 自由切换
-- **4 种部署场景**：VPS / Serv00 / SAP Cloud Foundry / Docker
+- **3 种脚本部署场景**：VPS / Serv00 / SAP Cloud Foundry
 - **多初始化系统**：systemd / OpenRC / nohup+crontab 自动检测
 - **非 root 模式**：支持无 root 权限运行（Serv00/受限环境）
 - **Argo 隧道**：临时/固定模式 + 13 CDN 端口自动展开
 - **SAP 30 区域**：完整 AWS/Azure/GCP/Neo 区域代码映射
-- **GitHub Actions**：SAP 部署、Serv00 SSH 部署、多端保活工作流
+- **GitHub Actions**：Serv00 SSH 部署、多端保活与 CI 工作流
 - **GitHub Pages**：[在线命令生成器](https://develata.github.io/sing-box-deve/)（UUID、暗色主题、CDN 面板、快捷命令）
-- **Docker 容器**：Node.js VLESS-WS 网关 + 健康检查
 - **保活体系**：本地 kp.sh、Serv00 serv00keep.sh、GitHub Actions 多方案
 - **SFW 客户端打包**：自动下载 Windows 客户端并打包配置
 - **Psiphon 预编译**：自动下载 psiphon-tunnel-core 二进制
@@ -61,7 +60,7 @@ sudo sb doctor
   - `xray` 默认 `vless-reality,vmess-ws`
 - 安装后常用就是 4 个命令：`panel`、`doctor`、`list --nodes`、`restart --core`
 - 需要交互控制台时直接输入 `sb`
-- 如果只想稳定使用，可先跳过 Serv00/SAP/Docker/Workers 等进阶章节
+- 如果只想稳定使用，可先跳过 Serv00/SAP/Workers 等进阶章节
 
 最常用命令：
 
@@ -105,7 +104,7 @@ sudo sb doctor
 
 ## 常用命令
 
-默认情况下无需启用任何 keepalive workflow（`main.yml` / `mainh.yml`）。
+默认情况下无需启用任何 keepalive workflow（`mainh.yml`）。
 
 基础流程：
 
@@ -439,7 +438,6 @@ sb uninstall
 
 - `examples/vps-lite.env`
 - `examples/vps-full-argo.env`
-- `examples/docker.env`
 - `examples/settings.conf`
 - `examples/serv00-accounts.json`
 - `examples/sap-accounts.json`
@@ -449,7 +447,6 @@ sb uninstall
 - `scripts/acceptance-matrix.sh`
 - `scripts/integration-smoke.sh`（root + systemd 实机冒烟回归）
 - `scripts/consistency-check.sh`（配置与节点端口/路径一致性检查）
-- `scripts/regression-docker.sh`（Docker 模拟回归：首次安装干跑、协议增删、回滚、doctor）
 - 运行：`bash scripts/acceptance-matrix.sh`
 
 ## 进阶与实现细节（可后看）
@@ -511,7 +508,6 @@ vmpt=8443 argo=vmpt bash <(curl -fsSL https://raw.githubusercontent.com/Develata
 
 - `serv00`：支持单账号和批量 JSON 远程引导
 - `sap`：支持单账号和批量 JSON 部署（CF CLI）
-- `docker`：生成并可执行 `docker-compose` 部署
 
 VPS 安装后快捷命令：
 
@@ -533,7 +529,6 @@ Provider 快捷入口（已实现，不再是占位）：
 ./providers/vps.sh install --profile lite --engine sing-box --protocols vless-reality --yes
 ./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes
 ./providers/sap.sh install --profile lite --engine sing-box --protocols vless-reality --yes
-./providers/docker.sh install --profile lite --engine sing-box --protocols vless-reality --yes
 ```
 
 高级协议参数（对齐 argosbx 风格）：
@@ -562,7 +557,6 @@ PROXYIP_VLESS_XHTTP=203.0.113.10 \
 - `docs/README.md`（文档总索引）
 - `docs/Serv00.md`
 - `docs/SAP.md`
-- `docs/Docker.md`
 - `docs/CONVENTIONS.md`（命名与目录规范）
 - `docs/ACCEPTANCE-MATRIX.md`（验收矩阵）
 - `docs/PANEL-TEMPLATE.md`（面板输出中英文模板）
@@ -571,7 +565,6 @@ PROXYIP_VLESS_XHTTP=203.0.113.10 \
 自动化与保活模板：
 
 - 说明：以下均为**可选模板**，默认部署不依赖它们
-- `.github/workflows/main.yml`（手动保活）
 - `.github/workflows/mainh.yml`（手动保活模板 2）
 - `.github/workflows/ci.yml`（语法、shellcheck、示例校验、checksums 校验）
 - `workers/_worker.js`（反代模板）
@@ -655,7 +648,7 @@ sb warp socks5-stop
 
 ## 路线图
 
-- 持续增强 Serv00/SAP/Docker 的回滚与校验细节
+- 持续增强 Serv00/SAP 的回滚与校验细节
 - 增加更多协议专项诊断与压测辅助
 - 完善 CI 与示例覆盖
 

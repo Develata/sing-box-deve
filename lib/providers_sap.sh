@@ -101,7 +101,7 @@ EOF
   chmod 600 "${SBD_CONFIG_DIR}/sap.env" 2>/dev/null || true
 
   local sap_image
-  sap_image="${SAP_DOCKER_IMAGE:-ygkkk/argosbx}"
+  sap_image="${SAP_IMAGE:-ygkkk/argosbx}"
 
   ensure_cf_cli() {
     if command -v cf >/dev/null 2>&1; then
@@ -224,7 +224,7 @@ jobs:
       - name: Deploy
         run: |
           cf login -a "$SAP_CF_API" -u "$SAP_CF_USERNAME" -p "$SAP_CF_PASSWORD" -o "$SAP_CF_ORG" -s "$SAP_CF_SPACE"
-          cf push "$SAP_APP_NAME" --docker-image ${SAP_DOCKER_IMAGE:-ygkkk/argosbx} -m 512M --health-check-type port
+          cf push "$SAP_APP_NAME" --docker-image ${SAP_IMAGE:-ygkkk/argosbx} -m 512M --health-check-type port
 EOF
   log_success "$(msg "SAP 部署模板已生成到 ${SBD_CONFIG_DIR}" "SAP deployment templates generated under ${SBD_CONFIG_DIR}")"
   return 0

@@ -7,7 +7,7 @@ failed=0
 
 cd "$ROOT_DIR"
 
-for f in sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh container/nodejs/start.sh; do
+for f in sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh; do
   lines="$(wc -l < "$f")"
   if (( lines > MAX_LINES )); then
     echo "File too long (${lines} > ${MAX_LINES}): ${f}"

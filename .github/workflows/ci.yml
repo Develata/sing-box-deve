@@ -23,11 +23,10 @@ jobs:
 
       - name: Bash syntax
         run: |
-          bash -n sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh container/nodejs/start.sh
+          bash -n sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh
 
       - name: JavaScript syntax
         run: |
-          node --check container/nodejs/index.js
           node --check web-generator/app.js
 
       - name: Enforce max 400 lines per shell file
@@ -36,7 +35,7 @@ jobs:
 
       - name: Shellcheck
         run: |
-          shellcheck sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh container/nodejs/start.sh
+          shellcheck sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh
 
       - name: JSON examples validation
         run: |

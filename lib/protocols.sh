@@ -19,7 +19,7 @@ ALL_PROTOCOLS=(
 validate_provider() {
   local provider="$1"
   case "$provider" in
-    vps|serv00|sap|docker) return 0 ;;
+    vps|serv00|sap) return 0 ;;
     *) die "Unsupported provider: $provider" ;;
   esac
 }

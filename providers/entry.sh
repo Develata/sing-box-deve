@@ -4,12 +4,12 @@ set -euo pipefail
 provider="${1:-}"
 shift || true
 [[ -n "$provider" ]] || {
-  echo "Usage: providers/entry.sh <vps|serv00|sap|docker> [command] [args...]" >&2
+  echo "Usage: providers/entry.sh <vps|serv00|sap> [command] [args...]" >&2
   exit 1
 }
 
 case "$provider" in
-  vps|serv00|sap|docker) ;;
+  vps|serv00|sap) ;;
   *)
     echo "Unsupported provider: $provider" >&2
     exit 1

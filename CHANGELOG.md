@@ -26,7 +26,7 @@
 - Fixed all ShellCheck warnings (SC2086, SC2015, SC2034)
 - Added GitHub Pages deployment workflow and root `index.html`
 - Enhanced web-generator with theme toggle, UUID generation, and CDN endpoint selection
-- Stabilized Docker regression test image for CI
+- Stabilized regression test environment for CI
 
 ## v1.0.0-dev.8
 
@@ -75,6 +75,6 @@
 - Added Argo/WARP diagnostics and richer doctor checks
 - Added Serv00/SAP batch JSON validation and batch summary reporting
 - Added static web generator enhancements and examples
-- Added docs split (`Serv00`, `SAP`, `Docker`) and docs index
+- Added docs split (`Serv00`, `SAP`) and docs index
 - Added CI workflow, checksum manifest, acceptance matrix helper script
 - Added outbound upstream proxy mode (`direct/socks/http/https`) for egress forwarding

@@ -1,6 +1,6 @@
 # 实机验收执行单（含 PASS/FAIL 判定）
 
-> 目标：覆盖 `VPS/Serv00/SAP/Docker × Lite/Full × Argo/WARP/上游代理` 的关键组合。
+> 目标：覆盖 `VPS/Serv00/SAP × Lite/Full × Argo/WARP/上游代理` 的关键组合。
 > 要求：在真实目标环境、root 权限下执行。
 
 ## 0) 基线准备
@@ -177,27 +177,7 @@ FAIL：
 
 ---
 
-## 7) Docker
-
-```bash
-sudo ./sing-box-deve.sh install --provider docker --profile lite --engine sing-box --protocols vless-reality
-sudo /etc/sing-box-deve/docker-healthcheck.sh
-sudo ./sing-box-deve.sh list --runtime
-```
-
-PASS：
-
-- 生成 `docker.env` / `docker-compose.yml`
-- 容器运行状态正常
-
-FAIL：
-
-- 文件未生成
-- 容器启动失败无提示
-
----
-
-## 8) 更新与回滚
+## 7) 更新与回滚
 
 ```bash
 sudo ./sing-box-deve.sh update --core --yes
@@ -221,7 +201,7 @@ FAIL：
 
 ```text
 环境：<OS/内存/架构>
-场景覆盖：VPS[PASS] Serv00[PASS/FAIL] SAP[PASS/FAIL] Docker[PASS/FAIL]
+场景覆盖：VPS[PASS] Serv00[PASS/FAIL] SAP[PASS/FAIL]
 功能覆盖：Lite[PASS] Full[PASS] Argo[PASS] WARP[PASS] 上游代理[PASS]
 安全检查：防火墙增量[PASS] 回滚[PASS] 更新校验[PASS]
 结论：<可发布/需修复后发布>

@@ -6,11 +6,10 @@
 
 - `docs/Serv00.md`：Serv00 单账号与批量账号部署说明
 - `docs/SAP.md`：SAP Cloud Foundry 单账号与批量账号部署说明
-- `docs/Docker.md`：Docker/Compose 部署说明
 
 ## 可选模板说明
 
-- GitHub 保活工作流（`main.yml` / `mainh.yml`）是可选模板，默认部署不依赖
+- GitHub 保活工作流（`mainh.yml`）是可选模板，默认部署不依赖
 - Workers 保活模板（`workers_keep.js`）是可选模板，按需启用
 
 ## 规格与约束
@@ -24,5 +23,5 @@
 ## 推荐阅读顺序
 
 1. 先看 `README.md` 的快速开始
-2. 再看对应场景文档（Serv00/SAP/Docker）
+2. 再看对应场景文档（Serv00/SAP）
 3. 最后看 `docs/V1-SPEC.md` 了解边界和路线图

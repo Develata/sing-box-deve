@@ -6,7 +6,7 @@
 
 ## 1) 组合矩阵范围
 
-- Provider: `vps` / `serv00` / `sap` / `docker`
+- Provider: `vps` / `serv00` / `sap`
 - Profile: `lite` / `full`
 - Feature: `argo` / `warp` / `outbound-proxy`
 
@@ -18,7 +18,6 @@
 | vps | full | temp/fixed | off/global | socks/http/https | 通过 | 待目标机执行 |
 | serv00 | lite/full | off/temp/fixed | off | direct/socks/http/https | 通过 | 需凭据执行 |
 | sap | lite/full | off/temp/fixed | off | direct/socks/http/https | 通过 | 需 CF 凭据执行 |
-| docker | lite/full | off/temp/fixed | off/global | direct/socks/http/https | 通过 | 需 Docker 环境执行 |
 
 ## 3) 推荐实机验收命令
 

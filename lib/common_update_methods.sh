@@ -190,6 +190,7 @@ perform_download_update() {
         install -D -m 0644 "${tmp_dir}/${rel}" "${PROJECT_ROOT}/${rel}"
       done
       install -D -m 0644 "$checksums_file" "${PROJECT_ROOT}/checksums.txt"
+      cleanup_obsolete_update_files
 
       for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
         chmod +x "${PROJECT_ROOT}/${rel}" 2>/dev/null || true
@@ -221,6 +222,26 @@ perform_download_update() {
     perform_script_rollback >/dev/null 2>&1 || true
     die "$(msg "安全更新失败：所有更新源不可用或校验失败。已尝试自动回滚，可执行 'sb update --rollback' 再次恢复" "Secure update failed: all sources unavailable or verification failed. Auto-rollback attempted, run 'sb update --rollback' to restore again")"
   fi
+}
+
+cleanup_obsolete_update_files() {
+  local rel dir removed=0
+
+  for rel in "${UPDATE_OBSOLETE_FILES[@]:-}"; do
+    if [[ -e "${PROJECT_ROOT}/${rel}" || -L "${PROJECT_ROOT}/${rel}" ]]; then
+      if rm -f -- "${PROJECT_ROOT}/${rel}"; then
+        removed=$((removed + 1))
+      else
+        log_warn "$(msg "无法删除废弃文件: ${rel}" "Unable to remove obsolete file: ${rel}")"
+      fi
+    fi
+  done
+
+  for dir in "${UPDATE_OBSOLETE_DIRS[@]:-}"; do
+    rmdir --ignore-fail-on-non-empty -- "${PROJECT_ROOT}/${dir}" 2>/dev/null || true
+  done
+
+  (( removed == 0 )) || log_info "$(msg "已清理废弃文件: ${removed} 个" "Removed obsolete files: ${removed}")"
 }
 
 perform_script_self_update() {

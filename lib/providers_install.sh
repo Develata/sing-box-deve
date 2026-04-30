@@ -22,9 +22,6 @@ provider_install() {
     sap)
       provider_sap_install "$profile" "$engine" "$protocols_csv"
       ;;
-    docker)
-      provider_docker_install "$profile" "$engine" "$protocols_csv"
-      ;;
     *)
       die "Unsupported provider: $provider"
       ;;

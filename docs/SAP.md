@@ -13,7 +13,7 @@ export SAP_CF_PASSWORD="your_password"
 export SAP_CF_ORG="your_org"
 export SAP_CF_SPACE="your_space"
 export SAP_APP_NAME="your_app_name"
-export SAP_DOCKER_IMAGE="ygkkk/argosbx"
+export SAP_IMAGE="ygkkk/argosbx"
 ```
 
 执行：
@@ -72,7 +72,6 @@ export SAP_ACCOUNTS_JSON="$(cat examples/sap-accounts.json)"
 
 项目已提供两个 GitHub Actions 工作流：
 
-- **main.yml** — SAP 多账号部署 + 保活（设置 `CF_USERNAMES` / `CF_PASSWORDS` / `REGIONS` 等环境变量）
 - **mainh.yml** — 仅保活，检查已部署应用并自动重启
 
 > ⚠️ 工作流必须在**私有仓库**中运行！

@@ -22,8 +22,3 @@ jobs:
         run: |
           chmod +x scripts/test-clash-ruleset.sh
           bash scripts/test-clash-ruleset.sh
-
-      - name: Docker regression smoke
-        run: |
-          chmod +x scripts/regression-docker.sh
-          bash scripts/regression-docker.sh
