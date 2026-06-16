@@ -107,8 +107,8 @@ provider_cfg_protocol_sync_argo_service() {
     return 0
   fi
 
-  if ! protocol_enabled "vmess-ws" "${plist[@]}" && ! protocol_enabled "vless-ws" "${plist[@]}"; then
-    die "Argo requires vmess-ws or vless-ws when ARGO_MODE is enabled"
+  if ! protocol_enabled "vless-ws" "${plist[@]}"; then
+    die "Argo requires vless-ws when ARGO_MODE is enabled"
   fi
 
   configure_argo_tunnel "$protocols_csv" "${engine:-sing-box}"

@@ -35,16 +35,13 @@ parse_install_args() {
   REALITY_FINGERPRINT="${REALITY_FINGERPRINT:-}"
   REALITY_HANDSHAKE_PORT="${REALITY_HANDSHAKE_PORT:-443}"
   TLS_SERVER_NAME="${TLS_SERVER_NAME:-}"
-  VMESS_WS_PATH="${VMESS_WS_PATH:-/vmess}"
   VLESS_WS_PATH="${VLESS_WS_PATH:-/vless}"
   VLESS_XHTTP_PATH="${VLESS_XHTTP_PATH:-}"
   VLESS_XHTTP_MODE="${VLESS_XHTTP_MODE:-auto}"
   XRAY_VLESS_ENC="${XRAY_VLESS_ENC:-false}"
   XRAY_XHTTP_REALITY="${XRAY_XHTTP_REALITY:-false}"
-  CDN_HOST_VMESS="${CDN_HOST_VMESS:-}"
   CDN_HOST_VLESS_WS="${CDN_HOST_VLESS_WS:-}"
   CDN_HOST_VLESS_XHTTP="${CDN_HOST_VLESS_XHTTP:-}"
-  PROXYIP_VMESS="${PROXYIP_VMESS:-}"
   PROXYIP_VLESS_WS="${PROXYIP_VLESS_WS:-}"
   PROXYIP_VLESS_XHTTP="${PROXYIP_VLESS_XHTTP:-}"
   DOMAIN_SPLIT_DIRECT="${DOMAIN_SPLIT_DIRECT:-}"
@@ -70,7 +67,7 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--acme-dns-provider|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vmess-ws-path|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vmess|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vmess|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
+      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--acme-dns-provider|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
         require_option_value "$1" "$#"
         case "$1" in
           --provider) PROVIDER="$2" ;;
@@ -102,16 +99,13 @@ parse_install_args() {
           --reality-fp) REALITY_FINGERPRINT="$2" ;;
           --reality-port) REALITY_HANDSHAKE_PORT="$2" ;;
           --tls-sni) TLS_SERVER_NAME="$2" ;;
-          --vmess-ws-path) VMESS_WS_PATH="$2" ;;
           --vless-ws-path) VLESS_WS_PATH="$2" ;;
           --vless-xhttp-path) VLESS_XHTTP_PATH="$2" ;;
           --vless-xhttp-mode) VLESS_XHTTP_MODE="$2" ;;
           --xray-vless-enc) XRAY_VLESS_ENC="$2" ;;
           --xray-xhttp-reality) XRAY_XHTTP_REALITY="$2" ;;
-          --cdn-host-vmess) CDN_HOST_VMESS="$2" ;;
           --cdn-host-vless-ws) CDN_HOST_VLESS_WS="$2" ;;
           --cdn-host-vless-xhttp) CDN_HOST_VLESS_XHTTP="$2" ;;
-          --proxyip-vmess) PROXYIP_VMESS="$2" ;;
           --proxyip-vless-ws) PROXYIP_VLESS_WS="$2" ;;
           --proxyip-vless-xhttp) PROXYIP_VLESS_XHTTP="$2" ;;
           --domain-direct) DOMAIN_SPLIT_DIRECT="$2" ;;
@@ -137,7 +131,7 @@ parse_install_args() {
     if [[ "$ENGINE" == "sing-box" ]]; then
       PROTOCOLS="vless-reality,hysteria2"
     else
-      PROTOCOLS="vless-reality,vmess-ws"
+      PROTOCOLS="vless-reality,vless-ws"
     fi
   fi
 

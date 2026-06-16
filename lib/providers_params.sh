@@ -81,10 +81,6 @@ sbd_tls_server_name() {
   printf '%s' "$host"
 }
 
-sbd_vmess_ws_path() {
-  normalize_path "$(param_get "VMESS_WS_PATH" "vmess_ws_path" "/vmess")" "/vmess"
-}
-
 sbd_vless_ws_path() {
   normalize_path "$(param_get "VLESS_WS_PATH" "vless_ws_path" "/vless")" "/vless"
 }
@@ -99,13 +95,6 @@ sbd_vless_xhttp_mode() {
   param_get "VLESS_XHTTP_MODE" "vless_xhttp_mode" "auto"
 }
 
-sbd_cdn_host_vmess() {
-  local host
-  host="$(param_get "CDN_HOST_VMESS" "cdn_host_vmess" "")"
-  [[ -n "$host" ]] || host="$(param_get "CDN_TEMPLATE_HOST" "cdn_template_host" "")"
-  printf '%s' "$host"
-}
-
 sbd_cdn_host_vless_ws() {
   local host
   host="$(param_get "CDN_HOST_VLESS_WS" "cdn_host_vless_ws" "")"
@@ -118,11 +107,6 @@ sbd_cdn_host_vless_xhttp() {
   host="$(param_get "CDN_HOST_VLESS_XHTTP" "cdn_host_vless_xhttp" "")"
   [[ -n "$host" ]] || host="$(param_get "CDN_TEMPLATE_HOST" "cdn_template_host" "")"
   printf '%s' "$host"
-}
-
-sbd_proxyip_vmess() {
-  local fallback="$1"
-  param_get "PROXYIP_VMESS" "proxyip_vmess" "$fallback"
 }
 
 sbd_proxyip_vless_ws() {

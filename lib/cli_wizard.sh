@@ -49,7 +49,7 @@ wizard() {
   if [[ "$ENGINE" == "sing-box" ]]; then
     default_protocols="vless-reality,hysteria2"
   else
-    default_protocols="vless-reality,vmess-ws"
+    default_protocols="vless-reality,vless-ws"
   fi
   PROTOCOLS="$default_protocols"
   if prompt_yes_no "$(msg "保留默认协议 '${default_protocols}' 吗？" "Keep default protocols '${default_protocols}'?")" "Y"; then

@@ -11,24 +11,21 @@ write_nodes_output() {
   uuid="$(ensure_uuid)"
   : > "$SBD_NODES_BASE_FILE"
 
-  local reality_sni reality_fp tls_sni vm_path vless_ws_path vless_ws_path_uri
-  local xhttp_path xhttp_path_uri xhttp_mode enc_vless vm_cdn_host
-  local ip_vmess ip_vless_ws ip_xhttp public_key short_id
-  local p_vless_reality p_vmess p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic
-  local p_trojan p_anytls p_anyreality p_wg p_socks
+  local reality_sni reality_fp tls_sni vless_ws_path vless_ws_path_uri
+  local xhttp_path xhttp_path_uri xhttp_mode enc_vless
+  local ip_vless_ws ip_xhttp public_key short_id
+  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic
+  local p_trojan p_anytls
   local protocols=()
 
   reality_sni="$(sbd_reality_server_name)"
   reality_fp="$(sbd_reality_fingerprint)"
   tls_sni="$(sbd_tls_server_name)"
-  vm_path="$(sbd_vmess_ws_path)"
   vless_ws_path="$(sbd_vless_ws_path)"
   vless_ws_path_uri="$(uri_encode "$vless_ws_path")"
   xhttp_path="$(sbd_vless_xhttp_path "$uuid")"
   xhttp_path_uri="$(uri_encode "$xhttp_path")"
   xhttp_mode="$(sbd_vless_xhttp_mode)"
-  vm_cdn_host="$(sbd_cdn_host_vmess)"
-  ip_vmess="$(sbd_proxyip_vmess "$ip")"
   ip_vless_ws="$(sbd_proxyip_vless_ws "$ip")"
   ip_xhttp="$(sbd_proxyip_vless_xhttp "$ip")"
 
@@ -49,7 +46,6 @@ write_nodes_output() {
 
   protocols_to_array "$protocols_csv" protocols
   p_vless_reality="$(resolve_protocol_port_for_engine "$engine" "vless-reality")"
-  p_vmess="$(resolve_protocol_port_for_engine "$engine" "vmess-ws")"
   p_vless_ws="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
   p_xhttp="$(resolve_protocol_port_for_engine "$engine" "vless-xhttp")"
   p_ss="$(resolve_protocol_port_for_engine "$engine" "shadowsocks-2022")"
@@ -58,17 +54,11 @@ write_nodes_output() {
   p_tuic="$(resolve_protocol_port_for_engine "$engine" "tuic")"
   p_trojan="$(resolve_protocol_port_for_engine "$engine" "trojan")"
   p_anytls="$(resolve_protocol_port_for_engine "$engine" "anytls")"
-  p_anyreality="$(resolve_protocol_port_for_engine "$engine" "any-reality")"
-  p_wg="$(resolve_protocol_port_for_engine "$engine" "wireguard")"
-  p_socks="$(resolve_protocol_port_for_engine "$engine" "socks5")"
 
   if protocol_enabled "vless-reality" "${protocols[@]}"; then
     node_link_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id" >> "$SBD_NODES_BASE_FILE"
   fi
 
-  if protocol_enabled "vmess-ws" "${protocols[@]}"; then
-    node_link_vmess_ws "$uuid" "$ip_vmess" "$p_vmess" "$vm_cdn_host" "$vm_path" >> "$SBD_NODES_BASE_FILE"
-  fi
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
     node_link_vless_ws "$uuid" "$ip_vless_ws" "$p_vless_ws" "$enc_vless" "$vless_ws_path_uri" "$(sbd_cdn_host_vless_ws)" >> "$SBD_NODES_BASE_FILE"
   fi
@@ -92,15 +82,6 @@ write_nodes_output() {
   fi
   if protocol_enabled "anytls" "${protocols[@]}"; then
     node_link_anytls "$uuid" "$ip" "$p_anytls" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
-  fi
-  if [[ "$engine" == "sing-box" ]] && protocol_enabled "any-reality" "${protocols[@]}"; then
-    node_link_any_reality "$uuid" "$ip" "$p_anyreality" "$reality_sni" "$public_key" "$short_id" >> "$SBD_NODES_BASE_FILE"
-  fi
-  if protocol_enabled "wireguard" "${protocols[@]}"; then
-    node_link_wireguard "$ip" "$p_wg" >> "$SBD_NODES_BASE_FILE"
-  fi
-  if protocol_enabled "socks5" "${protocols[@]}"; then
-    node_link_socks5 "$uuid" "$ip" "$p_socks" >> "$SBD_NODES_BASE_FILE"
   fi
   if [[ "${WARP_MODE:-off}" != "off" ]]; then
     node_link_warp_mode "${WARP_MODE:-off}" >> "$SBD_NODES_BASE_FILE"

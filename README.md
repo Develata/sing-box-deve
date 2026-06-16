@@ -9,7 +9,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 ## 特性概览
 
-- **13 种入站协议**：vless-reality, vmess-ws, vless-ws, naive, hysteria2, tuic, anytls, trojan 等
+- **9 种入站协议**：vless-reality, vless-ws, shadowsocks-2022, naive, hysteria2, tuic, anytls, trojan, vless-xhttp
 - **双引擎**：sing-box / xray 自由切换
 - **3 种脚本部署场景**：VPS / Serv00 / SAP Cloud Foundry
 - **多初始化系统**：systemd / OpenRC / nohup+crontab 自动检测
@@ -64,7 +64,7 @@ sudo sb doctor
 
 - 推荐直接用 `wizard` 安装：
   - `sing-box` 默认 `vless-reality,hysteria2`
-  - `xray` 默认 `vless-reality,vmess-ws`
+  - `xray` 默认 `vless-reality,vless-ws`
 - 安装后常用就是 4 个命令：`panel`、`doctor`、`list --nodes`、`restart --core`
 - 需要交互控制台时直接输入 `sb`
 - 如果只想稳定使用，可先跳过 Serv00/SAP/Workers 等进阶章节
@@ -352,8 +352,8 @@ sb set-port-egress --clear
 先预览再应用：
 
 ```bash
-sb cfg preview protocol-add vmess-ws random
-sb cfg apply protocol-add vmess-ws random
+sb cfg preview protocol-add vless-ws random
+sb cfg apply protocol-add vless-ws random
 ```
 
 快照查看与回滚：
@@ -470,8 +470,8 @@ sb uninstall
 
 VPS 已支持协议：
 
-- `sing-box`：`vless-reality`、`vmess-ws`、`vless-ws`、`shadowsocks-2022`、`naive`、`hysteria2`、`tuic`、`trojan`、`wireguard`、`anytls`、`any-reality`
-- `xray`：`vless-reality`、`vmess-ws`、`vless-ws`、`vless-xhttp`、`trojan`、`socks5`
+- `sing-box`：`vless-reality`、`vless-ws`、`shadowsocks-2022`、`naive`、`hysteria2`、`tuic`、`trojan`、`anytls`
+- `xray`：`vless-reality`、`vless-ws`、`vless-xhttp`、`trojan`
 
 功能开关：
 
@@ -508,7 +508,7 @@ VPN 分流模式（新增）：
 兼容上游变量模式（对齐 `sing-box-yg/argosbx` 常用写法）：
 
 ```bash
-vmpt=8443 argo=vmpt bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh)
+vwpt=8444 argo=vwpt bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh)
 ```
 
 ## Provider 说明
@@ -534,29 +534,27 @@ Provider 快捷入口（已实现，不再是占位）：
 
 ```bash
 ./providers/vps.sh install --profile lite --engine sing-box --protocols vless-reality --yes
-./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes
+./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vless-ws --argo temp --yes
 ./providers/sap.sh install --profile lite --engine sing-box --protocols vless-reality --yes
 ```
 
 高级协议参数（对齐 argosbx 风格）：
 
 - Reality/TLS：`REALITY_SERVER_NAME`、`REALITY_FINGERPRINT`、`REALITY_HANDSHAKE_PORT`、`TLS_SERVER_NAME`（空值时优先使用 ACME 域名，最后回退 `www.bing.com`）
-- WS/XHTTP：`VMESS_WS_PATH`、`VLESS_WS_PATH`、`VLESS_XHTTP_PATH`、`VLESS_XHTTP_MODE`
+- WS/XHTTP：`VLESS_WS_PATH`、`VLESS_XHTTP_PATH`、`VLESS_XHTTP_MODE`
 - Xray ENC：`XRAY_VLESS_ENC=true`、`XRAY_XHTTP_REALITY=true`
-- 细粒度 CDN/ProxyIP：`CDN_HOST_VMESS`、`CDN_HOST_VLESS_WS`、`CDN_HOST_VLESS_XHTTP`、`PROXYIP_VMESS`、`PROXYIP_VLESS_WS`、`PROXYIP_VLESS_XHTTP`
+- 细粒度 CDN/ProxyIP：`CDN_HOST_VLESS_WS`、`CDN_HOST_VLESS_XHTTP`、`PROXYIP_VLESS_WS`、`PROXYIP_VLESS_XHTTP`
 
 示例（xray + vless enc + xhttp/ws 细粒度）：
 
 ```bash
 XRAY_VLESS_ENC=true \
 REALITY_SERVER_NAME=www.microsoft.com \
-VMESS_WS_PATH=/my-vm \
 VLESS_WS_PATH=/my-vl \
 VLESS_XHTTP_PATH=/my-xh \
-CDN_HOST_VMESS=cdn-a.example.com \
 CDN_HOST_VLESS_WS=cdn-b.example.com \
 PROXYIP_VLESS_XHTTP=203.0.113.10 \
-./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws,vless-ws,vless-xhttp --yes
+./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vless-ws,vless-xhttp --yes
 ```
 
 详细文档：

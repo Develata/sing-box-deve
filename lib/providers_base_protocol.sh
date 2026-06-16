@@ -4,7 +4,6 @@ protocol_port_map() {
   local proto="$1"
   case "$proto" in
     vless-reality) echo "tcp:443" ;;
-    vmess-ws) echo "tcp:8443" ;;
     vless-xhttp) echo "tcp:9443" ;;
     vless-ws) echo "tcp:8444" ;;
     shadowsocks-2022) echo "tcp:2443" ;;
@@ -12,12 +11,9 @@ protocol_port_map() {
     hysteria2) echo "udp:8443" ;;
     tuic) echo "udp:10443" ;;
     anytls) echo "tcp:20443" ;;
-    any-reality) echo "tcp:30443" ;;
     argo) echo "tcp:8080" ;;
     warp) echo "udp:51820" ;;
     trojan) echo "tcp:4433" ;;
-    wireguard) echo "udp:51820" ;;
-    socks5) echo "tcp:10808" ;;
     *) die "No port map for protocol: $proto" ;;
   esac
 }
@@ -40,7 +36,6 @@ protocol_inbound_tag() {
   local protocol="$1"
   case "$protocol" in
     vless-reality) echo "vless-reality" ;;
-    vmess-ws) echo "vmess-ws" ;;
     vless-ws) echo "vless-ws" ;;
     vless-xhttp) echo "vless-xhttp" ;;
     shadowsocks-2022) echo "ss-2022" ;;
@@ -48,10 +43,7 @@ protocol_inbound_tag() {
     hysteria2) echo "hy2" ;;
     tuic) echo "tuic" ;;
     trojan) echo "trojan" ;;
-    wireguard) echo "wireguard" ;;
     anytls) echo "anytls" ;;
-    any-reality) echo "any-reality" ;;
-    socks5) echo "socks5" ;;
     *) return 1 ;;
   esac
 }
@@ -101,13 +93,13 @@ engine_supports_protocol() {
   case "$engine" in
     sing-box)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|shadowsocks-2022|naive|hysteria2|tuic|trojan|wireguard|anytls|any-reality) return 0 ;;
+        vless-reality|vless-ws|shadowsocks-2022|naive|hysteria2|tuic|trojan|anytls) return 0 ;;
         *) return 1 ;;
       esac
       ;;
     xray)
       case "$protocol" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|socks5) return 0 ;;
+        vless-reality|vless-ws|vless-xhttp|trojan) return 0 ;;
         *) return 1 ;;
       esac
       ;;

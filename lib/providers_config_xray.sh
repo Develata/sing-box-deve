@@ -5,10 +5,9 @@ build_xray_config() {
   local config_file="${SBD_CONFIG_DIR}/xray-config.json"
   local uuid
   uuid="$(ensure_uuid)"
-  local reality_server_name reality_port ws_path_vmess ws_path_vless xhttp_path xhttp_mode vless_decryption
+  local reality_server_name reality_port ws_path_vless xhttp_path xhttp_mode vless_decryption
   reality_server_name="$(sbd_reality_server_name)"
   reality_port="$(sbd_reality_handshake_port)"
-  ws_path_vmess="$(sbd_vmess_ws_path)"
   ws_path_vless="$(sbd_vless_ws_path)"
   xhttp_path="$(sbd_vless_xhttp_path "$uuid")"
   xhttp_mode="$(sbd_vless_xhttp_mode)"
@@ -19,13 +18,11 @@ build_xray_config() {
     [[ -n "$vless_decryption" ]] || die "XRAY_VLESS_ENC=true but decryption key is empty"
   fi
 
-  local port_vless_reality port_vmess_ws port_vless_ws port_vless_xhttp port_trojan port_socks5
+  local port_vless_reality port_vless_ws port_vless_xhttp port_trojan
   port_vless_reality="$(resolve_protocol_port_for_engine "xray" "vless-reality")"
-  port_vmess_ws="$(resolve_protocol_port_for_engine "xray" "vmess-ws")"
   port_vless_ws="$(resolve_protocol_port_for_engine "xray" "vless-ws")"
   port_vless_xhttp="$(resolve_protocol_port_for_engine "xray" "vless-xhttp")"
   port_trojan="$(resolve_protocol_port_for_engine "xray" "trojan")"
-  port_socks5="$(resolve_protocol_port_for_engine "xray" "socks5")"
 
   if [[ ! -f "${SBD_DATA_DIR}/xray_private.key" ]]; then
     local out
@@ -61,11 +58,6 @@ build_xray_config() {
     log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 xray 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-xray path")"
   fi
 
-  if protocol_enabled "vmess-ws" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "vmess-ws" "$port_vmess_ws" \
-      "$(xray_fragment_vmess_ws "$uuid" "$port_vmess_ws" "$ws_path_vmess")"
-  fi
-
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "vless-ws" "$port_vless_ws" \
       "$(xray_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless" "$vless_decryption")"
@@ -81,11 +73,6 @@ build_xray_config() {
   if protocol_enabled "trojan" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "trojan" "$port_trojan" \
       "$(xray_fragment_trojan "$uuid" "$port_trojan" "$cert_file" "$key_file")"
-  fi
-
-  if protocol_enabled "socks5" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "socks5" "$port_socks5" \
-      "$(xray_fragment_socks5 "$uuid" "$port_socks5")"
   fi
 
   local xray_outbounds xray_routing primary_tag available_outbounds

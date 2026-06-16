@@ -20,23 +20,6 @@ xray_fragment_vless_reality() {
 EOF
 }
 
-xray_fragment_vmess_ws() {
-  local uuid="$1" port="$2" ws_path="$3"
-  local uuid_json ws_path_json
-  uuid_json="$(sbd_json_string "$uuid")"
-  ws_path_json="$(sbd_json_string "$ws_path")"
-  cat <<EOF
-    {
-      "tag": "vmess-ws",
-      "listen": "::",
-      "port": ${port},
-      "protocol": "vmess",
-      "settings": {"clients": [{"id": ${uuid_json}}]},
-      "streamSettings": {"network": "ws", "wsSettings": {"path": ${ws_path_json}}}
-    }
-EOF
-}
-
 xray_fragment_vless_ws() {
   local uuid="$1" port="$2" ws_path="$3" decryption="$4"
   local uuid_json ws_path_json decryption_json
@@ -106,21 +89,6 @@ xray_fragment_trojan() {
       "protocol": "trojan",
       "settings": {"clients": [{"password": ${uuid_json}}]},
       "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": ${cert_file_json}, "keyFile": ${key_file_json}}]}}
-    }
-EOF
-}
-
-xray_fragment_socks5() {
-  local uuid="$1" port="$2"
-  local uuid_json
-  uuid_json="$(sbd_json_string "$uuid")"
-  cat <<EOF
-    {
-      "tag": "socks5",
-      "listen": "::",
-      "port": ${port},
-      "protocol": "socks",
-      "settings": {"auth": "password", "accounts": [{"user": ${uuid_json}, "pass": ${uuid_json}}], "udp": true}
     }
 EOF
 }

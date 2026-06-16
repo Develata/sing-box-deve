@@ -5,11 +5,6 @@ node_link_vless_reality() {
   echo "vless://$uuid@$ip:${port}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$sni&fp=$fp&pbk=$pbk&sid=$sid&type=tcp#sbd-vless-reality"
 }
 
-node_link_vmess_ws() {
-  local uuid="$1" ip="$2" port="$3" host="$4" path="$5"
-  echo "vmess://$(printf '{"v":"2","ps":"sbd-vmess-ws","add":"%s","port":"%s","id":"%s","aid":"0","net":"ws","type":"none","host":"%s","path":"%s","tls":""}' "$ip" "$port" "$uuid" "$host" "$path" | base64 -w 0)"
-}
-
 node_link_vless_ws() {
   local uuid="$1" ip="$2" port="$3" enc="$4" path_uri="$5" host="$6"
   local vh=""
@@ -52,21 +47,6 @@ node_link_trojan() {
 node_link_anytls() {
   local uuid="$1" ip="$2" port="$3" sni="$4"
   echo "anytls://$uuid@$ip:${port}?security=tls&sni=$sni#sbd-anytls"
-}
-
-node_link_any_reality() {
-  local uuid="$1" ip="$2" port="$3" sni="$4" pbk="$5" sid="$6"
-  echo "anytls://$uuid@$ip:${port}?security=reality&sni=$sni&pbk=$pbk&sid=$sid#sbd-any-reality"
-}
-
-node_link_wireguard() {
-  local ip="$1" port="$2"
-  echo "wireguard://$ip:${port}#sbd-wireguard-server"
-}
-
-node_link_socks5() {
-  local uuid="$1" ip="$2" port="$3"
-  echo "socks://$uuid:$uuid@$ip:${port}#sbd-socks5"
 }
 
 node_link_warp_mode() {

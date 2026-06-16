@@ -2,7 +2,6 @@
 
 ALL_PROTOCOLS=(
   vless-reality
-  vmess-ws
   vless-xhttp
   vless-ws
   shadowsocks-2022
@@ -10,10 +9,7 @@ ALL_PROTOCOLS=(
   hysteria2
   tuic
   anytls
-  any-reality
   trojan
-  wireguard
-  socks5
 )
 
 validate_provider() {
@@ -137,9 +133,6 @@ protocol_hint() {
     vless-reality)
       echo "risk=low;resource=low;note=default secure choice"
       ;;
-    vmess-ws)
-      echo "risk=medium;resource=low;note=easy CDN compatibility"
-      ;;
     vless-xhttp)
       echo "risk=medium;resource=medium;note=requires xray runtime"
       ;;
@@ -161,17 +154,8 @@ protocol_hint() {
     anytls)
       echo "risk=medium;resource=medium;note=less common client ecosystem"
       ;;
-    any-reality)
-      echo "risk=medium;resource=medium;note=reality key management required"
-      ;;
     trojan)
       echo "risk=low;resource=low;note=tls cert hygiene required"
-      ;;
-    wireguard)
-      echo "risk=medium;resource=low;note=needs peer config management"
-      ;;
-    socks5)
-      echo "risk=medium;resource=low;note=for app proxy integration, not public node sharing"
       ;;
     *)
       echo "risk=unknown;resource=unknown;note=n/a"
@@ -183,7 +167,6 @@ protocol_capability() {
   local protocol="$1"
   case "$protocol" in
     vless-reality) echo "tls=yes;reality=yes;multi-port=yes;warp-egress=yes;share=yes" ;;
-    vmess-ws) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     vless-xhttp) echo "tls=yes;reality=optional;multi-port=yes;warp-egress=yes;share=yes" ;;
     vless-ws) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     shadowsocks-2022) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
@@ -191,10 +174,7 @@ protocol_capability() {
     hysteria2) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     tuic) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     anytls) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
-    any-reality) echo "tls=yes;reality=yes;multi-port=yes;warp-egress=yes;share=yes" ;;
     trojan) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
-    wireguard) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
-    socks5) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=limited" ;;
     *) echo "tls=unknown;reality=unknown;multi-port=unknown;warp-egress=unknown;share=unknown" ;;
   esac
 }

@@ -69,9 +69,9 @@ resolve_protocol_port() {
   printf '%s\n' "$port"
 }
 
-protocols="vless-reality,vmess-ws,vless-ws"
+protocols="vless-reality,vless-ws"
 if [[ "$engine" == "xray" ]]; then
-  protocols="vless-reality,vmess-ws,vless-ws,vless-xhttp"
+  protocols="vless-reality,vless-ws,vless-xhttp"
 fi
 
 run_step "install baseline (${engine})" \

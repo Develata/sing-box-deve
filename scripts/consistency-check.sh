@@ -137,21 +137,6 @@ check_port_match "vless-ws" "#sbd-vless-ws"
 check_port_match "vless-xhttp" "#sbd-vless-xhttp"
 check_port_match "trojan" "#sbd-trojan"
 
-vm_line="$(node_line "sbd-vmess-ws")"
-if [[ -n "$vm_line" ]]; then
-  vm_payload="${vm_line#vmess://}"
-  vm_json="$(printf '%s' "$vm_payload" | base64 -d 2>/dev/null || true)"
-  if [[ -n "$vm_json" ]]; then
-    cfg_port="$(config_port_by_tag "vmess-ws")"
-    node_port="$(printf '%s' "$vm_json" | jq -r '.port // empty')"
-    cfg_path="$(if [[ "$engine" == "sing-box" ]]; then jq -r '.inbounds[]|select(.tag=="vmess-ws")|(.transport.path // empty)' "$config_file" | head -n1; else jq -r '.inbounds[]|select(.tag=="vmess-ws")|(.streamSettings.wsSettings.path // empty)' "$config_file" | head -n1; fi)"
-    node_path="$(printf '%s' "$vm_json" | jq -r '.path // empty')"
-    [[ "$cfg_port" == "$node_port" ]] || fail "port mismatch for vmess-ws: config=${cfg_port} node=${node_port}"
-    [[ "$cfg_path" == "$node_path" ]] || fail "path mismatch for vmess-ws: config=${cfg_path} node=${node_path}"
-    log "vmess-ws ok"
-  fi
-fi
-
 vl_line="$(node_line "#sbd-vless-ws")"
 if [[ -n "$vl_line" ]]; then
   cfg_path="$(if [[ "$engine" == "sing-box" ]]; then jq -r '.inbounds[]|select(.tag=="vless-ws")|(.transport.path // empty)' "$config_file" | head -n1; else jq -r '.inbounds[]|select(.tag=="vless-ws")|(.streamSettings.wsSettings.path // empty)' "$config_file" | head -n1; fi)"

@@ -3,7 +3,6 @@
 protocol_link_marker_by_protocol() {
   case "$1" in
     vless-reality) echo "#sbd-vless-reality" ;;
-    vmess-ws) echo "sbd-vmess-ws" ;;
     vless-ws) echo "#sbd-vless-ws" ;;
     vless-xhttp) echo "#sbd-vless-xhttp" ;;
     shadowsocks-2022) echo "#sbd-shadowsocks-2022" ;;
@@ -12,9 +11,6 @@ protocol_link_marker_by_protocol() {
     tuic) echo "#sbd-tuic" ;;
     trojan) echo "#sbd-trojan" ;;
     anytls) echo "#sbd-anytls" ;;
-    any-reality) echo "#sbd-any-reality" ;;
-    socks5) echo "#sbd-socks5" ;;
-    wireguard) echo "#sbd-wireguard-server" ;;
     *) echo "" ;;
   esac
 }

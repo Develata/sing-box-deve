@@ -40,17 +40,14 @@ configure_argo_tunnel() {
     return 0
   fi
 
-  if ! protocol_enabled "vmess-ws" "${protocols[@]}" && ! protocol_enabled "vless-ws" "${protocols[@]}"; then
-    die "Argo requires vmess-ws or vless-ws protocol"
+  if ! protocol_enabled "vless-ws" "${protocols[@]}"; then
+    die "Argo requires vless-ws protocol"
   fi
 
   install_cloudflared_binary
 
   local target_port
-  target_port="$(resolve_protocol_port_for_engine "$engine" "vmess-ws")"
-  if protocol_enabled "vless-ws" "${protocols[@]}"; then
-    target_port="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
-  fi
+  target_port="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
 
   local mode="${ARGO_MODE:-temp}"
   local token="${ARGO_TOKEN:-}"

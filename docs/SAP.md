@@ -19,7 +19,7 @@ export SAP_IMAGE="ygkkk/argosbx"
 执行：
 
 ```bash
-./sing-box-deve.sh install --provider sap --profile full --engine sing-box --protocols vless-reality,vmess-ws
+./sing-box-deve.sh install --provider sap --profile full --engine sing-box --protocols vless-reality,vless-ws
 ```
 
 ## 2) 多账号批量部署

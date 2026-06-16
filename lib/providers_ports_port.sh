@@ -8,11 +8,11 @@ provider_set_port_info() {
   local whitelist cfg
   case "${engine:-sing-box}" in
     sing-box)
-      whitelist="vless-reality,vmess-ws,vless-ws,shadowsocks-2022,naive,hysteria2,tuic,trojan,wireguard,anytls,any-reality"
+      whitelist="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic,trojan,anytls"
       cfg="${SBD_CONFIG_DIR}/config.json"
       ;;
     xray)
-      whitelist="vless-reality,vmess-ws,vless-ws,vless-xhttp,trojan,socks5"
+      whitelist="vless-reality,vless-ws,vless-xhttp,trojan"
       cfg="${SBD_CONFIG_DIR}/xray-config.json"
       ;;
     *)
@@ -27,7 +27,7 @@ provider_set_port_info() {
   if [[ "${engine}" == "sing-box" ]]; then
     jq -r '.inbounds[] | [.tag, (.listen_port // .port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
-        vless-reality|vmess-ws|vless-ws|ss-2022|naive|hy2|tuic|trojan|wireguard|anytls|any-reality)
+        vless-reality|vless-ws|ss-2022|naive|hy2|tuic|trojan|anytls)
           log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac
@@ -35,7 +35,7 @@ provider_set_port_info() {
   else
     jq -r '.inbounds[] | [.tag, (.port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
-        vless-reality|vmess-ws|vless-ws|vless-xhttp|trojan|socks5)
+        vless-reality|vless-ws|vless-xhttp|trojan)
           log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac

@@ -8,7 +8,8 @@ protocol_csv_has() {
 }
 
 rewrite_link_with_endpoint() {
-  local link="$1" endpoint="$2" label="$3" host port payload json out
+  local link="$1" endpoint="$2" host port
+  shift 2 || true
   if [[ "$endpoint" =~ ^(\[[^]]+\]|[^:]+):([0-9]+)$ ]]; then
     host="${BASH_REMATCH[1]}"; port="${BASH_REMATCH[2]}"
   else
@@ -16,16 +17,7 @@ rewrite_link_with_endpoint() {
   fi
 
   case "$link" in
-    vmess://*)
-      payload="${link#vmess://}"
-      json="$(printf '%s' "$payload" | base64 -d 2>/dev/null || true)"
-      [[ -n "$json" ]] || return 1
-      if ! command -v jq >/dev/null 2>&1; then return 1; fi
-      out="$(printf '%s' "$json" | jq -c --arg add "$host" --arg port "$port" '.add=$add | .port=$port | .ps=(.ps + "-'"${label}"'")' 2>/dev/null || true)"
-      [[ -n "$out" ]] || return 1
-      echo "vmess://$(printf '%s' "$out" | base64 -w 0)"
-      ;;
-    vless://*|trojan://*|hysteria2://*|anytls://*|socks://*|wireguard://*|tuic://*|ss://*|naive+https://*)
+    vless://*|trojan://*|hysteria2://*|anytls://*|tuic://*|ss://*|naive+https://*)
       local pre after hp suffix
       if [[ "$link" == *"@"* ]]; then
         pre="${link%%@*}@"; after="${link#*@}"
@@ -40,13 +32,8 @@ rewrite_link_with_endpoint() {
 }
 
 extract_link_host() {
-  local link="$1" payload json
+  local link="$1"
   case "$link" in
-    vmess://*)
-      payload="${link#vmess://}"
-      json="$(printf '%s' "$payload" | base64 -d 2>/dev/null || true)"
-      [[ -n "$json" ]] && printf '%s' "$json" | jq -r '.add // empty' 2>/dev/null
-      ;;
     *)
       if [[ "$link" =~ ^[^:]+://[^@]+@([^:/?]+) ]]; then
         echo "${BASH_REMATCH[1]}"
@@ -58,13 +45,8 @@ extract_link_host() {
 }
 
 extract_link_port() {
-  local link="$1" payload json
+  local link="$1"
   case "$link" in
-    vmess://*)
-      payload="${link#vmess://}"
-      json="$(printf '%s' "$payload" | base64 -d 2>/dev/null || true)"
-      [[ -n "$json" ]] && printf '%s' "$json" | jq -r '.port // empty' 2>/dev/null
-      ;;
     *)
       if [[ "$link" =~ @(\[[^]]+\]|[^:/?#]+):([0-9]+) ]]; then
         echo "${BASH_REMATCH[2]}"

@@ -54,7 +54,7 @@ FAIL：
 ## 2) VPS Full + Argo（必测）
 
 ```bash
-sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vmess-ws --argo temp --yes
+sudo ./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vless-ws --argo temp --yes
 sudo ./sing-box-deve.sh panel --full
 sudo ./sing-box-deve.sh doctor
 ```

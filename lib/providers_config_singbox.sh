@@ -12,16 +12,14 @@ build_sing_box_config() {
   private_key="$(<"${SBD_DATA_DIR}/reality_private.key")"
   public_key="$(<"${SBD_DATA_DIR}/reality_public.key")"
   short_id="$(<"${SBD_DATA_DIR}/reality_short_id")"
-  local reality_server_name reality_port tls_server_name ws_path_vmess ws_path_vless
+  local reality_server_name reality_port tls_server_name ws_path_vless
   reality_server_name="$(sbd_reality_server_name)"
   reality_port="$(sbd_reality_handshake_port)"
   tls_server_name="$(sbd_tls_server_name)"
-  ws_path_vmess="$(sbd_vmess_ws_path)"
   ws_path_vless="$(sbd_vless_ws_path)"
-  local port_vless_reality port_vmess_ws port_vless_ws port_ss2022 port_naive port_hysteria2
-  local port_tuic port_trojan port_anytls port_anyreality port_wireguard
+  local port_vless_reality port_vless_ws port_ss2022 port_naive port_hysteria2
+  local port_tuic port_trojan port_anytls
   port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")"
-  port_vmess_ws="$(resolve_protocol_port_for_engine "sing-box" "vmess-ws")"
   port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")"
   port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")"
   port_naive="$(resolve_protocol_port_for_engine "sing-box" "naive")"
@@ -29,8 +27,6 @@ build_sing_box_config() {
   port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")"
   port_trojan="$(resolve_protocol_port_for_engine "sing-box" "trojan")"
   port_anytls="$(resolve_protocol_port_for_engine "sing-box" "anytls")"
-  port_anyreality="$(resolve_protocol_port_for_engine "sing-box" "any-reality")"
-  port_wireguard="$(resolve_protocol_port_for_engine "sing-box" "wireguard")"
   local inbounds=""
   local inbound_map=""
   local protocols=()
@@ -46,11 +42,6 @@ build_sing_box_config() {
     has_warp="true"
   elif protocol_enabled "warp" "${protocols[@]}"; then
     log_warn "$(msg "已启用 warp 协议，但当前 WARP_MODE='${WARP_MODE:-off}' 不指向 sing-box 路径" "Protocol 'warp' enabled but WARP_MODE='${WARP_MODE:-off}' targets non-sing-box path")"
-  fi
-
-  if protocol_enabled "vmess-ws" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "vmess-ws" "$port_vmess_ws" \
-      "$(singbox_fragment_vmess_ws "$uuid" "$port_vmess_ws" "$ws_path_vmess")"
   fi
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
@@ -86,26 +77,6 @@ build_sing_box_config() {
   if protocol_enabled "anytls" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "anytls" "$port_anytls" \
       "$(singbox_fragment_anytls "$uuid" "$port_anytls" "$cert_file" "$key_file")"
-  fi
-
-  if protocol_enabled "any-reality" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "any-reality" "$port_anyreality" \
-      "$(singbox_fragment_any_reality "$uuid" "$port_anyreality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
-  fi
-
-  if protocol_enabled "wireguard" "${protocols[@]}"; then
-    local wg_private wg_public
-    command -v wg >/dev/null 2>&1 || die "wireguard protocol requires 'wg' command (install wireguard-tools)"
-    if [[ ! -f "${SBD_DATA_DIR}/wg_private.key" ]]; then
-      wg_private="$(wg genkey)"
-      wg_public="$(printf '%s' "$wg_private" | wg pubkey)"
-      echo "$wg_private" > "${SBD_DATA_DIR}/wg_private.key"
-      echo "$wg_public" > "${SBD_DATA_DIR}/wg_public.key"
-      chmod 600 "${SBD_DATA_DIR}/wg_private.key" "${SBD_DATA_DIR}/wg_public.key"
-    fi
-    wg_private="$(<"${SBD_DATA_DIR}/wg_private.key")"
-    sbd_inbounds_append inbounds inbound_map "wireguard" "$port_wireguard" \
-      "$(singbox_fragment_wireguard "$port_wireguard" "$wg_private")"
   fi
 
   local outbounds final_tag upstream_mode available_outbounds

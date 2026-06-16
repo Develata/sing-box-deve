@@ -41,23 +41,6 @@ singbox_fragment_vless_reality() {
 EOF
 }
 
-singbox_fragment_vmess_ws() {
-  local uuid="$1" port="$2" ws_path="$3"
-  local uuid_json ws_path_json
-  uuid_json="$(sbd_json_string "$uuid")"
-  ws_path_json="$(sbd_json_string "$ws_path")"
-  cat <<EOF
-    {
-      "type": "vmess",
-      "tag": "vmess-ws",
-      "listen": "::",
-      "listen_port": ${port},
-      "users": [{"uuid": ${uuid_json}}],
-      "transport": {"type": "ws", "path": ${ws_path_json}}
-    }
-EOF
-}
-
 singbox_fragment_vless_ws() {
   local uuid="$1" port="$2" ws_path="$3"
   local uuid_json ws_path_json
@@ -208,51 +191,6 @@ singbox_fragment_anytls() {
         "certificate_path": ${cert_file_json},
         "key_path": ${key_file_json}
       }
-    }
-EOF
-}
-
-singbox_fragment_any_reality() {
-  local uuid="$1" port="$2" server_name="$3" reality_port="$4" private_key="$5" short_id="$6"
-  local uuid_json server_name_json private_key_json short_id_json
-  uuid_json="$(sbd_json_string "$uuid")"
-  server_name_json="$(sbd_json_string "$server_name")"
-  private_key_json="$(sbd_json_string "$private_key")"
-  short_id_json="$(sbd_json_string "$short_id")"
-  cat <<EOF
-    {
-      "type": "anytls",
-      "tag": "any-reality",
-      "listen": "::",
-      "listen_port": ${port},
-      "users": [{"password": ${uuid_json}}],
-      "padding_scheme": [],
-      "tls": {
-        "enabled": true,
-        "server_name": ${server_name_json},
-        "reality": {
-          "enabled": true,
-          "handshake": {"server": ${server_name_json}, "server_port": ${reality_port}},
-          "private_key": ${private_key_json},
-          "short_id": [${short_id_json}]
-        }
-      }
-    }
-EOF
-}
-
-singbox_fragment_wireguard() {
-  local port="$1" wg_private="$2"
-  local wg_private_json
-  wg_private_json="$(sbd_json_string "$wg_private")"
-  cat <<EOF
-    {
-      "type": "wireguard",
-      "tag": "wireguard",
-      "listen_port": ${port},
-      "address": ["10.66.66.1/24"],
-      "private_key": ${wg_private_json},
-      "peers": []
     }
 EOF
 }
