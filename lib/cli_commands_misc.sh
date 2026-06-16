@@ -46,6 +46,7 @@ show_version() {
   else
     log_warn "$(msg "无法获取远程版本（可设置 SBD_UPDATE_BASE_URL）" "Unable to fetch remote version (set SBD_UPDATE_BASE_URL if needed)")"
   fi
+  return 0
 }
 
 update_command() {

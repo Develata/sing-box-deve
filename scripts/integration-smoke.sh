@@ -17,10 +17,19 @@ Description:
 EOF
 }
 
+require_value() {
+  local opt="$1" value="${2:-}"
+  if [[ -z "$value" || "$value" == --* ]]; then
+    echo "[ERROR] ${opt} requires a value" >&2
+    usage >&2
+    exit 1
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --script) main_script="$2"; shift 2 ;;
-    --engine) engine="$2"; shift 2 ;;
+    --script) require_value "$1" "${2:-}"; main_script="$2"; shift 2 ;;
+    --engine) require_value "$1" "${2:-}"; engine="$2"; shift 2 ;;
     --with-argo-temp) with_argo_temp="true"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown arg: $1" >&2; usage; exit 1 ;;

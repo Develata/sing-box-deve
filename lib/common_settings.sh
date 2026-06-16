@@ -5,8 +5,6 @@ load_settings() {
     return 0
   fi
 
-  mkdir -p "$SBD_CONFIG_DIR" >/dev/null 2>&1 || true
-
   if [[ ! -f "$SBD_SETTINGS_FILE" && -f "${SBD_CONFIG_DIR}/lang" ]]; then
     local legacy_lang
     legacy_lang="$(tr -d '[:space:]' < "${SBD_CONFIG_DIR}/lang" 2>/dev/null || true)"
@@ -83,7 +81,6 @@ init_i18n() {
 
   if [[ ! -t 0 ]]; then
     LANG_CODE="en"
-    save_settings
     return 0
   fi
 

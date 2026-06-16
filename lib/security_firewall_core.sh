@@ -175,6 +175,11 @@ fw_apply_rule() {
     return 0
   fi
 
+  if [[ "$FW_BACKEND" == "firewalld" ]] && fw_backend_rule_present "$FW_BACKEND" "$proto" "$port" "$tag"; then
+    log_warn "$(msg "firewalld 已存在端口 ${port}/${proto}；为避免移除用户原有规则，本工具不会接管该端口" "firewalld port ${port}/${proto} already exists; leaving it unmanaged to avoid removing a user-owned rule")"
+    return 0
+  fi
+
   fw_apply_rule_to_backend "$FW_BACKEND" "$proto" "$port" "$tag"
 
   fw_record_rule "$FW_BACKEND" "$proto" "$port" "$tag"

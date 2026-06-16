@@ -20,6 +20,7 @@ SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
 SBD_SERVICE_FILE="/etc/systemd/system/sing-box-deve.service"
 SBD_ARGO_SERVICE_FILE="/etc/systemd/system/sing-box-deve-argo.service"
 SBD_PSIPHON_SERVICE_FILE="/etc/systemd/system/sing-box-deve-psiphon.service"
+SBD_FW_REPLAY_SERVICE_FILE="/etc/systemd/system/sing-box-deve-fw-replay.service"
 
 log_info() { printf '[INFO] %s\n' "$*"; }
 log_warn() { printf '[WARN] %s\n' "$*"; }
@@ -122,7 +123,7 @@ detect_os() {
 }
 
 init_runtime_layout() {
-  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR"
+  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR" "$(dirname "$SBD_SERVICE_FILE")"
   touch "$SBD_RULES_FILE"
   chmod 700 "$SBD_DATA_DIR" 2>/dev/null || true
   chmod 700 "$SBD_STATE_DIR" 2>/dev/null || true

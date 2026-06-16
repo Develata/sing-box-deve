@@ -42,8 +42,7 @@ init_user_mode_paths() {
   SBD_SERVICE_FILE="${base}/service/sing-box-deve.service"
   SBD_ARGO_SERVICE_FILE="${base}/service/sing-box-deve-argo.service"
   SBD_PSIPHON_SERVICE_FILE="${base}/service/sing-box-deve-psiphon.service"
-
-  mkdir -p "${base}/service" 2>/dev/null || true
+  SBD_FW_REPLAY_SERVICE_FILE="${base}/service/sing-box-deve-fw-replay.service"
 }
 
 detect_init_system() {

@@ -84,6 +84,7 @@ verify_installed_files() {
     fi
     expected="$(awk -v r="$rel" '$2==r {print $1; exit}' "$checksums_file")"
     if [[ -z "$expected" ]]; then
+      failed_files+=("$rel (missing checksum)")
       continue
     fi
     actual="$(sha256sum "${PROJECT_ROOT}/${rel}" | awk '{print $1}')"

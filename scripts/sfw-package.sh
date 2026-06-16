@@ -16,6 +16,27 @@ SFW_REPO="SagerNet/sing-box"
 
 log() { printf '[SFW] %s\n' "$*"; }
 
+usage() {
+  echo "Usage: bash sfw-package.sh [--output DIR] [--config PATH] [--tag VERSION]"
+}
+
+require_value() {
+  local opt="$1" value="${2:-}"
+  if [[ -z "$value" || "$value" == --* ]]; then
+    log "ERROR: ${opt} requires a value"
+    usage >&2
+    exit 1
+  fi
+}
+
+require_command() {
+  local cmd="$1"
+  command -v "$cmd" >/dev/null 2>&1 || {
+    log "ERROR: required command not found: ${cmd}"
+    exit 1
+  }
+}
+
 fetch_latest_tag() {
   curl -fsSL "https://api.github.com/repos/${SFW_REPO}/releases/latest" | \
     grep -oP '"tag_name":\s*"\K[^"]+' | head -n1
@@ -32,7 +53,7 @@ build_sfw_package() {
 
   local tmpdir
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
+  trap 'rm -rf "${tmpdir:-}"' RETURN
 
   log "Downloading ${asset_name}.zip ..."
   curl -fsSL "$zip_url" -o "${tmpdir}/sfw.zip" || {
@@ -94,16 +115,20 @@ TXT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --output)  SFW_OUTPUT_DIR="$2"; shift 2 ;;
-    --config)  SFW_CONFIG_FILE="$2"; shift 2 ;;
-    --tag)     SFW_TAG="$2"; shift 2 ;;
+    --output)  require_value "$1" "${2:-}"; SFW_OUTPUT_DIR="$2"; shift 2 ;;
+    --config)  require_value "$1" "${2:-}"; SFW_CONFIG_FILE="$2"; shift 2 ;;
+    --tag)     require_value "$1" "${2:-}"; SFW_TAG="$2"; shift 2 ;;
     --help|-h)
-      echo "Usage: bash sfw-package.sh [--output DIR] [--config PATH] [--tag VERSION]"
+      usage
       exit 0
       ;;
-    *) shift ;;
+    *) log "ERROR: Unknown argument: $1"; usage >&2; exit 1 ;;
   esac
 done
+
+require_command curl
+require_command unzip
+require_command zip
 
 if [[ "$SFW_TAG" == "latest" ]]; then
   log "Fetching latest release tag..."
