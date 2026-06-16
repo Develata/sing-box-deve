@@ -39,16 +39,6 @@ node_link_tuic() {
   echo "tuic://$uuid:$uuid@$ip:${port}?congestion_control=bbr&sni=$sni&allow_insecure=1#sbd-tuic"
 }
 
-node_link_trojan() {
-  local uuid="$1" ip="$2" port="$3" sni="$4"
-  echo "trojan://$uuid@$ip:${port}?security=tls&sni=$sni#sbd-trojan"
-}
-
-node_link_anytls() {
-  local uuid="$1" ip="$2" port="$3" sni="$4"
-  echo "anytls://$uuid@$ip:${port}?security=tls&sni=$sni#sbd-anytls"
-}
-
 node_link_warp_mode() {
   local mode="${1:-off}"
   echo "warp-mode://${mode}"

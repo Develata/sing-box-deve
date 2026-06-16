@@ -4,16 +4,15 @@ validate_feature_modes() {
   local key value
   for key in \
     ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS \
-    PSIPHON_ENABLE PSIPHON_MODE PSIPHON_REGION WARP_MODE ROUTE_MODE IP_PREFERENCE \
+    WARP_MODE ROUTE_MODE IP_PREFERENCE \
     CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER \
     REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME \
     VMESS_WS_PATH VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE \
     XRAY_VLESS_ENC XRAY_XHTTP_REALITY \
     CDN_HOST_VMESS CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP \
     PROXYIP_VMESS PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP \
-    DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK PORT_EGRESS_MAP \
-    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS \
-    DIRECT_SHARE_ENDPOINTS PROXY_SHARE_ENDPOINTS WARP_SHARE_ENDPOINTS; do
+    DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK \
+    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS; do
     value="${!key:-}"
     if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
       die "${key} must be a single-line value"
@@ -42,21 +41,6 @@ validate_feature_modes() {
     *) die "Invalid IP_PREFERENCE: ${IP_PREFERENCE}" ;;
   esac
 
-  case "${PSIPHON_ENABLE:-off}" in
-    on|off|true|false|yes|no|1|0|enabled|disabled) ;;
-    *) die "Invalid PSIPHON_ENABLE: ${PSIPHON_ENABLE}" ;;
-  esac
-
-  case "${PSIPHON_MODE:-off}" in
-    off|proxy|global) ;;
-    *) die "Invalid PSIPHON_MODE: ${PSIPHON_MODE}" ;;
-  esac
-
-  case "${PSIPHON_REGION:-auto}" in
-    auto) ;;
-    [a-z][a-z]|[A-Z][A-Z]) ;;
-    *) die "Invalid PSIPHON_REGION: ${PSIPHON_REGION} (expected auto or 2-letter code)" ;;
-  esac
 
   case "${TLS_MODE:-self-signed}" in
     self-signed|acme|acme-auto) ;;
@@ -94,9 +78,6 @@ validate_feature_modes() {
     die "WARP_MODE=global conflicts with OUTBOUND_PROXY_MODE!=direct; choose one outbound strategy"
   fi
 
-  if [[ -n "${PORT_EGRESS_MAP:-}" ]] && declare -F normalize_port_egress_map >/dev/null 2>&1; then
-    PORT_EGRESS_MAP="$(normalize_port_egress_map "${PORT_EGRESS_MAP}")"
-  fi
 }
 
 get_tls_cert_path() {

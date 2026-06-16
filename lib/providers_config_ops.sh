@@ -15,9 +15,6 @@ provider_cfg_load_runtime_exports() {
   export ARGO_DOMAIN="${argo_domain:-}"
   export ARGO_TOKEN="${argo_token:-}"
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-}"
-  export PSIPHON_ENABLE="${psiphon_enable:-off}"
-  export PSIPHON_MODE="${psiphon_mode:-off}"
-  export PSIPHON_REGION="${psiphon_region:-auto}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
@@ -25,9 +22,6 @@ provider_cfg_load_runtime_exports() {
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
   export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
-  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
-  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
-  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
   export IP_PREFERENCE="${ip_preference:-auto}"
   export CDN_TEMPLATE_HOST="${cdn_template_host:-}"
   export TLS_MODE="${tls_mode:-self-signed}"
@@ -52,7 +46,6 @@ provider_cfg_load_runtime_exports() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
-  export PORT_EGRESS_MAP="${port_egress_map:-}"
   CFG_RUNTIME_LOADED="true"
 }
 
@@ -72,7 +65,6 @@ provider_cfg_rebuild_runtime() {
   esac
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
-  provider_psiphon_sync_service
   provider_restart core
 }
 
@@ -123,30 +115,6 @@ provider_cfg_set_ip_preference() {
   IP_PREFERENCE="$pref"
   provider_cfg_rebuild_runtime
   log_success "$(msg "IP 优先级已更新: ${pref}" "IP preference updated: ${pref}")"
-}
-
-provider_cfg_set_psiphon() {
-  ensure_root
-  local enable="${1:-off}" mode="${2:-proxy}" region="${3:-${PSIPHON_REGION:-auto}}"
-  case "$enable" in
-    on|off) ;;
-    *) die "$(msg "用法: cfg psiphon <off|on> [off|proxy|global] [auto|cc]" "Usage: cfg psiphon <off|on> [off|proxy|global] [auto|cc]")" ;;
-  esac
-  case "$mode" in
-    off|proxy|global) ;;
-    *) die "$(msg "Psiphon 模式仅支持 off|proxy|global" "Psiphon mode must be off|proxy|global")" ;;
-  esac
-  provider_cfg_load_runtime_exports
-  PSIPHON_ENABLE="$enable"
-  if [[ "$enable" == "off" ]]; then
-    PSIPHON_MODE="off"
-  else
-    [[ "$mode" == "off" ]] && mode="proxy"
-    PSIPHON_MODE="$mode"
-  fi
-  PSIPHON_REGION="$(provider_psiphon_region_normalize "$region")"
-  provider_cfg_rebuild_runtime
-  log_success "$(msg "Psiphon 已更新: enable=${PSIPHON_ENABLE} mode=${PSIPHON_MODE} region=${PSIPHON_REGION}" "Psiphon updated: enable=${PSIPHON_ENABLE} mode=${PSIPHON_MODE} region=${PSIPHON_REGION}")"
 }
 
 provider_cfg_set_cdn_host() {
@@ -224,7 +192,6 @@ provider_cfg_apply_dispatch() {
   case "$action" in
     rotate-id) provider_cfg_rotate_identity ;;
     argo) provider_cfg_set_argo "$@" ;;
-    psiphon) provider_cfg_set_psiphon "$@" ;;
     ip-pref) provider_cfg_set_ip_preference "$@" ;;
     cdn-host) provider_cfg_set_cdn_host "$@" ;;
     domain-split) provider_cfg_set_domain_split "${1:-}" "${2:-}" "${3:-}" ;;
@@ -232,6 +199,6 @@ provider_cfg_apply_dispatch() {
     protocol-add) provider_cfg_protocol_add "${1:-}" "${2:-random}" "${3:-}" ;;
     protocol-remove) provider_cfg_protocol_remove "${1:-}" ;;
     rebuild) provider_cfg_rebuild_runtime ;;
-    *) die "$(msg "用法: cfg apply <rotate-id|argo|psiphon|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..." "Usage: cfg apply <rotate-id|argo|psiphon|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ...")" ;;
+    *) die "$(msg "用法: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ..." "Usage: cfg apply <rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild> ...")" ;;
   esac
 }

@@ -8,11 +8,11 @@ provider_set_port_info() {
   local whitelist cfg
   case "${engine:-sing-box}" in
     sing-box)
-      whitelist="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic,trojan,anytls"
+      whitelist="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
       cfg="${SBD_CONFIG_DIR}/config.json"
       ;;
     xray)
-      whitelist="vless-reality,vless-ws,vless-xhttp,trojan"
+      whitelist="vless-reality,vless-ws,vless-xhttp"
       cfg="${SBD_CONFIG_DIR}/xray-config.json"
       ;;
     *)
@@ -27,7 +27,7 @@ provider_set_port_info() {
   if [[ "${engine}" == "sing-box" ]]; then
     jq -r '.inbounds[] | [.tag, (.listen_port // .port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
-        vless-reality|vless-ws|ss-2022|naive|hy2|tuic|trojan|anytls)
+        vless-reality|vless-ws|ss-2022|naive|hy2|tuic)
           log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac
@@ -35,7 +35,7 @@ provider_set_port_info() {
   else
     jq -r '.inbounds[] | [.tag, (.port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
-        vless-reality|vless-ws|vless-xhttp|trojan)
+        vless-reality|vless-ws|vless-xhttp)
           log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac
@@ -122,56 +122,6 @@ provider_set_port() {
     die "Failed to apply firewall rule for new port: ${protocol}:${new_port}"
   fi
 
-  if [[ -n "${port_egress_map:-}" ]]; then
-    rollback_runtime="${SBD_RUNTIME_DIR}/set-port.runtime.bak.$$"
-    rollback_nodes="${SBD_RUNTIME_DIR}/set-port.nodes.bak.$$"
-    cp -f "${SBD_CONFIG_DIR}/runtime.env" "$rollback_runtime" 2>/dev/null || true
-    cp -f "$SBD_NODES_FILE" "$rollback_nodes" 2>/dev/null || true
-
-    if ! (
-      provider_cfg_load_runtime_exports
-      PORT_EGRESS_MAP="${port_egress_map:-}"
-      provider_cfg_rebuild_runtime
-    ); then
-      cp -f "$rollback_cfg" "$cfg" 2>/dev/null || true
-      cp -f "$rollback_runtime" "${SBD_CONFIG_DIR}/runtime.env" 2>/dev/null || true
-      cp -f "$rollback_nodes" "$SBD_NODES_FILE" 2>/dev/null || true
-      if [[ "$new_rule_preexisting" != "true" ]]; then
-        fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$new_port" "$new_tag"
-        awk -F'|' -v t="$new_tag" '$4 != t' "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" 2>/dev/null || true
-        mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE" 2>/dev/null || true
-      fi
-      provider_restart core >/dev/null 2>&1 || true
-      rm -f "$rollback_cfg"
-      rm -f "$rollback_runtime" "$rollback_nodes"
-      die "Failed to rebuild runtime after set-port: ${protocol}:${new_port}"
-    fi
-    if [[ -n "$old_tag" ]]; then
-      local answer
-      if fw_rule_exists_record "$old_tag"; then
-        if [[ "${AUTO_YES:-false}" == "true" ]]; then
-          answer="Y"
-        else
-          read -r -p "$(msg "是否移除旧端口的防火墙规则 ${fw_proto}/${old_port}? [Y/n]: " "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: ")" answer
-          answer="${answer:-Y}"
-        fi
-        if [[ "$answer" =~ ^[Yy]$ ]]; then
-          fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag"
-          awk -F'|' -v t="$old_tag" '$4 != t' "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" 2>/dev/null || true
-          mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE" 2>/dev/null || true
-          log_success "$(msg "已移除旧防火墙规则: ${fw_proto}/${old_port}" "Removed old firewall rule: ${fw_proto}/${old_port}")"
-        else
-          log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
-        fi
-      else
-        log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
-      fi
-    fi
-    rm -f "$rollback_cfg"
-    rm -f "$rollback_runtime" "$rollback_nodes"
-    log_success "$(msg "协议端口已更新并重建端口出站策略: ${protocol} -> ${new_port}" "Protocol port updated and port egress policy rebuilt: ${protocol} -> ${new_port}")"
-    return 0
-  fi
 
   if ! ( provider_restart core ); then
     cp -f "$rollback_cfg" "$cfg" 2>/dev/null || true

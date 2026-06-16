@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Pruned mainline extras: SAP, Workers, Psiphon, SFW packaging, GitLab/TG push, jump, set-share, set-port-egress, anytls, trojan.
+
+
 ## v1.0.3
 
 - Clarified install/update script authority between Git checkouts and persisted script copies
@@ -37,8 +42,6 @@
 
 ## v1.0.0-dev.7
 
-- Added multi-port support and jump store functionality (`jump set/show/clear`)
-- Added WARP and multi-port jump features to protocol matrix
 - Enhanced argument parsing with required value checks
 - Improved uninstall verification
 - Modularized files over 250 lines (enforced ≤400 lines CI)
@@ -59,7 +62,6 @@
 
 ## v1.0.0-dev.5
 
-- Added port egress mapping functionality (`set-port-egress --map/--clear`)
 - Enhanced update script checksum validation with missing entry warnings
 - Added cache invalidation handling for version fetching
 - Updated client share groups with v2rayng support
@@ -73,8 +75,8 @@
 - Added secure-by-default interactive confirmations with Enter-to-default behavior
 - Added version display and update command split (`--script`, `--core`, `--all`)
 - Added Argo/WARP diagnostics and richer doctor checks
-- Added Serv00/SAP batch JSON validation and batch summary reporting
+- Added Serv00 batch JSON validation and batch summary reporting
 - Added static web generator enhancements and examples
-- Added docs split (`Serv00`, `SAP`) and docs index
+- Added docs split and docs index
 - Added CI workflow, checksum manifest, acceptance matrix helper script
 - Added outbound upstream proxy mode (`direct/socks/http/https`) for egress forwarding

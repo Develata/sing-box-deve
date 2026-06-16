@@ -27,7 +27,6 @@
         <select id="provider">
           <option value="vps">vps</option>
           <option value="serv00">serv00</option>
-          <option value="sap">sap</option>
         </select>
       </div>
       <div class="row">
@@ -151,61 +150,6 @@
       </div>
     </div>
 
-    <div id="sapFields" class="card hidden">
-      <h2>SAP Cloud Foundry 参数</h2>
-      <div class="row">
-        <label for="sapApi">SAP_CF_API</label>
-        <input id="sapApi" type="text" placeholder="https://api.cf.eu10.hana.ondemand.com">
-      </div>
-      <div class="row">
-        <label for="sapRegion">SAP 地区快选</label>
-        <select id="sapRegion">
-          <option value="">自定义 API（手动填写上方）</option>
-          <optgroup label="Trial 试用区">
-            <option value="https://api.cf.us10-001.hana.ondemand.com">US (us10) - AWS</option>
-            <option value="https://api.cf.ap21.hana.ondemand.com">SG (ap21) - Azure</option>
-          </optgroup>
-          <optgroup label="AWS">
-            <option value="https://api.cf.ap10.hana.ondemand.com">AU (ap10)</option>
-            <option value="https://api.cf.ap11.hana.ondemand.com">SG (ap11)</option>
-            <option value="https://api.cf.ap12.hana.ondemand.com">KR (ap12)</option>
-            <option value="https://api.cf.br10.hana.ondemand.com">BR (br10)</option>
-            <option value="https://api.cf.ca10.hana.ondemand.com">CA (ca10)</option>
-            <option value="https://api.cf.eu10.hana.ondemand.com">DE (eu10)</option>
-            <option value="https://api.cf.jp10.hana.ondemand.com">JP (jp10)</option>
-            <option value="https://api.cf.us10.hana.ondemand.com">US-VA (us10)</option>
-            <option value="https://api.cf.us30.hana.ondemand.com">US-OR (us30)</option>
-          </optgroup>
-          <optgroup label="Google Cloud">
-            <option value="https://api.cf.us20.hana.ondemand.com">US (us20)</option>
-            <option value="https://api.cf.eu20.hana.ondemand.com">NL (eu20)</option>
-            <option value="https://api.cf.jp20.hana.ondemand.com">JP (jp20)</option>
-            <option value="https://api.cf.in30.hana.ondemand.com">IN (in30)</option>
-            <option value="https://api.cf.il30.hana.ondemand.com">IL (il30)</option>
-            <option value="https://api.cf.sa30.hana.ondemand.com">SA (sa30)</option>
-          </optgroup>
-          <optgroup label="Azure 微软">
-            <option value="https://api.cf.ap20.hana.ondemand.com">AU (ap20)</option>
-            <option value="https://api.cf.jp21.hana.ondemand.com">JP (jp21)</option>
-            <option value="https://api.cf.us21.hana.ondemand.com">US-VA (us21)</option>
-            <option value="https://api.cf.br20.hana.ondemand.com">BR (br20)</option>
-            <option value="https://api.cf.ca20.hana.ondemand.com">CA (ca20)</option>
-          </optgroup>
-          <optgroup label="SAP DC">
-            <option value="https://api.cf.ae10.hana.ondemand.com">AE (ae10)</option>
-            <option value="https://api.cf.sa10.hana.ondemand.com">SA (sa10)</option>
-          </optgroup>
-        </select>
-      </div>
-      <div class="row">
-        <label for="sapOrg">SAP_CF_ORG</label>
-        <input id="sapOrg" type="text" placeholder="org name">
-      </div>
-      <div class="row">
-        <label for="sapSpace">SAP_CF_SPACE</label>
-        <input id="sapSpace" type="text" placeholder="space name">
-      </div>
-    </div>
 
     <div class="card">
       <h2>出站代理</h2>

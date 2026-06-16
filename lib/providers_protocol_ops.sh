@@ -12,6 +12,16 @@ provider_cfg_protocol_csv_merge() {
   (IFS=','; echo "${merged[*]}")
 }
 
+csv_has_token() {
+  local csv="$1" needle="$2" item
+  IFS=',' read -r -a _items <<< "$csv"
+  for item in "${_items[@]}"; do
+    item="$(echo "$item" | xargs)"
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
 provider_cfg_protocol_csv_remove() {
   local current_csv="$1" drop_csv="$2"
   local current=() drop=() kept=() p

@@ -17,7 +17,7 @@ rewrite_link_with_endpoint() {
   fi
 
   case "$link" in
-    vless://*|trojan://*|hysteria2://*|anytls://*|tuic://*|ss://*|naive+https://*)
+    vless://*|hysteria2://*|tuic://*|ss://*|naive+https://*)
       local pre after hp suffix
       if [[ "$link" == *"@"* ]]; then
         pre="${link%%@*}@"; after="${link#*@}"

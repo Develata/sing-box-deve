@@ -8,14 +8,12 @@ ALL_PROTOCOLS=(
   naive
   hysteria2
   tuic
-  anytls
-  trojan
 )
 
 validate_provider() {
   local provider="$1"
   case "$provider" in
-    vps|serv00|sap) return 0 ;;
+    vps|serv00) return 0 ;;
     *) die "Unsupported provider: $provider" ;;
   esac
 }
@@ -151,12 +149,6 @@ protocol_hint() {
     tuic)
       echo "risk=medium;resource=medium;note=udp + tls cert overhead"
       ;;
-    anytls)
-      echo "risk=medium;resource=medium;note=less common client ecosystem"
-      ;;
-    trojan)
-      echo "risk=low;resource=low;note=tls cert hygiene required"
-      ;;
     *)
       echo "risk=unknown;resource=unknown;note=n/a"
       ;;
@@ -173,8 +165,6 @@ protocol_capability() {
     naive) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=limited" ;;
     hysteria2) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     tuic) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
-    anytls) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
-    trojan) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     *) echo "tls=unknown;reality=unknown;multi-port=unknown;warp-egress=unknown;share=unknown" ;;
   esac
 }

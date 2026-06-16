@@ -19,7 +19,7 @@ run_install() {
 
   init_runtime_layout
 
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS PSIPHON_ENABLE PSIPHON_MODE PSIPHON_REGION WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE XRAY_VLESS_ENC XRAY_XHTTP_REALITY CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK PORT_EGRESS_MAP OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS DIRECT_SHARE_ENDPOINTS PROXY_SHARE_ENDPOINTS WARP_SHARE_ENDPOINTS SBD_UUID UUID
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE XRAY_VLESS_ENC XRAY_XHTTP_REALITY CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS SBD_UUID UUID
 
   create_install_context "$provider" "$profile" "$engine" "$protocols_csv"
   auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE"
@@ -72,9 +72,6 @@ apply_config() {
   export ARGO_DOMAIN="${argo_domain:-${ARGO_DOMAIN:-}}"
   export ARGO_TOKEN="${argo_token:-${ARGO_TOKEN:-}}"
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-${ARGO_CDN_ENDPOINTS:-}}"
-  export PSIPHON_ENABLE="${psiphon_enable:-${PSIPHON_ENABLE:-off}}"
-  export PSIPHON_MODE="${psiphon_mode:-${PSIPHON_MODE:-off}}"
-  export PSIPHON_REGION="${psiphon_region:-${PSIPHON_REGION:-auto}}"
   export WARP_MODE="${warp_mode:-${WARP_MODE:-off}}"
   export ROUTE_MODE="${route_mode:-${ROUTE_MODE:-direct}}"
   export IP_PREFERENCE="${ip_preference:-${IP_PREFERENCE:-auto}}"
@@ -101,15 +98,11 @@ apply_config() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-${DOMAIN_SPLIT_DIRECT:-}}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-${DOMAIN_SPLIT_PROXY:-}}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-${DOMAIN_SPLIT_BLOCK:-}}"
-  export PORT_EGRESS_MAP="${port_egress_map:-${PORT_EGRESS_MAP:-}}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-${OUTBOUND_PROXY_MODE:-direct}}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-${OUTBOUND_PROXY_HOST:-}}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-${OUTBOUND_PROXY_PORT:-}}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-${OUTBOUND_PROXY_USER:-}}"
   export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-${OUTBOUND_PROXY_PASS:-}}"
-  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-${DIRECT_SHARE_ENDPOINTS:-}}"
-  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-${PROXY_SHARE_ENDPOINTS:-}}"
-  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-${WARP_SHARE_ENDPOINTS:-}}"
   export SBD_UUID="${SBD_UUID:-${UUID:-}}"
 
   run_install "$provider" "$profile" "$engine" "$protocols" "false"
@@ -123,9 +116,6 @@ apply_runtime() {
   validate_runtime_required_fields
   export ARGO_MODE="${argo_mode:-off}"
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-}"
-  export PSIPHON_ENABLE="${psiphon_enable:-off}"
-  export PSIPHON_MODE="${psiphon_mode:-off}"
-  export PSIPHON_REGION="${psiphon_region:-auto}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
   export IP_PREFERENCE="${ip_preference:-auto}"
@@ -152,15 +142,11 @@ apply_runtime() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
-  export PORT_EGRESS_MAP="${port_egress_map:-}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
   export OUTBOUND_PROXY_PASS="${outbound_proxy_pass:-}"
-  export DIRECT_SHARE_ENDPOINTS="${direct_share_endpoints:-}"
-  export PROXY_SHARE_ENDPOINTS="${proxy_share_endpoints:-}"
-  export WARP_SHARE_ENDPOINTS="${warp_share_endpoints:-}"
 
   run_install "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}" "false"
 }

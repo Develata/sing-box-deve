@@ -39,7 +39,7 @@ jobs:
 
       - name: JSON examples validation
         run: |
-          node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('examples/serv00-accounts.json','utf8')); JSON.parse(fs.readFileSync('examples/sap-accounts.json','utf8'));"
+          node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('examples/serv00-accounts.json','utf8'));"
 
       - name: Clash ruleset generation checks
         run: |

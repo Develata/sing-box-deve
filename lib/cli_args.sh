@@ -18,9 +18,6 @@ parse_install_args() {
   ARGO_DOMAIN="${ARGO_DOMAIN:-}"
   ARGO_TOKEN="${ARGO_TOKEN:-}"
   ARGO_CDN_ENDPOINTS="${ARGO_CDN_ENDPOINTS:-}"
-  PSIPHON_ENABLE="${PSIPHON_ENABLE:-off}"
-  PSIPHON_MODE="${PSIPHON_MODE:-off}"
-  PSIPHON_REGION="${PSIPHON_REGION:-auto}"
   WARP_MODE="${WARP_MODE:-off}"
   ROUTE_MODE="${ROUTE_MODE:-direct}"
   IP_PREFERENCE="${IP_PREFERENCE:-auto}"
@@ -47,15 +44,11 @@ parse_install_args() {
   DOMAIN_SPLIT_DIRECT="${DOMAIN_SPLIT_DIRECT:-}"
   DOMAIN_SPLIT_PROXY="${DOMAIN_SPLIT_PROXY:-}"
   DOMAIN_SPLIT_BLOCK="${DOMAIN_SPLIT_BLOCK:-}"
-  PORT_EGRESS_MAP="${PORT_EGRESS_MAP:-}"
   OUTBOUND_PROXY_MODE="${OUTBOUND_PROXY_MODE:-direct}"
   OUTBOUND_PROXY_HOST="${OUTBOUND_PROXY_HOST:-}"
   OUTBOUND_PROXY_PORT="${OUTBOUND_PROXY_PORT:-}"
   OUTBOUND_PROXY_USER="${OUTBOUND_PROXY_USER:-}"
   OUTBOUND_PROXY_PASS="${OUTBOUND_PROXY_PASS:-}"
-  DIRECT_SHARE_ENDPOINTS="${DIRECT_SHARE_ENDPOINTS:-}"
-  PROXY_SHARE_ENDPOINTS="${PROXY_SHARE_ENDPOINTS:-}"
-  WARP_SHARE_ENDPOINTS="${WARP_SHARE_ENDPOINTS:-}"
   SBD_UUID="${SBD_UUID:-${UUID:-}}"
 
   if declare -F legacy_apply_install_defaults >/dev/null 2>&1; then
@@ -67,7 +60,7 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--psiphon-enable|--psiphon-mode|--psiphon-region|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--acme-dns-provider|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--port-egress-map|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass|--direct-share-endpoints|--proxy-share-endpoints|--warp-share-endpoints)
+      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--acme-dns-provider|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
         require_option_value "$1" "$#"
         case "$1" in
           --provider) PROVIDER="$2" ;;
@@ -82,9 +75,6 @@ parse_install_args() {
           --argo-domain) ARGO_DOMAIN="$2" ;;
           --argo-token) ARGO_TOKEN="$2" ;;
           --cdn-endpoints) ARGO_CDN_ENDPOINTS="$2" ;;
-          --psiphon-enable) PSIPHON_ENABLE="$2" ;;
-          --psiphon-mode) PSIPHON_MODE="$2" ;;
-          --psiphon-region) PSIPHON_REGION="$2" ;;
           --warp-mode) WARP_MODE="$2" ;;
           --route-mode) ROUTE_MODE="$2" ;;
           --ip-preference) IP_PREFERENCE="$2" ;;
@@ -111,15 +101,11 @@ parse_install_args() {
           --domain-direct) DOMAIN_SPLIT_DIRECT="$2" ;;
           --domain-proxy) DOMAIN_SPLIT_PROXY="$2" ;;
           --domain-block) DOMAIN_SPLIT_BLOCK="$2" ;;
-          --port-egress-map) PORT_EGRESS_MAP="$2" ;;
           --outbound-proxy-mode) OUTBOUND_PROXY_MODE="$2" ;;
           --outbound-proxy-host) OUTBOUND_PROXY_HOST="$2" ;;
           --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2" ;;
           --outbound-proxy-user) OUTBOUND_PROXY_USER="$2" ;;
           --outbound-proxy-pass) OUTBOUND_PROXY_PASS="$2" ;;
-          --direct-share-endpoints) DIRECT_SHARE_ENDPOINTS="$2" ;;
-          --proxy-share-endpoints) PROXY_SHARE_ENDPOINTS="$2" ;;
-          --warp-share-endpoints) WARP_SHARE_ENDPOINTS="$2" ;;
         esac
         shift 2
         ;;
@@ -153,14 +139,8 @@ parse_install_args() {
   if [[ -n "${SBD_UUID:-}" ]]; then
     [[ "$SBD_UUID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]] || die "--uuid must be a valid UUID"
   fi
-  case "${PSIPHON_ENABLE,,}" in
-    1|true|yes|on|enabled)
-      [[ "${PSIPHON_MODE:-off}" == "off" ]] && PSIPHON_MODE="proxy"
-      ;;
-  esac
   return 0
 }
 
 source "${PROJECT_ROOT}/lib/cli_args_common.sh"
 source "${PROJECT_ROOT}/lib/cli_args_update.sh"
-source "${PROJECT_ROOT}/lib/cli_args_port_egress.sh"

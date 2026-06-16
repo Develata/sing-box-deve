@@ -19,9 +19,6 @@ provider_install() {
     serv00)
       provider_serv00_install "$profile" "$engine" "$protocols_csv"
       ;;
-    sap)
-      provider_sap_install "$profile" "$engine" "$protocols_csv"
-      ;;
     *)
       die "Unsupported provider: $provider"
       ;;
@@ -106,7 +103,6 @@ provider_vps_install() {
   validate_generated_config "$engine" "true"
   write_systemd_service "$engine"
   configure_argo_tunnel "$protocols_csv" "$engine"
-  provider_psiphon_sync_service
   write_nodes_output "$engine" "$protocols_csv"
 
   mkdir -p "${SBD_CONFIG_DIR}"
@@ -139,9 +135,6 @@ argo_mode=${ARGO_MODE:-off}
 argo_domain=${ARGO_DOMAIN:-}
 argo_token=${ARGO_TOKEN:-}
 argo_cdn_endpoints=${ARGO_CDN_ENDPOINTS:-}
-psiphon_enable=${PSIPHON_ENABLE:-off}
-psiphon_mode=${PSIPHON_MODE:-off}
-psiphon_region=${PSIPHON_REGION:-auto}
 warp_mode=${WARP_MODE:-off}
 route_mode=${ROUTE_MODE:-direct}
 ip_preference=${IP_PREFERENCE:-auto}
@@ -171,15 +164,11 @@ proxyip_vless_xhttp=${PROXYIP_VLESS_XHTTP:-${proxyip_vless_xhttp:-}}
 domain_split_direct=${DOMAIN_SPLIT_DIRECT:-}
 domain_split_proxy=${DOMAIN_SPLIT_PROXY:-}
 domain_split_block=${DOMAIN_SPLIT_BLOCK:-}
-port_egress_map=${PORT_EGRESS_MAP-${port_egress_map:-}}
 outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
 outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 outbound_proxy_user=${OUTBOUND_PROXY_USER:-}
 outbound_proxy_pass=${OUTBOUND_PROXY_PASS:-}
-direct_share_endpoints=${DIRECT_SHARE_ENDPOINTS:-}
-proxy_share_endpoints=${PROXY_SHARE_ENDPOINTS:-}
-warp_share_endpoints=${WARP_SHARE_ENDPOINTS:-}
 script_root=${PROJECT_ROOT}
 installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF

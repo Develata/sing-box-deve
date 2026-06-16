@@ -135,7 +135,6 @@ check_port_match() {
 check_port_match "vless-reality" "#sbd-vless-reality"
 check_port_match "vless-ws" "#sbd-vless-ws"
 check_port_match "vless-xhttp" "#sbd-vless-xhttp"
-check_port_match "trojan" "#sbd-trojan"
 
 vl_line="$(node_line "#sbd-vless-ws")"
 if [[ -n "$vl_line" ]]; then

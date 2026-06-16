@@ -33,7 +33,6 @@ provider_i18n_upgrade() {
 provider_status_header() {
   local core_state="unknown"
   local argo_state="off"
-  local psiphon_state="off"
   if [[ -f "$SBD_SERVICE_FILE" ]]; then
     if sbd_service_is_active "sing-box-deve"; then
       core_state="running"
@@ -48,25 +47,16 @@ provider_status_header() {
       argo_state="stopped"
     fi
   fi
-  if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
-    if sbd_service_is_active "sing-box-deve-psiphon"; then
-      psiphon_state="running"
-    else
-      psiphon_state="stopped"
-    fi
-  fi
-  log_info "$(msg "状态: 核心=$(provider_i18n_value "$core_state") argo=$(provider_i18n_value "$argo_state") psiphon=$(provider_i18n_value "$psiphon_state")" "State: core=${core_state} argo=${argo_state} psiphon=${psiphon_state}")"
+  log_info "$(msg "状态: 核心=$(provider_i18n_value "$core_state") argo=$(provider_i18n_value "$argo_state")" "State: core=${core_state} argo=${argo_state}")"
 
   if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
     sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
     log_info "$(msg "环境: ${provider:-unknown} | 规格: ${profile:-unknown} | 内核: ${engine:-unknown}" "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}")"
     log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
-    log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | Psiphon: enable=${psiphon_enable:-off},mode=${psiphon_mode:-off},region=${psiphon_region:-auto} | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | Psiphon: enable=${psiphon_enable:-off},mode=${psiphon_mode:-off},region=${psiphon_region:-auto} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"
+    log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}")" "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct}")"
     log_info "$(msg "IP 优先级: $(provider_i18n_value "${ip_preference:-auto}") | TLS: $(provider_i18n_value "${tls_mode:-self-signed}") | CDN 主机: ${cdn_template_host:-$(provider_i18n_value auto)}" "IP preference: ${ip_preference:-auto} | TLS: ${tls_mode:-self-signed} | CDN host: ${cdn_template_host:-auto}")"
-    log_info "$(msg "端口出站映射: ${port_egress_map:-<未设置>}" "Port egress map: ${port_egress_map:-<empty>}")"
     provider_panel_tls_warning "${tls_mode:-self-signed}" "${acme_cert_path:-}" "${acme_key_path:-}"
     log_info "$(msg "分流域名: 直连='${domain_split_direct:-}' 代理='${domain_split_proxy:-}' 屏蔽='${domain_split_block:-}'" "Domain split: direct='${domain_split_direct:-}' proxy='${domain_split_proxy:-}' block='${domain_split_block:-}'")"
-    log_info "$(msg "分享出口: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'" "Share endpoints: direct='${direct_share_endpoints:-}' proxy='${proxy_share_endpoints:-}' warp='${warp_share_endpoints:-}'")"
 
     local main_port="n/a"
     if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" ]]; then
@@ -152,15 +142,6 @@ provider_status_header() {
     fi
   fi
 
-  if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
-    local psiphon_ip
-    if sbd_service_is_active "sing-box-deve-psiphon"; then
-      psiphon_ip="$(provider_psiphon_detect_exit_ip || true)"
-      log_success "$(msg "Psiphon 边车: 运行中 (出口IP=${psiphon_ip:-unknown})" "Psiphon sidecar: running (exit_ip=${psiphon_ip:-unknown})")"
-    else
-      log_warn "$(msg "Psiphon 边车: 未运行" "Psiphon sidecar: not running")"
-    fi
-  fi
 
   if [[ -f "$SBD_NODES_FILE" ]]; then
     log_info "$(msg "节点文件: $SBD_NODES_FILE" "Nodes file: $SBD_NODES_FILE")"

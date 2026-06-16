@@ -64,10 +64,5 @@ assert_failure unknown-command "$SCRIPT" __definitely_unknown_command__
 assert_failure integration-smoke-missing-value "${ROOT_DIR}/scripts/integration-smoke.sh" --script
 grep -q "requires a value" "${TMP_DIR}/integration-smoke-missing-value.err" || fail "integration-smoke missing-value error is not explicit"
 
-assert_failure sfw-missing-value "${ROOT_DIR}/scripts/sfw-package.sh" --tag
-grep -q "requires a value" "${TMP_DIR}/sfw-missing-value.out" || fail "sfw missing-value error is not explicit"
-
-assert_failure sfw-unknown-arg "${ROOT_DIR}/scripts/sfw-package.sh" --bogus
-grep -q "Unknown argument" "${TMP_DIR}/sfw-unknown-arg.out" || fail "sfw unknown-argument error is not explicit"
 
 echo "[OK] CLI smoke checks passed"

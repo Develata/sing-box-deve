@@ -16,11 +16,10 @@ wizard() {
   printf '%s\n' "$(msg "部署场景决定脚本运行位置：" "Provider decides where deployment runs:")"
   echo "- vps: $(msg "本机服务器直接运行" "local server runtime")"
   echo "- serv00: $(msg "远程 Serv00 引导部署" "remote Serv00 bootstrap")"
-  echo "- sap: $(msg "SAP Cloud Foundry 部署" "SAP Cloud Foundry deployment")"
   if prompt_yes_no "$(msg "使用推荐场景 'vps' 吗？" "Use recommended provider 'vps'?")" "Y"; then
     PROVIDER="vps"
   else
-    prompt_with_default "$(msg "选择场景 [vps/serv00/sap]" "Choose provider [vps/serv00/sap]")" "vps" PROVIDER
+    prompt_with_default "$(msg "选择场景 [vps/serv00]" "Choose provider [vps/serv00]")" "vps" PROVIDER
   fi
 
   echo

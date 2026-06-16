@@ -9,9 +9,6 @@ create_install_context() {
   local argo_domain="${ARGO_DOMAIN:-}"
   local argo_token="${ARGO_TOKEN:-}"
   local argo_cdn_endpoints="${ARGO_CDN_ENDPOINTS:-}"
-  local psiphon_enable="${PSIPHON_ENABLE:-off}"
-  local psiphon_mode="${PSIPHON_MODE:-off}"
-  local psiphon_region="${PSIPHON_REGION:-auto}"
   local warp_mode="${WARP_MODE:-off}"
   local route_mode="${ROUTE_MODE:-direct}"
   local ip_preference="${IP_PREFERENCE:-auto}"
@@ -38,15 +35,11 @@ create_install_context() {
   local domain_split_direct="${DOMAIN_SPLIT_DIRECT:-}"
   local domain_split_proxy="${DOMAIN_SPLIT_PROXY:-}"
   local domain_split_block="${DOMAIN_SPLIT_BLOCK:-}"
-  local port_egress_map="${PORT_EGRESS_MAP:-}"
   local outbound_proxy_mode="${OUTBOUND_PROXY_MODE:-direct}"
   local outbound_proxy_host="${OUTBOUND_PROXY_HOST:-}"
   local outbound_proxy_port="${OUTBOUND_PROXY_PORT:-}"
   local outbound_proxy_user="${OUTBOUND_PROXY_USER:-}"
   local outbound_proxy_pass="${OUTBOUND_PROXY_PASS:-}"
-  local direct_share_endpoints="${DIRECT_SHARE_ENDPOINTS:-}"
-  local proxy_share_endpoints="${PROXY_SHARE_ENDPOINTS:-}"
-  local warp_share_endpoints="${WARP_SHARE_ENDPOINTS:-}"
 
   local install_id
   install_id="$(rand_hex_8)"
@@ -64,9 +57,6 @@ argo_mode=${argo_mode}
 argo_domain=${argo_domain}
 argo_token_set=$([[ -n "${argo_token}" ]] && echo true || echo false)
 argo_cdn_endpoints=${argo_cdn_endpoints}
-psiphon_enable=${psiphon_enable}
-psiphon_mode=${psiphon_mode}
-psiphon_region=${psiphon_region}
 warp_mode=${warp_mode}
 route_mode=${route_mode}
 ip_preference=${ip_preference}
@@ -93,15 +83,11 @@ proxyip_vless_xhttp=${proxyip_vless_xhttp}
 domain_split_direct=${domain_split_direct}
 domain_split_proxy=${domain_split_proxy}
 domain_split_block=${domain_split_block}
-port_egress_map=${port_egress_map}
 outbound_proxy_mode=${outbound_proxy_mode}
 outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
 outbound_proxy_user_set=$([[ -n "${outbound_proxy_user}" ]] && echo true || echo false)
 outbound_proxy_pass_set=$([[ -n "${outbound_proxy_pass}" ]] && echo true || echo false)
-direct_share_endpoints=${direct_share_endpoints}
-proxy_share_endpoints=${proxy_share_endpoints}
-warp_share_endpoints=${warp_share_endpoints}
 EOF
 }
 
@@ -137,9 +123,6 @@ features:
   argo_domain: ${argo_domain:-""}
   argo_token_set: ${argo_token_set:-false}
   argo_cdn_endpoints: ${argo_cdn_endpoints:-""}
-  psiphon_enable: ${psiphon_enable:-off}
-  psiphon_mode: ${psiphon_mode:-off}
-  psiphon_region: ${psiphon_region:-auto}
   warp_mode: ${warp_mode:-off}
   route_mode: ${route_mode:-direct}
   ip_preference: ${ip_preference:-auto}
@@ -166,15 +149,11 @@ features:
   domain_split_direct: ${domain_split_direct:-""}
   domain_split_proxy: ${domain_split_proxy:-""}
   domain_split_block: ${domain_split_block:-""}
-  port_egress_map: ${port_egress_map:-""}
   outbound_proxy_mode: ${outbound_proxy_mode:-direct}
   outbound_proxy_host: ${outbound_proxy_host:-""}
   outbound_proxy_port: ${outbound_proxy_port:-""}
   outbound_proxy_user_set: ${outbound_proxy_user_set:-false}
   outbound_proxy_pass_set: ${outbound_proxy_pass_set:-false}
-  direct_share_endpoints: ${direct_share_endpoints:-""}
-  proxy_share_endpoints: ${proxy_share_endpoints:-""}
-  warp_share_endpoints: ${warp_share_endpoints:-""}
 resources:
   default_profile: ${profile}
 EOF

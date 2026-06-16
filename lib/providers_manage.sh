@@ -44,12 +44,6 @@ provider_restart() {
     fi
   fi
 
-  if [[ "$target" == "all" ]]; then
-    if [[ -f "$SBD_PSIPHON_SERVICE_FILE" ]]; then
-      sbd_service_restart "sing-box-deve-psiphon"
-      log_success "$(msg "sing-box-deve psiphon 服务已重启" "sing-box-deve psiphon service restarted")"
-    fi
-  fi
 }
 
 provider_logs() {
@@ -181,7 +175,6 @@ provider_update() {
       log_warn "$(msg "Argo 边车重启失败；核心更新已完成，可稍后执行 restart --argo 或查看 logs --argo" "Argo sidecar restart failed; core update completed. Run restart --argo or logs --argo later")"
     fi
   fi
-  provider_psiphon_sync_service || log_warn "$(msg "Psiphon 边车同步失败；核心更新已完成" "Psiphon sidecar sync failed; core update completed")"
   log_success "$(msg "内核已更新并重启服务" "Engine updated and service restarted")"
   provider_panel
 }

@@ -15,7 +15,6 @@ write_nodes_output() {
   local xhttp_path xhttp_path_uri xhttp_mode enc_vless
   local ip_vless_ws ip_xhttp public_key short_id
   local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic
-  local p_trojan p_anytls
   local protocols=()
 
   reality_sni="$(sbd_reality_server_name)"
@@ -52,8 +51,6 @@ write_nodes_output() {
   p_naive="$(resolve_protocol_port_for_engine "$engine" "naive")"
   p_hy2="$(resolve_protocol_port_for_engine "$engine" "hysteria2")"
   p_tuic="$(resolve_protocol_port_for_engine "$engine" "tuic")"
-  p_trojan="$(resolve_protocol_port_for_engine "$engine" "trojan")"
-  p_anytls="$(resolve_protocol_port_for_engine "$engine" "anytls")"
 
   if protocol_enabled "vless-reality" "${protocols[@]}"; then
     node_link_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id" >> "$SBD_NODES_BASE_FILE"
@@ -77,12 +74,6 @@ write_nodes_output() {
   if protocol_enabled "tuic" "${protocols[@]}"; then
     node_link_tuic "$uuid" "$ip" "$p_tuic" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
   fi
-  if protocol_enabled "trojan" "${protocols[@]}"; then
-    node_link_trojan "$uuid" "$ip" "$p_trojan" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
-  fi
-  if protocol_enabled "anytls" "${protocols[@]}"; then
-    node_link_anytls "$uuid" "$ip" "$p_anytls" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
-  fi
   if [[ "${WARP_MODE:-off}" != "off" ]]; then
     node_link_warp_mode "${WARP_MODE:-off}" >> "$SBD_NODES_BASE_FILE"
   fi
@@ -92,9 +83,7 @@ write_nodes_output() {
   fi
 
   cp "$SBD_NODES_BASE_FILE" "$SBD_NODES_FILE"
-  append_share_variants "$SBD_NODES_BASE_FILE" "$SBD_NODES_FILE" "${DIRECT_SHARE_ENDPOINTS:-}" "${PROXY_SHARE_ENDPOINTS:-}" "${WARP_SHARE_ENDPOINTS:-}"
   append_multi_real_port_variants "$SBD_NODES_FILE" "$SBD_NODES_FILE"
-  append_jump_variants "$SBD_NODES_FILE" "$SBD_NODES_FILE"
   awk 'NF && !seen[$0]++' "$SBD_NODES_FILE" > "${SBD_NODES_FILE}.tmp" && mv "${SBD_NODES_FILE}.tmp" "$SBD_NODES_FILE"
   build_aggregate_subscription
 }

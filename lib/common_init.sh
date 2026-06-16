@@ -41,7 +41,6 @@ init_user_mode_paths() {
   # Service files — set but not necessarily used in nohup mode
   SBD_SERVICE_FILE="${base}/service/sing-box-deve.service"
   SBD_ARGO_SERVICE_FILE="${base}/service/sing-box-deve-argo.service"
-  SBD_PSIPHON_SERVICE_FILE="${base}/service/sing-box-deve-psiphon.service"
   SBD_FW_REPLAY_SERVICE_FILE="${base}/service/sing-box-deve-fw-replay.service"
 }
 
@@ -257,7 +256,7 @@ sbd_service_is_enabled() {
   esac
 }
 
-# Enable a oneshot service (fw-replay, jump-replay) — runs once at boot
+# Enable a oneshot service (fw-replay) — runs once at boot
 sbd_service_enable_oneshot() {
   local svc_name="$1"
   local exec_cmd="$2"

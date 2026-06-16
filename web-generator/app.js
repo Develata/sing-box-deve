@@ -7,9 +7,7 @@ const protocolMeta = {
   "shadowsocks-2022": "风险: 低 | 资源: 低 | 需安全保管密码",
   "naive": "风险: 中 | 资源: 中 | 需 sing-box 和可信证书",
   "hysteria2": "风险: 中 | 资源: 中 | 高吞吐下 UDP 开销较高",
-  "tuic": "风险: 中 | 资源: 中 | UDP + TLS",
-  "anytls": "风险: 中 | 资源: 中 | 客户端生态较少",
-  "trojan": "风险: 低 | 资源: 低 | 证书管理要规范"
+  "tuic": "风险: 中 | 资源: 中 | UDP + TLS"
 };
 
 const CDN_TLS_PORTS = [443, 8443, 2053, 2083, 2087, 2096];
@@ -115,15 +113,8 @@ function toggleAdvancedFields() {
   document.getElementById("argoFixed").classList.toggle("hidden", argoMode !== "fixed");
   document.getElementById("warpKeys").classList.toggle("hidden", warpMode !== "global");
   document.getElementById("serv00Fields").classList.toggle("hidden", provider !== "serv00");
-  document.getElementById("sapFields").classList.toggle("hidden", provider !== "sap");
   document.getElementById("outboundProxyFields").classList.toggle("hidden", outboundProxyMode === "direct");
   document.getElementById("cdnPanel").classList.toggle("hidden", argoMode === "off");
-}
-
-/* ── SAP region quick-select ── */
-function onSapRegionChange() {
-  var val = document.getElementById("sapRegion").value;
-  if (val) document.getElementById("sapApi").value = val;
 }
 
 /* ── Validate ── */
@@ -145,7 +136,6 @@ function validateForm() {
   if (profile === "lite" && protocols.length > 2) return "Lite 模式最多 2 个协议";
   if (engine === "sing-box" && protocols.indexOf("vless-xhttp") >= 0) return "sing-box 暂不支持 vless-xhttp";
   if (engine === "xray" && protocols.indexOf("naive") >= 0) return "xray 暂不支持 naive";
-  if (engine === "xray" && protocols.indexOf("anytls") >= 0) return "xray 暂不支持 anytls";
   if (argoMode === "fixed" && !argoToken) return "Argo fixed 模式必须填写 token";
   if (warpMode === "global" && outMode !== "direct") return "WARP global 与上游出站代理不能同时启用";
   if (warpMode === "global" && (!warpPK || !warpPub)) return "WARP global 模式必须填写两项 key";
@@ -153,10 +143,6 @@ function validateForm() {
   if (provider === "serv00") {
     if (!(document.getElementById("serv00Host").value || "").trim() || !(document.getElementById("serv00User").value || "").trim())
       return "serv00 场景建议填写 SERV00_HOST 和 SERV00_USER";
-  }
-  if (provider === "sap") {
-    if (!(document.getElementById("sapApi").value || "").trim() || !(document.getElementById("sapOrg").value || "").trim() || !(document.getElementById("sapSpace").value || "").trim())
-      return "sap 场景建议填写 API/ORG/SPACE";
   }
   return "";
 }
@@ -243,11 +229,6 @@ function buildEnvTemplate() {
     lines.push("", "# Serv00", "SERV00_HOST=" + (document.getElementById("serv00Host").value || "").trim());
     lines.push("SERV00_USER=" + (document.getElementById("serv00User").value || "").trim());
   }
-  if (provider === "sap") {
-    lines.push("", "# SAP", "SAP_CF_API=" + (document.getElementById("sapApi").value || "").trim());
-    lines.push("SAP_CF_ORG=" + (document.getElementById("sapOrg").value || "").trim());
-    lines.push("SAP_CF_SPACE=" + (document.getElementById("sapSpace").value || "").trim());
-  }
   document.getElementById("resultHint").textContent = "生成 env 模板：";
   output.value = lines.join("\n") + "\n";
   showToast("✅ env 模板已生成");
@@ -294,7 +275,6 @@ document.getElementById("argoMode").addEventListener("change", toggleAdvancedFie
 document.getElementById("warpMode").addEventListener("change", toggleAdvancedFields);
 document.getElementById("outboundProxyMode").addEventListener("change", toggleAdvancedFields);
 document.getElementById("protocols").addEventListener("change", refreshProtocolHint);
-document.getElementById("sapRegion").addEventListener("change", onSapRegionChange);
 document.querySelector(".shortcut-grid").addEventListener("click", onShortcutClick);
 
 initTheme();

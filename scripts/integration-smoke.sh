@@ -13,7 +13,7 @@ Usage:
 
 Description:
   Run real integration smoke checks on host:
-  install -> apply --runtime -> set-egress -> set-route -> jump -> cfg argo.
+  install -> apply --runtime -> set-egress -> set-route -> cfg argo.
 EOF
 }
 
@@ -84,21 +84,6 @@ run_step "set egress socks(127.0.0.1:1080)" \
 
 run_step "set route global-proxy" "$main_script" set-route global-proxy
 run_step "set route direct" "$main_script" set-route direct
-
-if command -v iptables >/dev/null 2>&1; then
-  main_port="$(resolve_protocol_port "vless-reality" || true)"
-  if [[ -n "$main_port" ]]; then
-    run_step "jump set vless-reality ${main_port} <- 8443,2053" \
-      "$main_script" jump set vless-reality "$main_port" 8443,2053
-    run_step "jump clear" "$main_script" jump clear
-  else
-    echo
-    echo "[WARN] unable to resolve vless-reality port from runtime config, skip jump tests"
-  fi
-else
-  echo
-  echo "[WARN] iptables not found, skip jump tests"
-fi
 
 if [[ "$with_argo_temp" == "true" ]]; then
   run_step "cfg argo temp" "$main_script" cfg argo temp

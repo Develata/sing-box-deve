@@ -53,24 +53,3 @@ provider_set_route() {
   provider_restart core
   log_success "$(msg "分流路由模式已更新: ${mode}" "Route mode updated: ${mode}")"
 }
-
-provider_set_share_endpoints() {
-  ensure_root
-  local kind="$1" endpoints="$2"
-  [[ "$endpoints" == *:* ]] || die "Endpoints must be host:port[,host:port...]"
-
-  provider_cfg_load_runtime_exports
-  local runtime_provider="${provider:-vps}" runtime_profile="${profile:-lite}"
-  local runtime_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
-
-  case "$kind" in
-    direct) export DIRECT_SHARE_ENDPOINTS="$endpoints" ;;
-    proxy) export PROXY_SHARE_ENDPOINTS="$endpoints" ;;
-    warp) export WARP_SHARE_ENDPOINTS="$endpoints" ;;
-    *) die "Unsupported share endpoint kind: $kind" ;;
-  esac
-
-  write_nodes_output "$runtime_engine" "$runtime_protocols"
-  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
-  log_success "$(msg "分享出口已更新(${kind}): ${endpoints}" "Share endpoints updated for ${kind}: ${endpoints}")"
-}

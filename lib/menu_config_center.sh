@@ -112,23 +112,6 @@ menu_config_center() {
         provider_split3_set "$sd" "$sp" "$sb"
         menu_pause
         ;;
-      8)
-        read -r -p "$(msg "jump 动作[show/set/clear/replay]" "jump action[show/set/clear/replay]"): " ja
-        if [[ "$ja" == "show" ]]; then
-          provider_jump_show
-        elif [[ "$ja" == "set" ]]; then
-          read -r -p "$(msg "协议" "protocol"): " jp
-          read -r -p "$(msg "主端口" "main port"): " jm
-          read -r -p "$(msg "附加端口(csv)" "extra ports(csv)"): " je
-          provider_jump_set "$jp" "$jm" "$je"
-        elif [[ "$ja" == "replay" ]]; then
-          provider_jump_replay
-        else
-          read -r -p "$(msg "仅清理某主端口? 输入 protocol main_port，留空则全清" "Clear one target? input protocol main_port, empty=clear all"): " jp jm
-          provider_jump_clear "${jp:-}" "${jm:-}"
-        fi
-        menu_pause
-        ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac

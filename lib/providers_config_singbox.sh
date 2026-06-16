@@ -18,15 +18,13 @@ build_sing_box_config() {
   tls_server_name="$(sbd_tls_server_name)"
   ws_path_vless="$(sbd_vless_ws_path)"
   local port_vless_reality port_vless_ws port_ss2022 port_naive port_hysteria2
-  local port_tuic port_trojan port_anytls
+  local port_tuic
   port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")"
   port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")"
   port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")"
   port_naive="$(resolve_protocol_port_for_engine "sing-box" "naive")"
   port_hysteria2="$(resolve_protocol_port_for_engine "sing-box" "hysteria2")"
   port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")"
-  port_trojan="$(resolve_protocol_port_for_engine "sing-box" "trojan")"
-  port_anytls="$(resolve_protocol_port_for_engine "sing-box" "anytls")"
   local inbounds=""
   local inbound_map=""
   local protocols=()
@@ -69,16 +67,6 @@ build_sing_box_config() {
       "$(singbox_fragment_tuic "$uuid" "$port_tuic" "$tls_server_name" "$cert_file" "$key_file")"
   fi
 
-  if protocol_enabled "trojan" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "trojan" "$port_trojan" \
-      "$(singbox_fragment_trojan "$uuid" "$port_trojan" "$tls_server_name" "$cert_file" "$key_file")"
-  fi
-
-  if protocol_enabled "anytls" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "anytls" "$port_anytls" \
-      "$(singbox_fragment_anytls "$uuid" "$port_anytls" "$cert_file" "$key_file")"
-  fi
-
   local outbounds final_tag upstream_mode available_outbounds
   final_tag="direct"
   available_outbounds="direct"
@@ -96,14 +84,6 @@ build_sing_box_config() {
     outbounds+="$(build_warp_outbound_singbox)"
     [[ "$upstream_mode" == "direct" ]] && final_tag="warp-out"
     available_outbounds+=",warp-out"
-  fi
-  if provider_psiphon_enabled; then
-    outbounds+=$',\n'
-    outbounds+="$(build_psiphon_outbound_singbox)"
-    available_outbounds+=",psiphon-out"
-    if provider_psiphon_use_as_primary; then
-      final_tag="psiphon-out"
-    fi
   fi
 
   inbounds="${inbounds//\\n/$'\n'}"

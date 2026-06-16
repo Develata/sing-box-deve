@@ -227,6 +227,8 @@ perform_download_update() {
 cleanup_obsolete_update_files() {
   local rel dir removed=0
 
+  cleanup_obsolete_update_services
+
   for rel in "${UPDATE_OBSOLETE_FILES[@]:-}"; do
     if [[ -e "${PROJECT_ROOT}/${rel}" || -L "${PROJECT_ROOT}/${rel}" ]]; then
       if rm -f -- "${PROJECT_ROOT}/${rel}"; then
@@ -242,6 +244,27 @@ cleanup_obsolete_update_files() {
   done
 
   (( removed == 0 )) || log_info "$(msg "已清理废弃文件: ${removed} 个" "Removed obsolete files: ${removed}")"
+}
+
+cleanup_obsolete_update_services() {
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] || return 0
+
+  local svc unit removed=0
+  for svc in sing-box-deve-psiphon sing-box-deve-jump; do
+    unit="/etc/systemd/system/${svc}.service"
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl stop "${svc}.service" >/dev/null 2>&1 || true
+      systemctl disable "${svc}.service" >/dev/null 2>&1 || true
+      systemctl reset-failed "${svc}.service" >/dev/null 2>&1 || true
+    fi
+    if [[ -e "$unit" || -L "$unit" ]]; then
+      rm -f -- "$unit" && removed=$((removed + 1))
+    fi
+  done
+
+  if (( removed > 0 )) && command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload >/dev/null 2>&1 || true
+  fi
 }
 
 perform_script_self_update() {

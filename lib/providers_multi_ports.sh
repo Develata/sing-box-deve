@@ -26,19 +26,6 @@ provider_multi_ports_validate_target() {
   fi
 }
 
-multi_ports_port_used_by_jump_extra() {
-  local target_port="$1" protocol main_port extras p
-  while IFS='|' read -r protocol main_port extras; do
-    [[ -n "$protocol" && -n "$main_port" && -n "$extras" ]] || continue
-    IFS=',' read -r -a _extras <<< "$extras"
-    for p in "${_extras[@]}"; do
-      p="${p//[[:space:]]/}"
-      [[ "$p" == "$target_port" ]] && return 0
-    done
-  done < <(jump_store_records)
-  return 1
-}
-
 provider_multi_ports_reject_conflict() {
   local protocol="$1" port="$2" transport cfg all_ports
   transport="$(protocol_port_map "$protocol")"
@@ -54,9 +41,6 @@ provider_multi_ports_reject_conflict() {
   if [[ -n "$cfg" && -f "$cfg" ]]; then
     all_ports="$(jq -r '.inbounds[] | (.listen_port // .port // empty)' "$cfg" 2>/dev/null | tr '\n' ',' || true)"
     [[ ",${all_ports}," != *",${port},"* ]] || die "Port already exists in current runtime inbounds: ${port}"
-  fi
-  if multi_ports_port_used_by_jump_extra "$port"; then
-    die "Port is already used in jump extra ports: ${port}"
   fi
 }
 
@@ -138,13 +122,6 @@ provider_multi_ports_remove() {
     return 0
   fi
   multi_ports_store_remove "$protocol" "$port"
-  provider_jump_clear_target "$protocol" "$port"
-  if [[ -n "$(jump_store_records)" ]]; then
-    provider_jump_replay
-  else
-    clear_jump_rules
-    disable_jump_replay_service
-  fi
   provider_multi_ports_remove_firewall "$protocol" "$port"
   provider="$runtime_provider"
   profile="$runtime_profile"
@@ -164,15 +141,8 @@ provider_multi_ports_clear() {
   runtime_protocols="${protocols:-vless-reality}"
   while IFS='|' read -r protocol port; do
     [[ -n "$protocol" && -n "$port" ]] || continue
-    provider_jump_clear_target "$protocol" "$port"
     provider_multi_ports_remove_firewall "$protocol" "$port"
   done < <(multi_ports_store_records)
-  if [[ -n "$(jump_store_records)" ]]; then
-    provider_jump_replay
-  else
-    clear_jump_rules
-    disable_jump_replay_service
-  fi
   multi_ports_store_clear
   provider="$runtime_provider"
   profile="$runtime_profile"

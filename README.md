@@ -1,43 +1,35 @@
 # sing-box-deve
 
-`sing-box-deve` 是一个以安全为优先、支持交互与自动化的代理/VPN 一键部署工具箱。
+`sing-box-deve` 是一个以安全为优先、支持交互与自动化的 sing-box / xray 代理入口部署工具。
 
 GitHub：`https://github.com/Develata/sing-box-deve`
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Ubuntu%2FDebian%20primary%20%7C%20Alpine%2FFreeBSD%20best--effort-blue)](docs/V1-SPEC.md)
-
 ## 特性概览
 
-- **9 种入站协议**：vless-reality, vless-ws, shadowsocks-2022, naive, hysteria2, tuic, anytls, trojan, vless-xhttp
-- **双引擎**：sing-box / xray 自由切换
-- **3 种脚本部署场景**：VPS / Serv00 / SAP Cloud Foundry
-- **多初始化系统**：systemd / OpenRC / nohup+crontab 自动检测
-- **非 root 模式**：支持无 root 权限运行（Serv00/受限环境）
-- **Argo 隧道**：临时/固定模式 + 13 CDN 端口自动展开
-- **SAP 30 区域**：完整 AWS/Azure/GCP/Neo 区域代码映射
-- **GitHub Actions**：Serv00 SSH 部署、多端保活与 CI 工作流
-- **GitHub Pages**：[在线命令生成器](https://develata.github.io/sing-box-deve/)（UUID、暗色主题、CDN 面板、快捷命令）
-- **保活体系**：本地 kp.sh、Serv00 serv00keep.sh、GitHub Actions 多方案
-- **SFW 客户端打包**：自动下载 Windows 客户端并打包配置
-- **Psiphon 预编译**：自动下载 psiphon-tunnel-core 二进制
+- **6 种公开入站协议**：`vless-reality`, `vless-ws`, `shadowsocks-2022`, `naive`, `hysteria2`, `tuic`；`vless-xhttp` 作为 xray compatibility 协议保留。
+- **默认主线**：VPS + `sing-box` + `vless-reality,hysteria2`。
+- **可选兼容**：Serv00/Hostuno 受限环境、xray compatibility engine。
+- **Argo 隧道**：临时/固定模式，用于受限入口或 CDN 辅助暴露。
+- **WARP 出站**：仅作为 outbound mode，不暴露 WireGuard public inbound。
+- **运维闭环**：panel/list/doctor/logs/restart/update/uninstall/settings。
+- **安全边界**：增量防火墙托管、规则重放、managed rollback、checksum manifest。
+- **订阅产物**：本地刷新/查看节点、聚合订阅、sing-box/clash/SFA/SFI 客户端配置。
+
+已裁剪的旧功能：SAP Cloud Foundry provider、Workers 模板、Psiphon sidecar、SFW Windows 打包、GitLab/TG 订阅推送、jump 端口跳跃、set-share 手工分享端点、set-port-egress 按端口出站策略、`anytls`/`trojan` public inbound。
 
 ## 平台支持边界
 
 - **Primary support**：Ubuntu / Debian VPS，推荐 root + systemd，架构支持 `amd64` / `arm64`。
 - **Best-effort support**：Alpine Linux（OpenRC）、FreeBSD 系 Serv00/Hostuno、以及无 root/受限 shell 环境（自动回退到 nohup+crontab）。
-- **平台场景**：SAP Cloud Foundry、Workers、GitHub Actions 属于平台部署/自动化场景，不等同于传统 VPS OS 安装。
 - 未经实机验证的发行版会以“非主支持系统”继续尝试运行；生产环境建议先执行 `install --dry-run` 与目标主机 smoke test。
 
 ## 一键安装
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
 ```
 
-说明：远程一键模式会自动拉取完整项目再执行，不再依赖 `/dev/fd` 临时路径下存在 `lib/` 目录。
-
-或者本地克隆后运行：
+本地克隆后运行：
 
 ```bash
 git clone https://github.com/Develata/sing-box-deve.git
@@ -46,141 +38,63 @@ chmod +x ./sing-box-deve.sh
 ./sing-box-deve.sh wizard
 ```
 
-## 三分钟上手（推荐）
-
-```bash
-# 1) 远程一键安装（推荐）
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
-
-# 2) 用 sb 打开面板
-sb
-
-# 3) 查看节点与诊断
-sb list --nodes
-sudo sb doctor
-```
-
-## 先看这里（90% 用户）
-
-- 推荐直接用 `wizard` 安装：
-  - `sing-box` 默认 `vless-reality,hysteria2`
-  - `xray` 默认 `vless-reality,vless-ws`
-- 安装后常用就是 4 个命令：`panel`、`doctor`、`list --nodes`、`restart --core`
-- 需要交互控制台时直接输入 `sb`
-- 如果只想稳定使用，可先跳过 Serv00/SAP/Workers 等进阶章节
-
-最常用命令：
+## 90% 用户常用命令
 
 ```bash
 ./sing-box-deve.sh wizard
 ./sing-box-deve.sh panel --full
 ./sing-box-deve.sh doctor
 ./sing-box-deve.sh list --nodes
+./sing-box-deve.sh restart --core
 ```
 
-## 交互原则
-
-- 每个关键步骤先说明用途与影响，再让用户 `Y/n` 决定
-- 支持一直回车使用默认推荐值
-- 支持 `--yes` 非交互自动确认
-
-## 设置持久化
-
-设置使用单行配置保存于：`$SBD_CONFIG_DIR/settings.conf`
-
-| 模式 | `SBD_CONFIG_DIR` | `SBD_STATE_DIR` | `SBD_INSTALL_DIR` |
-|---|---|---|---|
-| root | `/etc/sing-box-deve` | `/var/lib/sing-box-deve` | `/opt/sing-box-deve` |
-| 非 root | `~/sing-box-deve/config` | `~/sing-box-deve/state` | `~/sing-box-deve` |
-
-> 下文档中出现的 `/etc/sing-box-deve`、`/opt/sing-box-deve` 等路径均为 root 模式默认值。非 root 模式下自动映射到 `~/sing-box-deve/` 下对应子目录。
-
-当前键：
-
-- `lang`（`zh` / `en`）
-- `auto_yes`（`true` / `false`）
-- `update_channel`（默认 `stable`）
-
-管理命令：
+## 自动化安装示例
 
 ```bash
-./sing-box-deve.sh settings show
-./sing-box-deve.sh settings set lang zh
-./sing-box-deve.sh settings set lang=en auto_yes=true update_channel=stable
+./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
+./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality,hysteria2 --random-main-port --yes
+./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,hysteria2,tuic --argo temp --yes
 ```
 
-## 常用命令
-
-默认情况下无需启用任何 keepalive workflow（`mainh.yml`）。
-
-基础流程：
-
-```bash
-./sing-box-deve.sh wizard
-./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality
-./sing-box-deve.sh apply -f ./config.env
-./sing-box-deve.sh apply --runtime
-```
-
-查看与诊断：
+## 运行管理
 
 ```bash
 ./sing-box-deve.sh list --all
-./sing-box-deve.sh list --settings
 ./sing-box-deve.sh panel --full
 ./sing-box-deve.sh status
 ./sing-box-deve.sh list --nodes
 ./sing-box-deve.sh list --runtime
 ./sing-box-deve.sh doctor
 ./sing-box-deve.sh logs --core
-```
-
-运行管理：
-
-```bash
+./sing-box-deve.sh logs --argo
 ./sing-box-deve.sh restart --all
 ./sing-box-deve.sh restart --core
 ./sing-box-deve.sh restart --argo
-./sing-box-deve.sh logs --argo
-./sing-box-deve.sh set-port --list
-./sing-box-deve.sh set-port --protocol vless-reality --port 443
-./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
-./sing-box-deve.sh set-route cn-direct
-./sing-box-deve.sh set-share direct 1.2.3.4:443,1.2.3.4:8443
-./sing-box-deve.sh set-share proxy 9.9.9.9:443,9.9.9.9:2053
-./sing-box-deve.sh split3 set cn.example.com,qq.com google.com,youtube.com ads.example.com
-./sing-box-deve.sh jump set vless-reality 443 8443,2053,2083
-./sing-box-deve.sh regen-nodes
 ```
 
-订阅与客户端产物：
+## 协议与端口
 
 ```bash
-./sing-box-deve.sh sub refresh
-./sing-box-deve.sh sub show
-./sing-box-deve.sh sub rules-update
-./sing-box-deve.sh sub gitlab-set <token> <group/project> [branch] [path]
-./sing-box-deve.sh sub gitlab-push
-./sing-box-deve.sh sub tg-set <bot_token> <chat_id>
-./sing-box-deve.sh sub tg-push
+./sing-box-deve.sh protocol matrix
+./sing-box-deve.sh protocol matrix --enabled
+./sing-box-deve.sh set-port --list
+./sing-box-deve.sh set-port --protocol vless-reality --port 443
+./sing-box-deve.sh mport list
+./sing-box-deve.sh mport add vless-reality 8443
+./sing-box-deve.sh mport remove vless-reality 8443
 ```
 
-面板已内置“订阅与分享”菜单，可直接完成刷新、GitLab 推送、TG 推送等操作。
+## 出站与路由
 
-订阅刷新后会额外生成：
+```bash
+./sing-box-deve.sh set-egress --mode direct
+./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
+./sing-box-deve.sh set-route cn-direct
+./sing-box-deve.sh split3 show
+./sing-box-deve.sh split3 set cn.example.com,qq.com google.com,youtube.com ads.example.com
+```
 
-- 四合一聚合原始链接：`/opt/sing-box-deve/data/jhdy.txt`
-- 四合一聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
-- 客户端分组链接：`/opt/sing-box-deve/data/share-groups/*.txt`（v2rayn/v2rayng/nekobox/shadowrocket/singbox）
-- clash-meta 建议使用：`/opt/sing-box-deve/data/clash_meta_client.yaml`
-- clash 自定义规则文件：`/etc/sing-box-deve/clash_custom_rules.list`
-- clash 本地规则集目录：`/opt/sing-box-deve/data/clash-ruleset/`
-- 仓库内置规则源：`rulesets/clash/geosite-cn.yaml`、`rulesets/clash/geoip-cn.yaml`
-- 服务端路由本地规则目录：`/opt/sing-box-deve/data/sing-ruleset/`
-- 服务端路由仓库规则源：`rulesets/sing/geosite-cn.srs`、`rulesets/sing/geoip-cn.srs`
-- `sing_box_client.json` 使用本地规则路径：`./sing-ruleset/geosite-cn.srs`、`./sing-ruleset/geoip-cn.srs`
-
-配置变更中心与系统工具（面板同样可操作）：
+## 配置变更中心
 
 ```bash
 ./sing-box-deve.sh cfg preview <action> ...
@@ -190,490 +104,92 @@ sudo sb doctor
 ./sing-box-deve.sh cfg snapshots prune [keep_count]
 ./sing-box-deve.sh cfg rotate-id
 ./sing-box-deve.sh cfg argo off|temp|fixed [token] [domain]
-./sing-box-deve.sh cfg psiphon off|on [off|proxy|global] [auto|cc]
 ./sing-box-deve.sh cfg ip-pref auto|v4|v6
 ./sing-box-deve.sh cfg cdn-host <domain>
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
 ./sing-box-deve.sh cfg tls self-signed|acme|acme-auto [cert_path|domain] [key_path|email] [dns_provider]
-./sing-box-deve.sh cfg rebuild
 ./sing-box-deve.sh cfg protocol-add <proto_csv> [random|manual] [proto:port,...]
 ./sing-box-deve.sh cfg protocol-remove <proto_csv|index_csv>
-./sing-box-deve.sh kernel show
-./sing-box-deve.sh kernel set sing-box v1.12.20
+./sing-box-deve.sh cfg rebuild
+```
+
+## WARP / Argo / 系统工具
+
+```bash
 ./sing-box-deve.sh warp status
 ./sing-box-deve.sh warp register
 ./sing-box-deve.sh warp unlock
 ./sing-box-deve.sh warp socks5-start [port]
 ./sing-box-deve.sh warp socks5-status
 ./sing-box-deve.sh warp socks5-stop
-./sing-box-deve.sh psiphon status
-./sing-box-deve.sh psiphon start
-./sing-box-deve.sh psiphon stop
-./sing-box-deve.sh psiphon set-region <auto|cc>
+./sing-box-deve.sh sys bbr-status
 ./sing-box-deve.sh sys bbr-enable
-./sing-box-deve.sh protocol matrix
-./sing-box-deve.sh protocol matrix --enabled
+./sing-box-deve.sh sys acme-install
+./sing-box-deve.sh sys acme-issue <domain> <email> [dns_provider]
+./sing-box-deve.sh sys acme-apply <cert_path> <key_path>
 ```
 
-服务器验证建议：优先使用 `sb` 面板完成安装、分流、端口和节点刷新操作；命令模式仅用于自动化。
-
-版本与更新：
+## 订阅与客户端产物
 
 ```bash
-./sing-box-deve.sh uninstall --keep-settings
+./sing-box-deve.sh sub refresh
+./sing-box-deve.sh sub show
+./sing-box-deve.sh sub rules-update
+```
+
+订阅刷新后生成：
+
+- 聚合原始链接：`/opt/sing-box-deve/data/jhdy.txt`
+- 聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
+- 客户端分组链接：`/opt/sing-box-deve/data/share-groups/*.txt`
+- sing-box 客户端配置：`/opt/sing-box-deve/data/sing_box_client.json`
+- clash-meta 客户端配置：`/opt/sing-box-deve/data/clash_meta_client.yaml`
+- SFA/SFI 客户端配置：`/opt/sing-box-deve/data/sfa_client.json`, `sfi_client.json`
+
+## 防火墙
+
+```bash
+./sing-box-deve.sh fw status
+./sing-box-deve.sh fw replay
+./sing-box-deve.sh fw rollback
+```
+
+防火墙策略：只做增量托管规则；不会执行 `ufw disable`、`iptables -F`、`iptables -X`、`setenforce 0`。rollback 指 sing-box-deve 托管规则回滚，不是系统防火墙全量快照。
+
+## 设置持久化
+
+root 默认路径：
+
+- config：`/etc/sing-box-deve`
+- state：`/var/lib/sing-box-deve`
+- install：`/opt/sing-box-deve`
+
+非 root 默认路径：`~/sing-box-deve/`。
+
+```bash
+./sing-box-deve.sh settings show
+./sing-box-deve.sh settings set lang zh
+./sing-box-deve.sh settings set lang=en auto_yes=true update_channel=stable
+```
+
+## 更新与卸载
+
+```bash
 ./sing-box-deve.sh version
-./sing-box-deve.sh update
 ./sing-box-deve.sh update --script
 ./sing-box-deve.sh update --core
-./sing-box-deve.sh update --script --source primary
-./sing-box-deve.sh update --script --source backup
-./sing-box-deve.sh update --script --force
+./sing-box-deve.sh update --all
+./sing-box-deve.sh uninstall --keep-settings
 ```
-
-`update --source` 说明：
-
-- `auto`：先主源，失败自动回退到备源
-- `primary`：只使用主源
-- `backup`：只使用备源
-
-## 详细使用指南（按实际运维流程）
-
-下面这套流程按“首次安装 -> 日常维护 -> 故障处理”编排，直接照做即可。
-
-### 1) 首次安装（推荐走向导）
-
-```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
-```
-
-安装完成后：
-
-```bash
-sb
-```
-
-进入面板后，建议先看：
-
-1. `2 状态与节点查看`
-2. `3 协议管理`
-3. `12 订阅与分享`
-4. `13 配置变更中心`
-
-### 2) 主菜单 1-14 的实际用途
-
-1. `安装/重装`：首次安装或按新参数整体重建。
-2. `状态与节点查看`：看运行状态、节点信息与运行摘要。
-3. `协议管理`：协议增删与协议能力矩阵。
-4. `端口管理`：查看或修改协议端口，自动加放行规则（不删历史规则）。
-5. `出站策略管理`：配置 `direct/socks/http/https`、路由模式、分享出口、按端口出站策略。
-6. `服务管理`：重启核心/Argo、重建节点、看日志。
-7. `更新管理`：更新脚本和核心，支持主源/备源切换。
-8. `防火墙管理`：看托管规则、回滚快照、重放规则。
-9. `设置管理`：语言和自动确认。
-10. `日志查看`：核心日志/Argo 日志。
-11. `卸载管理`：保留设置卸载或完全卸载。
-12. `订阅与分享`：刷新订阅、显示分组、生成二维码、推送 GitLab/TG。
-13. `配置变更中心`：`preview/apply/rollback/snapshots` 闭环运维。
-14. `内核与WARP`：内核切换、WARP 状态/解锁检测、WARP Socks5（启动/停止/状态）、BBR、证书工具链。
-
-### 3) 端口与协议管理
-
-先看当前端口：
-
-```bash
-sb set-port --list
-```
-
-修改协议端口：
-
-```bash
-sb set-port --protocol vless-reality --port 52440
-```
-
-说明：
-
-- 会自动校验端口范围与协议合法性。
-- 会自动放行新端口对应防火墙规则。
-- 不会粗暴删除历史防火墙规则。
-
-### 4) 出站策略管理（普通出站）
-
-切换到直连：
-
-```bash
-sb set-egress --mode direct
-```
-
-切到上游 socks：
-
-```bash
-sb set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
-```
-
-路由模式：
-
-```bash
-sb set-route direct
-sb set-route global-proxy
-sb set-route cn-direct
-sb set-route cn-proxy
-```
-
-### 5) 按端口走不同出站策略（新功能）
-
-查看当前映射：
-
-```bash
-sb set-port-egress --list
-```
-
-设置映射（格式：`端口:direct|proxy|warp|psiphon`）：
-
-```bash
-sb set-port-egress --map 443:direct,8443:proxy,9443:warp
-```
-
-清空映射：
-
-```bash
-sb set-port-egress --clear
-```
-
-规则说明：
-
-- 仅允许映射到当前已存在的入站端口。
-- `proxy` 需要当前配置里存在 `proxy-out`。
-- `warp` 需要当前配置里存在 `warp-out`。
-- `psiphon` 需要当前配置里存在 `psiphon-out`（即已启用 Psiphon）。
-- 端口映射规则优先于常规路由/域名分流规则。
-
-### 6) 配置中心闭环（推荐日常变更都走这里）
-
-先预览再应用：
-
-```bash
-sb cfg preview protocol-add vless-ws random
-sb cfg apply protocol-add vless-ws random
-```
-
-快照查看与回滚：
-
-```bash
-sb cfg snapshots list
-sb cfg rollback latest
-sb cfg snapshots prune 10
-```
-
-### 7) 订阅与分享产物怎么用
-
-刷新产物：
-
-```bash
-sb sub refresh
-sb sub show
-```
-
-关键文件：
-
-- 聚合 base64：`/opt/sing-box-deve/data/jh_sub.txt`
-- 原始聚合：`/opt/sing-box-deve/data/jhdy.txt`
-- 客户端分组：`/opt/sing-box-deve/data/share-groups/*.txt`
-- `clash-meta` 配置：`/opt/sing-box-deve/data/clash_meta_client.yaml`
-
-重要说明：
-
-- `clash-meta` 默认是 **YAML 文件**，不是通用节点 URL。
-- `share-groups/clash-meta.txt` 里保存的是 yaml 路径提示。
-- 如果执行 `sb sub gitlab-push`，会得到远程 raw 的 yaml 链接用于导入。
-- clash YAML 会内置一套规则（局域网直连、基础广告拦截、CN 规则直连）。
-- 规则文件随仓库一起提交；`sb sub refresh` 只会把仓库内置规则复制到本地运行目录，不依赖远端下载。
-- 服务端 sing-box 路由的 `cn-direct/cn-proxy` 也已完全本地化，读取 `sing-ruleset/*.srs`，不依赖远端下载。
-- 客户端 `sing_box_client.json` 也使用本地 `sing-ruleset/*.srs`，导入后请确保同目录有 `sing-ruleset/` 目录。
-- 当你更新仓库内规则文件后，执行 `sb sub rules-update` 可强制重新同步到运行目录（clash + 服务端路由）。
-- 你也可在 `/etc/sing-box-deve/clash_custom_rules.list` 每行追加一条规则，然后执行 `sb sub refresh` 重新生成。
-
-### 8) 更新机制与正确操作
-
-先看版本：
-
-```bash
-sb version
-```
-
-更新脚本：
-
-```bash
-sb update --script --source primary
-```
-
-同版本热修复或需要重新同步脚本文件时：
-
-```bash
-sb update --script --force
-```
-
-更新失败排查顺序：
-
-1. 先试主源：`sb update --script --source primary`
-2. 再试备源：`sb update --script --source backup`
-3. 若报 `Checksum mismatch`，优先检查仓库 `checksums.txt` 是否已随最新改动更新并推送
-4. 若刚推送仓库，建议稍等再更新（CDN 缓存短暂不一致时会失败）
-
-### 9) 卸载与重装
-
-保留设置卸载：
-
-```bash
-sb uninstall --keep-settings
-```
-
-完全卸载：
-
-```bash
-sb uninstall
-```
-
-若你要“干净重装”，建议顺序：
-
-1. `sb uninstall`
-2. 重新执行 `wizard`
-3. `sb panel --full` 检查状态
-
-## 示例文件
-
-可直接参考并复制修改：
-
-- `examples/vps-lite.env`
-- `examples/vps-full-argo.env`
-- `examples/settings.conf`
-- `examples/serv00-accounts.json`
-- `examples/sap-accounts.json`
-
-验收矩阵脚本：
-
-- `scripts/acceptance-matrix.sh`
-- `scripts/integration-smoke.sh`（root + systemd 实机冒烟回归）
-- `scripts/consistency-check.sh`（配置与节点端口/路径一致性检查）
-- 运行：`bash scripts/acceptance-matrix.sh`
-
-## 进阶与实现细节（可后看）
-
-- 已实现 VPS 运行时安装：`sing-box` / `xray` 内核、配置生成、systemd 管理、节点输出
-- 已实现 Argo sidecar（临时/固定隧道）
-- 已实现 Psiphon sidecar（状态/启停/地区切换、路由联动）
-- 已实现 WARP 出站（global 模式）
-- 已实现 WARP 工具链：状态、解锁检测、WARP Socks5 本地代理（start/stop/status）
-- 已实现脚本版本显示与更新（脚本自身 + 核心）
-- 已实现校验清单驱动的脚本安全更新（`checksums.txt`）
-- 已完成脚本模块化重构：`lib/common.sh`、`lib/providers.sh`、`lib/menu.sh`、`sing-box-deve.sh` 均为聚合入口
-- 项目约束：所有 `.sh` 单文件不超过 400 行，并在 CI 中强制校验
-
-VPS 已支持协议：
-
-- `sing-box`：`vless-reality`、`vless-ws`、`shadowsocks-2022`、`naive`、`hysteria2`、`tuic`、`trojan`、`anytls`
-- `xray`：`vless-reality`、`vless-ws`、`vless-xhttp`、`trojan`
-
-功能开关：
-
-- `Argo`：通过 `--argo off|temp|fixed` 或配置中的 `argo_mode` 控制，不再作为 `--protocols` 项。
-- `WARP`：通过 `--warp-mode ...` 控制，不再作为 `--protocols` 项。
-
-补充能力：
-
-- 支持“上游出站代理”模式（`direct/socks/http/https`），用于让 `vless+reality` 等入站流量通过上游代理转发出去（不是额外暴露本地 socks/http 入口）
-
-示例（通过上游 socks 转发出站）：
-
-```bash
-./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality \
-  --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 \
-  --outbound-proxy-user demo --outbound-proxy-pass demo
-```
-
-说明：该模式不会额外开放本地 socks/http 入站端口，仅改变服务器出站路径。
-
-VPN 分流模式（新增）：
-
-- `direct`：全部直连
-- `global-proxy`：全部走上游代理/WARP
-- `cn-direct`：中国流量直连，其他走上游代理/WARP
-- `cn-proxy`：中国流量走上游代理/WARP，其他直连
-
-设置示例：
-
-```bash
-./sing-box-deve.sh set-route cn-direct
-```
-
-兼容上游变量模式（对齐 `sing-box-yg/argosbx` 常用写法）：
-
-```bash
-vwpt=8444 argo=vwpt bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh)
-```
-
-## Provider 说明
-
-- `serv00`：支持单账号和批量 JSON 远程引导
-- `sap`：支持单账号和批量 JSON 部署（CF CLI）
-
-VPS 安装后快捷命令：
-
-- 直接输入 `sb` 可启动交互菜单控制台
-- `sb <子命令>` 可直接透传到 `sing-box-deve.sh`
-
-示例：
-
-```bash
-sb
-sb list --nodes
-sb restart --core
-sb set-port --list
-```
-
-Provider 快捷入口（已实现，不再是占位）：
-
-```bash
-./providers/vps.sh install --profile lite --engine sing-box --protocols vless-reality --yes
-./providers/serv00.sh install --profile full --engine xray --protocols vless-reality,vless-ws --argo temp --yes
-./providers/sap.sh install --profile lite --engine sing-box --protocols vless-reality --yes
-```
-
-高级协议参数（对齐 argosbx 风格）：
-
-- Reality/TLS：`REALITY_SERVER_NAME`、`REALITY_FINGERPRINT`、`REALITY_HANDSHAKE_PORT`、`TLS_SERVER_NAME`（空值时优先使用 ACME 域名，最后回退 `www.bing.com`）
-- WS/XHTTP：`VLESS_WS_PATH`、`VLESS_XHTTP_PATH`、`VLESS_XHTTP_MODE`
-- Xray ENC：`XRAY_VLESS_ENC=true`、`XRAY_XHTTP_REALITY=true`
-- 细粒度 CDN/ProxyIP：`CDN_HOST_VLESS_WS`、`CDN_HOST_VLESS_XHTTP`、`PROXYIP_VLESS_WS`、`PROXYIP_VLESS_XHTTP`
-
-示例（xray + vless enc + xhttp/ws 细粒度）：
-
-```bash
-XRAY_VLESS_ENC=true \
-REALITY_SERVER_NAME=www.microsoft.com \
-VLESS_WS_PATH=/my-vl \
-VLESS_XHTTP_PATH=/my-xh \
-CDN_HOST_VLESS_WS=cdn-b.example.com \
-PROXYIP_VLESS_XHTTP=203.0.113.10 \
-./sing-box-deve.sh install --provider vps --profile full --engine xray --protocols vless-reality,vless-ws,vless-xhttp --yes
-```
-
-详细文档：
-
-- `docs/README.md`（文档总索引）
-- `docs/Serv00.md`
-- `docs/SAP.md`
-- `docs/CONVENTIONS.md`（命名与目录规范）
-- `docs/ACCEPTANCE-MATRIX.md`（验收矩阵）
-- `docs/PANEL-TEMPLATE.md`（面板输出中英文模板）
-- `docs/REAL-WORLD-VALIDATION.md`（实机验收执行单）
-
-自动化与保活模板：
-
-- 说明：以下均为**可选模板**，默认部署不依赖它们
-- `.github/workflows/mainh.yml`（手动保活模板 2）
-- `.github/workflows/ci.yml`（语法、shellcheck、示例校验、checksums 校验）
-- `workers/_worker.js`（反代模板）
-- `workers/workers_keep.js`（Workers 定时保活模板）
-
-发布前建议：
-
-- 执行 `bash scripts/update-checksums.sh` 更新 `checksums.txt`
-- 再执行 `./sing-box-deve.sh update --script` 的安全更新链路验证
-
-## 运维闭环手册
-
-推荐日常巡检顺序：
-
-1. `sb panel --full`
-2. `sb doctor`
-3. `sb cfg snapshots list`
-4. `sb fw status`
-
-WARP 常用命令：
-
-```bash
-sb warp status
-sb warp unlock
-sb warp socks5-start 40000
-sb warp socks5-status
-sb warp socks5-stop
-```
-
-说明：
-
-- `warp unlock` 会输出出口地区，并探测 Netflix / ChatGPT 连通性。
-- `warp socks5-start` 会在 `127.0.0.1:<port>` 启动本地 WARP Socks5（默认端口 `40000`）。
-- `warp socks5-*` 依赖 `warp register` 生成的账户文件：`/opt/sing-box-deve/data/warp-account.env`。
-
-常见问题与处理：
-
-1. 端口冲突/端口未监听
-   - 执行：`sb doctor`
-   - 若提示端口冲突：`sb set-port --protocol <协议> --port <新端口>`
-   - 若首次新增协议：`sb cfg protocol-add <协议> random` 或手动映射端口
-
-2. 证书签发失败或即将到期
-   - 安装 acme：`sb sys acme-install`
-   - 自动签发：`sb cfg tls acme-auto <domain> <email> [dns_provider]`
-   - 提供 `dns_provider` 时使用 DNS 验证；未提供时使用 standalone 验证，需要服务器 80 端口空闲
-   - 复用已签证书：脚本会自动检测并优先复用同域名/泛域名证书
-   - `sb panel --full` 与 `sb doctor` 会给出到期预警（30/15/7 天）
-
-3. 订阅为空或产物缺失
-   - 刷新产物：`sb sub refresh`
-   - 检查输出：`sb sub show`
-   - 必要时重建节点：`sb regen-nodes`
-
-4. 配置变更后异常
-   - 先看快照：`sb cfg snapshots list`
-   - 回滚最近快照：`sb cfg rollback latest`
-   - 清理旧快照：`sb cfg snapshots prune 10`
-
-5. 更新失败
-   - 使用主源：`sb update --script --source primary`
-   - 使用备源：`sb update --script --source backup`
-   - 自动回退：`sb update --script --source auto`
-   - 同版本强制刷新：`sb update --script --force`
-
-## 常见问题
-
-- `mainh.yml` 会自动运行吗？
-  - 不会。当前仅支持手动触发（`workflow_dispatch`），默认不依赖。
-- 为什么 `doctor` 提示请用 root？
-  - 安装、服务、端口、防火墙诊断都需要 root 权限。
-- `set-port` 为什么先要 `--list`？
-  - 先看白名单和当前端口，避免修改到不支持协议。
 
 ## 安全承诺
 
-- 不执行 `ufw disable`
-- 不执行 `iptables -F` / `iptables -X`
-- 不执行 `setenforce 0`
-- 仅管理本工具新增规则，并支持托管规则回滚；rollback 不是系统防火墙全量快照
-- 防火墙规则按 backend/proto/port/service 幂等管理，重复安装不会因 `install_id` 变化重复添加同一端口规则
-- 若托管记录存在但后端规则缺失，下一次 apply/replay 会自动恢复
-- `fw status` 会先显示托管记录；无可用防火墙后端时跳过后端存在性检查
-- `firewalld` 只能按 port/proto 管理，已有端口不会被本工具接管；`nftables` 在复杂主机规则集下为 best-effort
-
-## 路线图
-
-- 持续增强 Serv00/SAP 的回滚与校验细节
-- 增加更多协议专项诊断与压测辅助
-- 完善 CI 与示例覆盖
-
-## 版本记录
-
-- 变更记录见 `CHANGELOG.md`
-
-## 致谢
-
-- 本项目在设计与部署经验上参考了：`yonggekkk/sing-box-yg`、`yonggekkk/argosbx`
-- 感谢上游社区：`SagerNet/sing-box`、`XTLS/Xray-core`、`cloudflare/cloudflared`
-
-## 贡献
-
-欢迎提交 Issue / PR，详见 `CONTRIBUTING.md`。
+- 不清空系统防火墙。
+- 不接管无法证明归属的预存防火墙规则。
+- 重复安装同一 endpoint 不重复堆叠托管规则。
+- `fw status` 在无可用后端时仍会展示托管记录。
+- 更新脚本通过 manifest + checksum 验证。
 
 ## 许可证
 
-本项目采用 MIT 协议开源，见 `LICENSE`。
+MIT

@@ -10,10 +10,8 @@ protocol_port_map() {
     naive) echo "tcp:22443" ;;
     hysteria2) echo "udp:8443" ;;
     tuic) echo "udp:10443" ;;
-    anytls) echo "tcp:20443" ;;
     argo) echo "tcp:8080" ;;
     warp) echo "udp:51820" ;;
-    trojan) echo "tcp:4433" ;;
     *) die "No port map for protocol: $proto" ;;
   esac
 }
@@ -42,8 +40,6 @@ protocol_inbound_tag() {
     naive) echo "naive" ;;
     hysteria2) echo "hy2" ;;
     tuic) echo "tuic" ;;
-    trojan) echo "trojan" ;;
-    anytls) echo "anytls" ;;
     *) return 1 ;;
   esac
 }
@@ -93,13 +89,13 @@ engine_supports_protocol() {
   case "$engine" in
     sing-box)
       case "$protocol" in
-        vless-reality|vless-ws|shadowsocks-2022|naive|hysteria2|tuic|trojan|anytls) return 0 ;;
+        vless-reality|vless-ws|shadowsocks-2022|naive|hysteria2|tuic) return 0 ;;
         *) return 1 ;;
       esac
       ;;
     xray)
       case "$protocol" in
-        vless-reality|vless-ws|vless-xhttp|trojan) return 0 ;;
+        vless-reality|vless-ws|vless-xhttp) return 0 ;;
         *) return 1 ;;
       esac
       ;;

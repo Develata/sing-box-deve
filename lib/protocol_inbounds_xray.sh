@@ -74,21 +74,3 @@ EOF
 EOF
   fi
 }
-
-xray_fragment_trojan() {
-  local uuid="$1" port="$2" cert_file="$3" key_file="$4"
-  local uuid_json cert_file_json key_file_json
-  uuid_json="$(sbd_json_string "$uuid")"
-  cert_file_json="$(sbd_json_string "$cert_file")"
-  key_file_json="$(sbd_json_string "$key_file")"
-  cat <<EOF
-    {
-      "tag": "trojan",
-      "listen": "::",
-      "port": ${port},
-      "protocol": "trojan",
-      "settings": {"clients": [{"password": ${uuid_json}}]},
-      "streamSettings": {"security": "tls", "tlsSettings": {"certificates": [{"certificateFile": ${cert_file_json}, "keyFile": ${key_file_json}}]}}
-    }
-EOF
-}

@@ -18,11 +18,10 @@ build_xray_config() {
     [[ -n "$vless_decryption" ]] || die "XRAY_VLESS_ENC=true but decryption key is empty"
   fi
 
-  local port_vless_reality port_vless_ws port_vless_xhttp port_trojan
+  local port_vless_reality port_vless_ws port_vless_xhttp
   port_vless_reality="$(resolve_protocol_port_for_engine "xray" "vless-reality")"
   port_vless_ws="$(resolve_protocol_port_for_engine "xray" "vless-ws")"
   port_vless_xhttp="$(resolve_protocol_port_for_engine "xray" "vless-xhttp")"
-  port_trojan="$(resolve_protocol_port_for_engine "xray" "trojan")"
 
   if [[ ! -f "${SBD_DATA_DIR}/xray_private.key" ]]; then
     local out
@@ -34,9 +33,6 @@ build_xray_config() {
   fi
 
   local private_key public_key short_id
-  local cert_file key_file
-  cert_file="$(get_tls_cert_path)"
-  key_file="$(get_tls_key_path)"
   private_key="$(<"${SBD_DATA_DIR}/xray_private.key")"
   public_key="$(<"${SBD_DATA_DIR}/xray_public.key")"
   short_id="$(<"${SBD_DATA_DIR}/xray_short_id")"
@@ -70,11 +66,6 @@ build_xray_config() {
       "$(xray_fragment_vless_xhttp "$uuid" "$port_vless_xhttp" "$vless_decryption" "$xhttp_path" "$xhttp_mode" "$xhttp_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
   fi
 
-  if protocol_enabled "trojan" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "trojan" "$port_trojan" \
-      "$(xray_fragment_trojan "$uuid" "$port_trojan" "$cert_file" "$key_file")"
-  fi
-
   local xray_outbounds xray_routing primary_tag available_outbounds
   primary_tag="direct"
   available_outbounds="direct"
@@ -92,14 +83,6 @@ build_xray_config() {
     xray_outbounds+="$(build_upstream_outbound_xray)"
     primary_tag="proxy-out"
     available_outbounds+=",proxy-out"
-  fi
-  if provider_psiphon_enabled; then
-    xray_outbounds+=$',\n'
-    xray_outbounds+="$(build_psiphon_outbound_xray)"
-    available_outbounds+=",psiphon-out"
-    if provider_psiphon_use_as_primary; then
-      primary_tag="psiphon-out"
-    fi
   fi
   xray_routing="$(build_xray_routing_fragment "$primary_tag" "$inbound_map" "$available_outbounds")"
 

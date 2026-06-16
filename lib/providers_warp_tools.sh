@@ -197,16 +197,7 @@ EOF
 }
 
 provider_warp_region_set() {
-  ensure_root
-  local region="${1:-}"
-  if [[ -z "$region" ]]; then
-    printf '%s\n' "$(msg "可选国家地区代码（示例：US/JP/SG，auto 为自动）:" "Available region codes (e.g. US/JP/SG, auto for automatic):")"
-    provider_warp_countries
-    read -r -p "$(msg "输入地区代码" "Input region code"): " region
-  fi
-  [[ -n "$region" ]] || die "$(msg "未输入地区代码" "Region code is required")"
-  provider_psiphon_set_region "$region"
-  log_info "$(msg "说明：该地区设置映射到 Psiphon sidecar（用于 YG 的多地区交互近似体验）" "Note: this region setting maps to Psiphon sidecar (YG-style multi-region interaction approximation)")"
+  die "warp region was removed; WARP outbound keeps Cloudflare default endpoint"
 }
 
 provider_warp_config() {

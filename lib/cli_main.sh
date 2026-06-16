@@ -62,16 +62,6 @@ main() {
         provider_set_port "$SET_PORT_PROTOCOL" "$SET_PORT_VALUE"
       fi
       ;;
-    set-port-egress)
-      shift
-      parse_set_port_egress_args "$@"
-      case "${SET_PORT_EGRESS_ACTION}" in
-        list) provider_set_port_egress_info ;;
-        clear) provider_set_port_egress_clear ;;
-        map) provider_set_port_egress_map "$SET_PORT_EGRESS_MAP" ;;
-        *) die "Usage: set-port-egress --list | --clear | --map <port:direct|proxy|warp|psiphon,...>" ;;
-      esac
-      ;;
     set-egress)
       shift
       parse_set_egress_args "$@"
@@ -82,27 +72,12 @@ main() {
       parse_set_route_args "$@"
       provider_set_route "$SET_ROUTE_MODE"
       ;;
-    set-share)
-      shift
-      parse_set_share_args "$@"
-      provider_set_share_endpoints "$SET_SHARE_KIND" "$SET_SHARE_ENDPOINTS"
-      ;;
     split3)
       shift
       case "${1:-show}" in
         show) provider_split3_show ;;
         set) provider_split3_set "${2:-}" "${3:-}" "${4:-}" ;;
         *) die "Usage: split3 [show|set <direct_csv> <proxy_csv> <block_csv>]" ;;
-      esac
-      ;;
-    jump)
-      shift
-      case "${1:-show}" in
-        show) provider_jump_show ;;
-        set) provider_jump_set "${2:-}" "${3:-}" "${4:-}" ;;
-        clear) provider_jump_clear "${2:-}" "${3:-}" ;;
-        replay) provider_jump_replay ;;
-        *) die "Usage: jump [show|set <protocol> <main_port> <extra_csv>|clear [protocol] [main_port]|replay]" ;;
       esac
       ;;
     mport)
@@ -142,10 +117,6 @@ main() {
         region) provider_warp_region_set "${2:-}" ;;
         *) die "Usage: warp [status|register|unlock|socks5-start [port]|socks5-stop|socks5-status|config|account-show|account-set [private_key local_v6 reserved local_v4 peer_public_key client_id]|mode <value>|countries|region <auto|cc>]" ;;
       esac
-      ;;
-    psiphon)
-      shift
-      provider_psiphon_command "$@"
       ;;
     sys)
       shift

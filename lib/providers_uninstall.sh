@@ -51,11 +51,13 @@ provider_uninstall() {
   log_warn "$(msg "开始卸载：仅移除脚本托管的防火墙规则与 sing-box-deve 状态" "Uninstall requested; removing only managed firewall rules and sing-box-deve state")"
   uninstall_disable_unit "sing-box-deve.service"
   uninstall_disable_unit "sing-box-deve-argo.service"
+  uninstall_disable_unit "sing-box-deve-psiphon.service"
   uninstall_disable_unit "sing-box-deve-jump.service"
   uninstall_disable_unit "sing-box-deve-fw-replay.service"
   uninstall_remove_legacy_engine_units
   rm -f "$SBD_SERVICE_FILE"
   rm -f "$SBD_ARGO_SERVICE_FILE"
+  rm -f /etc/systemd/system/sing-box-deve-psiphon.service
   rm -f /etc/systemd/system/sing-box-deve-jump.service
   rm -f /etc/systemd/system/sing-box-deve-fw-replay.service
   uninstall_remove_managed_global_bins
@@ -101,6 +103,7 @@ verify_uninstall() {
   # Check for remaining service files
   [[ -f "$SBD_SERVICE_FILE" ]] && remaining+=("$SBD_SERVICE_FILE")
   [[ -f "$SBD_ARGO_SERVICE_FILE" ]] && remaining+=("$SBD_ARGO_SERVICE_FILE")
+  [[ -f /etc/systemd/system/sing-box-deve-psiphon.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-psiphon.service")
   [[ -f /etc/systemd/system/sing-box-deve-jump.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-jump.service")
   [[ -f /etc/systemd/system/sing-box-deve-fw-replay.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-fw-replay.service")
   
@@ -116,6 +119,12 @@ verify_uninstall() {
   # Check if services are still active
   if sbd_service_is_active "sing-box-deve" 2>/dev/null; then
     remaining+=("sing-box-deve.service (still active)")
+  fi
+  if sbd_service_is_active "sing-box-deve-psiphon" 2>/dev/null; then
+    remaining+=("sing-box-deve-psiphon.service (still active)")
+  fi
+  if sbd_service_is_active "sing-box-deve-jump" 2>/dev/null; then
+    remaining+=("sing-box-deve-jump.service (still active)")
   fi
   
   if [[ ${#remaining[@]} -gt 0 ]]; then

@@ -12,16 +12,6 @@ parse_set_route_args() {
   [[ -n "$SET_ROUTE_MODE" ]] || die "Usage: set-route <direct|global-proxy|cn-direct|cn-proxy>"
 }
 
-parse_set_share_args() {
-  SET_SHARE_KIND="${1:-}"
-  SET_SHARE_ENDPOINTS="${2:-}"
-  case "$SET_SHARE_KIND" in
-    direct|proxy|warp) ;;
-    *) die "Usage: set-share <direct|proxy|warp> <host:port[,host:port...]>" ;;
-  esac
-  [[ -n "$SET_SHARE_ENDPOINTS" ]] || die "Usage: set-share <direct|proxy|warp> <host:port[,host:port...]>"
-}
-
 parse_list_args() {
   LIST_MODE="all"
   while [[ $# -gt 0 ]]; do

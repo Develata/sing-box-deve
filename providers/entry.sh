@@ -4,12 +4,12 @@ set -euo pipefail
 provider="${1:-}"
 shift || true
 [[ -n "$provider" ]] || {
-  echo "Usage: providers/entry.sh <vps|serv00|sap> [command] [args...]" >&2
+  echo "Usage: providers/entry.sh <vps|serv00> [command] [args...]" >&2
   exit 1
 }
 
 case "$provider" in
-  vps|serv00|sap) ;;
+  vps|serv00) ;;
   *)
     echo "Unsupported provider: $provider" >&2
     exit 1
@@ -32,7 +32,7 @@ case "$cmd" in
   install)
     exec "$main" install --provider "$provider" "$@"
     ;;
-  wizard|menu|list|panel|status|restart|logs|set-port|set-egress|set-route|set-share|split3|jump|mport|sub|cfg|kernel|warp|sys|regen-nodes|update|version|settings|uninstall|doctor|fw|help)
+  wizard|menu|list|panel|status|restart|logs|set-port|set-egress|set-route|split3|mport|sub|cfg|kernel|warp|sys|regen-nodes|update|version|settings|uninstall|doctor|fw|help)
     exec "$main" "$cmd" "$@"
     ;;
   *)
