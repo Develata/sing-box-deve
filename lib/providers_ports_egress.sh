@@ -27,6 +27,7 @@ provider_set_egress() {
     sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
     xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
   esac
+  provider_commit_domain_web_front "$runtime_protocols"
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
   log_success "$(msg "出站模式已更新: ${mode}" "Egress mode updated: ${mode}")"
@@ -51,6 +52,7 @@ provider_set_route() {
     sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
     xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
   esac
+  provider_commit_domain_web_front "$runtime_protocols"
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
   log_success "$(msg "分流路由模式已更新: ${mode}" "Route mode updated: ${mode}")"

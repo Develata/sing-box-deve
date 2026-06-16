@@ -29,6 +29,9 @@ parse_install_args() {
   ACME_DOMAIN="${ACME_DOMAIN:-}"
   ACME_EMAIL="${ACME_EMAIL:-}"
   ACME_DNS_PROVIDER="${ACME_DNS_PROVIDER:-}"
+  WEB_FRONT_MODE="${WEB_FRONT_MODE:-auto}"
+  HY2_OBFS_MODE="${HY2_OBFS_MODE:-off}"
+  HY2_OBFS_PASSWORD="${HY2_OBFS_PASSWORD:-}"
   REALITY_SERVER_NAME="${REALITY_SERVER_NAME:-}"
   REALITY_FINGERPRINT="${REALITY_FINGERPRINT:-}"
   REALITY_HANDSHAKE_PORT="${REALITY_HANDSHAKE_PORT:-443}"
@@ -61,7 +64,7 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--preset|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
+      --provider|--profile|--engine|--protocols|--preset|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--web-front|--hy2-obfs|--hy2-obfs-password|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
         require_option_value "$1" "$#"
         case "$1" in
           --provider) PROVIDER="$2" ;;
@@ -86,6 +89,9 @@ parse_install_args() {
           --acme-key-path) ACME_KEY_PATH="$2" ;;
           --acme-domain) ACME_DOMAIN="$2" ;;
           --acme-email) ACME_EMAIL="$2" ;;
+          --web-front) WEB_FRONT_MODE="$2" ;;
+          --hy2-obfs) HY2_OBFS_MODE="$2" ;;
+          --hy2-obfs-password) HY2_OBFS_PASSWORD="$2" ;;
 
           --reality-sni) REALITY_SERVER_NAME="$2" ;;
           --reality-fp) REALITY_FINGERPRINT="$2" ;;

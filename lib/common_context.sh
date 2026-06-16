@@ -19,6 +19,10 @@ create_install_context() {
   local acme_domain="${ACME_DOMAIN:-}"
   local acme_email="${ACME_EMAIL:-}"
   local acme_dns_provider="${ACME_DNS_PROVIDER:-}"
+  local web_front_mode="${WEB_FRONT_MODE:-auto}"
+  local hy2_obfs_mode="${HY2_OBFS_MODE:-off}"
+  local hy2_obfs_password_set
+  hy2_obfs_password_set="$([[ -n "${HY2_OBFS_PASSWORD:-}" ]] && echo true || echo false)"
   local reality_server_name="${REALITY_SERVER_NAME:-}"
   local reality_fingerprint="${REALITY_FINGERPRINT:-}"
   local reality_handshake_port="${REALITY_HANDSHAKE_PORT:-443}"
@@ -67,6 +71,9 @@ acme_key_path=${acme_key_path}
 acme_domain=${acme_domain}
 acme_email=${acme_email}
 acme_dns_provider=${acme_dns_provider}
+web_front_mode=${web_front_mode}
+hy2_obfs_mode=${hy2_obfs_mode}
+hy2_obfs_password_set=${hy2_obfs_password_set}
 reality_server_name=${reality_server_name}
 reality_fingerprint=${reality_fingerprint}
 reality_handshake_port=${reality_handshake_port}
@@ -133,6 +140,8 @@ features:
   acme_domain: ${acme_domain:-""}
   acme_email_set: $([[ -n "${acme_email}" ]] && echo true || echo false)
   acme_dns_provider: ${acme_dns_provider:-""}
+  web_front_mode: ${web_front_mode:-"auto"}
+  hy2_obfs_mode: ${hy2_obfs_mode:-"off"}
   reality_server_name: ${reality_server_name:-www.microsoft.com}
   reality_fingerprint: ${reality_fingerprint:-chrome}
   reality_handshake_port: ${reality_handshake_port:-443}

@@ -30,6 +30,12 @@ provider_cfg_load_runtime_exports() {
   export ACME_DOMAIN="${acme_domain:-}"
   export ACME_EMAIL="${acme_email:-}"
   export ACME_DNS_PROVIDER="${acme_dns_provider:-}"
+  export WEB_FRONT_MODE="${web_front_mode:-auto}"
+  export WEB_FRONT_ENGINE="${web_front_engine:-}"
+  export WEB_FRONT_CONF="${web_front_conf:-}"
+  export WEB_FRONT_DOMAIN="${web_front_domain:-}"
+  export HY2_OBFS_MODE="${hy2_obfs_mode:-off}"
+  export HY2_OBFS_PASSWORD="${hy2_obfs_password:-}"
   export REALITY_SERVER_NAME="${reality_server_name:-}"
   export REALITY_FINGERPRINT="${reality_fingerprint:-}"
   export REALITY_HANDSHAKE_PORT="${reality_handshake_port:-}"
@@ -65,6 +71,7 @@ provider_cfg_rebuild_runtime() {
     xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" "true" ;;
     *) die "$(msg "运行时内核不受支持: ${engine:-unknown}" "Unsupported engine in runtime: ${engine:-unknown}")" ;;
   esac
+  provider_commit_domain_web_front "${protocols:-vless-reality}"
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
   provider_restart core

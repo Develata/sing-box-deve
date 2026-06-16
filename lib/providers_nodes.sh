@@ -14,7 +14,7 @@ write_nodes_output() {
   local reality_sni reality_fp tls_sni vless_ws_path vless_ws_path_uri
   local xhttp_path xhttp_path_uri xhttp_mode enc_vless
   local ip_vless_ws ip_xhttp public_key short_id
-  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic ss2022_password
+  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic ss2022_password hy2_obfs_mode hy2_obfs_password
   local protocols=()
 
   reality_sni="$(sbd_reality_server_name)"
@@ -70,7 +70,12 @@ write_nodes_output() {
     node_link_naive "$uuid" "$ip" "$p_naive" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
   fi
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
-    node_link_hysteria2 "$uuid" "$ip" "$p_hy2" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
+    hy2_obfs_mode="$(sbd_hy2_obfs_mode)"
+    hy2_obfs_password=""
+    if [[ "$hy2_obfs_mode" != "off" ]]; then
+      hy2_obfs_password="$(sbd_hy2_obfs_password)"
+    fi
+    node_link_hysteria2 "$uuid" "$ip" "$p_hy2" "$tls_sni" "$hy2_obfs_mode" "$hy2_obfs_password" >> "$SBD_NODES_BASE_FILE"
   fi
   if protocol_enabled "tuic" "${protocols[@]}"; then
     node_link_tuic "$uuid" "$ip" "$p_tuic" "$tls_sni" >> "$SBD_NODES_BASE_FILE"

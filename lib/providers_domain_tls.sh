@@ -160,3 +160,9 @@ provider_prepare_domain_runtime_artifacts() {
     sbd_write_archive_gateway_site
   fi
 }
+
+provider_commit_domain_web_front() {
+  local protocols_csv="${1:-vless-reality}"
+  protocols_require_domain_cert "$protocols_csv" || return 0
+  sbd_configure_web_front "$protocols_csv"
+}

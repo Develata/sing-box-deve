@@ -56,9 +56,10 @@ provider_vps_install() {
   local protocols_csv="$3"
 
   log_info "$(msg "开始安装: provider=vps profile=${profile} engine=${engine}" "Installing for provider=vps profile=${profile} engine=${engine}")"
+  validate_feature_modes
+  sbd_web_front_preflight "$protocols_csv"
   install_apt_dependencies
   provider_prepare_domain_runtime_artifacts "$protocols_csv"
-  validate_feature_modes
   provider_vps_prepare_warp_account
   assert_engine_protocol_compatibility "$engine" "$protocols_csv"
 
@@ -80,6 +81,7 @@ provider_vps_install() {
   esac
 
   validate_generated_config "$engine" "true"
+  provider_commit_domain_web_front "$protocols_csv"
   write_systemd_service "$engine"
   configure_argo_tunnel "$protocols_csv" "$engine"
   write_nodes_output "$engine" "$protocols_csv"
@@ -102,55 +104,64 @@ persist_runtime_state() {
   local profile="$2"
   local engine="$3"
   local protocols_csv="$4"
-  local runtime_file="${SBD_CONFIG_DIR}/runtime.env" tmp_runtime
+  local runtime_file="${SBD_CONFIG_DIR}/runtime.env" tmp_runtime hy2_obfs_password_state="${HY2_OBFS_PASSWORD:-}"
+  if [[ "${HY2_OBFS_MODE:-off}" != "off" && -z "$hy2_obfs_password_state" && -s "${SBD_DATA_DIR}/hy2_obfs_password" ]]; then
+    hy2_obfs_password_state="$(tr -d '\r\n' < "${SBD_DATA_DIR}/hy2_obfs_password")"
+  fi
   mkdir -p "$(dirname "$runtime_file")"
   tmp_runtime="$(mktemp "${runtime_file}.tmp.XXXXXX")"
-  cat > "$tmp_runtime" <<EOF
-provider=${provider}
-profile=${profile}
-engine=${engine}
-protocols=${protocols_csv}
-argo_mode=${ARGO_MODE:-off}
-argo_domain=${ARGO_DOMAIN:-}
-argo_token=${ARGO_TOKEN:-}
-argo_cdn_endpoints=${ARGO_CDN_ENDPOINTS:-}
-warp_mode=${WARP_MODE:-off}
-route_mode=${ROUTE_MODE:-direct}
-ip_preference=${IP_PREFERENCE:-auto}
-cdn_template_host=${CDN_TEMPLATE_HOST:-}
-tls_mode=${TLS_MODE:-self-signed}
-acme_cert_path=${ACME_CERT_PATH:-}
-acme_key_path=${ACME_KEY_PATH:-}
-acme_domain=${ACME_DOMAIN:-}
-acme_email=${ACME_EMAIL:-}
-acme_dns_provider=${ACME_DNS_PROVIDER:-}
-reality_server_name=${REALITY_SERVER_NAME:-${reality_server_name:-}}
-reality_fingerprint=${REALITY_FINGERPRINT:-${reality_fingerprint:-}}
-reality_handshake_port=${REALITY_HANDSHAKE_PORT:-${reality_handshake_port:-}}
-tls_server_name=${TLS_SERVER_NAME:-${tls_server_name:-}}
-archive_site_dir=${SBD_ARCHIVE_SITE_DIR:-${archive_site_dir:-}}
-vmess_ws_path=${VMESS_WS_PATH:-${vmess_ws_path:-}}
-vless_ws_path=${VLESS_WS_PATH:-${vless_ws_path:-}}
-vless_xhttp_path=${VLESS_XHTTP_PATH:-${vless_xhttp_path:-}}
-vless_xhttp_mode=${VLESS_XHTTP_MODE:-${vless_xhttp_mode:-}}
-xray_vless_enc=${XRAY_VLESS_ENC:-${xray_vless_enc:-false}}
-xray_xhttp_reality=${XRAY_XHTTP_REALITY:-${xray_xhttp_reality:-false}}
-cdn_host_vmess=${CDN_HOST_VMESS:-${cdn_host_vmess:-}}
-cdn_host_vless_ws=${CDN_HOST_VLESS_WS:-${cdn_host_vless_ws:-}}
-cdn_host_vless_xhttp=${CDN_HOST_VLESS_XHTTP:-${cdn_host_vless_xhttp:-}}
-proxyip_vmess=${PROXYIP_VMESS:-${proxyip_vmess:-}}
-proxyip_vless_ws=${PROXYIP_VLESS_WS:-${proxyip_vless_ws:-}}
-proxyip_vless_xhttp=${PROXYIP_VLESS_XHTTP:-${proxyip_vless_xhttp:-}}
-domain_split_direct=${DOMAIN_SPLIT_DIRECT:-}
-domain_split_proxy=${DOMAIN_SPLIT_PROXY:-}
-domain_split_block=${DOMAIN_SPLIT_BLOCK:-}
-outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
-outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
-outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
-outbound_proxy_user=${OUTBOUND_PROXY_USER:-}
-outbound_proxy_pass=${OUTBOUND_PROXY_PASS:-}
-script_root=${PROJECT_ROOT}
-installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-EOF
+  {
+    sbd_write_env_kv provider "$provider"
+    sbd_write_env_kv profile "$profile"
+    sbd_write_env_kv engine "$engine"
+    sbd_write_env_kv protocols "$protocols_csv"
+    sbd_write_env_kv argo_mode "${ARGO_MODE:-off}"
+    sbd_write_env_kv argo_domain "${ARGO_DOMAIN:-}"
+    sbd_write_env_kv argo_token "${ARGO_TOKEN:-}"
+    sbd_write_env_kv argo_cdn_endpoints "${ARGO_CDN_ENDPOINTS:-}"
+    sbd_write_env_kv warp_mode "${WARP_MODE:-off}"
+    sbd_write_env_kv route_mode "${ROUTE_MODE:-direct}"
+    sbd_write_env_kv ip_preference "${IP_PREFERENCE:-auto}"
+    sbd_write_env_kv cdn_template_host "${CDN_TEMPLATE_HOST:-}"
+    sbd_write_env_kv tls_mode "${TLS_MODE:-self-signed}"
+    sbd_write_env_kv acme_cert_path "${ACME_CERT_PATH:-}"
+    sbd_write_env_kv acme_key_path "${ACME_KEY_PATH:-}"
+    sbd_write_env_kv acme_domain "${ACME_DOMAIN:-}"
+    sbd_write_env_kv acme_email "${ACME_EMAIL:-}"
+    sbd_write_env_kv acme_dns_provider "${ACME_DNS_PROVIDER:-}"
+    sbd_write_env_kv web_front_mode "${WEB_FRONT_MODE:-auto}"
+    sbd_write_env_kv web_front_engine "${WEB_FRONT_ENGINE:-}"
+    sbd_write_env_kv web_front_conf "${WEB_FRONT_CONF:-}"
+    sbd_write_env_kv web_front_domain "${WEB_FRONT_DOMAIN:-}"
+    sbd_write_env_kv hy2_obfs_mode "${HY2_OBFS_MODE:-off}"
+    sbd_write_env_kv hy2_obfs_password "$hy2_obfs_password_state"
+    sbd_write_env_kv reality_server_name "${REALITY_SERVER_NAME:-${reality_server_name:-}}"
+    sbd_write_env_kv reality_fingerprint "${REALITY_FINGERPRINT:-${reality_fingerprint:-}}"
+    sbd_write_env_kv reality_handshake_port "${REALITY_HANDSHAKE_PORT:-${reality_handshake_port:-}}"
+    sbd_write_env_kv tls_server_name "${TLS_SERVER_NAME:-${tls_server_name:-}}"
+    sbd_write_env_kv archive_site_dir "${SBD_ARCHIVE_SITE_DIR:-${archive_site_dir:-}}"
+    sbd_write_env_kv vmess_ws_path "${VMESS_WS_PATH:-${vmess_ws_path:-}}"
+    sbd_write_env_kv vless_ws_path "${VLESS_WS_PATH:-${vless_ws_path:-}}"
+    sbd_write_env_kv vless_xhttp_path "${VLESS_XHTTP_PATH:-${vless_xhttp_path:-}}"
+    sbd_write_env_kv vless_xhttp_mode "${VLESS_XHTTP_MODE:-${vless_xhttp_mode:-}}"
+    sbd_write_env_kv xray_vless_enc "${XRAY_VLESS_ENC:-${xray_vless_enc:-false}}"
+    sbd_write_env_kv xray_xhttp_reality "${XRAY_XHTTP_REALITY:-${xray_xhttp_reality:-false}}"
+    sbd_write_env_kv cdn_host_vmess "${CDN_HOST_VMESS:-${cdn_host_vmess:-}}"
+    sbd_write_env_kv cdn_host_vless_ws "${CDN_HOST_VLESS_WS:-${cdn_host_vless_ws:-}}"
+    sbd_write_env_kv cdn_host_vless_xhttp "${CDN_HOST_VLESS_XHTTP:-${cdn_host_vless_xhttp:-}}"
+    sbd_write_env_kv proxyip_vmess "${PROXYIP_VMESS:-${proxyip_vmess:-}}"
+    sbd_write_env_kv proxyip_vless_ws "${PROXYIP_VLESS_WS:-${proxyip_vless_ws:-}}"
+    sbd_write_env_kv proxyip_vless_xhttp "${PROXYIP_VLESS_XHTTP:-${proxyip_vless_xhttp:-}}"
+    sbd_write_env_kv domain_split_direct "${DOMAIN_SPLIT_DIRECT:-}"
+    sbd_write_env_kv domain_split_proxy "${DOMAIN_SPLIT_PROXY:-}"
+    sbd_write_env_kv domain_split_block "${DOMAIN_SPLIT_BLOCK:-}"
+    sbd_write_env_kv outbound_proxy_mode "${OUTBOUND_PROXY_MODE:-direct}"
+    sbd_write_env_kv outbound_proxy_host "${OUTBOUND_PROXY_HOST:-}"
+    sbd_write_env_kv outbound_proxy_port "${OUTBOUND_PROXY_PORT:-}"
+    sbd_write_env_kv outbound_proxy_user "${OUTBOUND_PROXY_USER:-}"
+    sbd_write_env_kv outbound_proxy_pass "${OUTBOUND_PROXY_PASS:-}"
+    sbd_write_env_kv script_root "$PROJECT_ROOT"
+    sbd_write_env_kv installed_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  } > "$tmp_runtime"
   sbd_commit_file_with_backups "$runtime_file" "$tmp_runtime" 600
 }

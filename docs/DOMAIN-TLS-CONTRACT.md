@@ -31,7 +31,23 @@ For domain-certificate protocols, the script accepts only:
 3. Automatic issue via `acme.sh --standalone` only: `--tls-mode acme-auto --tls-sni <domain> --acme-email <email>`.
 4. Manual retry by providing certificate paths after a failed automatic attempt.
 
-The script must not auto-modify nginx/openresty/caddy configuration. It may reuse already-existing certificates after validation.
+The script must not auto-modify caddy or arbitrary reverse-proxy configuration. For the managed archive-gateway web front only, it may create/update its own OpenResty/nginx server block after certificate validation.
+
+## TCP web front
+
+Domain-certificate presets generate one archive-gateway static site and expose it on two surfaces:
+
+1. TCP 80/443 web front for ordinary browser and active-probe access.
+2. Hysteria2 `masquerade` fallback for HTTP/3 authentication-failure behavior.
+
+Web front selection is conservative:
+
+- if OpenResty is already installed, use OpenResty;
+- else if nginx is already installed, use nginx;
+- else ask whether to install nginx from the official nginx.org package repository;
+- `--web-front off` disables TCP web-front management and leaves only Hysteria2 masquerade.
+
+The script does not install OpenResty automatically. It may create a managed server block for the detected web front and reload/restart that service after a successful syntax test.
 
 ## Certificate validation
 
@@ -66,3 +82,15 @@ Requirements:
 - pages: index, archive, status, 404, robots, sitemap, style, small manifest/checksum files.
 
 The site narrative is a lightweight personal computer-materials archive gateway: public metadata is small, large artifacts are off-site or private synchronization and not publicly listed.
+
+## Hysteria2 obfuscation
+
+Hysteria2 obfuscation is optional and disabled by default. The exposed mode is `salamander`:
+
+```bash
+--hy2-obfs salamander [--hy2-obfs-password PASSWORD]
+```
+
+If enabled without a password, the script generates and persists a strong random password. Client links include `obfs=salamander&obfs-password=...` according to the official Hysteria2 URI scheme.
+
+Obfuscation is not the default because Hysteria2 documents that obfs makes the server incompatible with standard QUIC/HTTP3 behavior. The TCP web front remains responsible for normal browser access to the domain.

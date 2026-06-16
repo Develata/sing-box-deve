@@ -114,10 +114,17 @@ if grep -Fq "|${old_tag}|" "$SBD_RULES_FILE"; then
   exit 1
 fi
 
+# Web front can use its own service tag for TCP 80/443 ownership.
+install_id="web"
+fw_apply_rule tcp 80 web-front
+web_tag="MYBOX:web:web-front:tcp:80"
+grep -Fq "|${web_tag}|" "$SBD_RULES_FILE"
+
 # Status must be useful even when no backend can be detected.
 SBD_FW_BACKEND="none"
 fw_status > "${tmp_dir}/status.out"
 grep -Fq "backend=iptables proto=tcp port=443" "${tmp_dir}/status.out"
+grep -Fq "backend=iptables proto=tcp port=80" "${tmp_dir}/status.out"
 grep -Fq "跳过后端存在性检查" "${tmp_dir}/status.out"
 
 echo "[OK] firewall record/idempotency tests passed"

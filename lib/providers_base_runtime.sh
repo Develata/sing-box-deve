@@ -12,7 +12,8 @@ validate_feature_modes() {
     CDN_HOST_VMESS CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP \
     PROXYIP_VMESS PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP \
     DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK \
-    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS; do
+    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS \
+    WEB_FRONT_MODE HY2_OBFS_MODE HY2_OBFS_PASSWORD; do
     value="${!key:-}"
     if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
       die "${key} must be a single-line value"
@@ -50,6 +51,21 @@ validate_feature_modes() {
   if [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]]; then
     [[ -n "${ACME_DOMAIN:-${TLS_SERVER_NAME:-}}" ]] || die "TLS_MODE=acme-auto requires --acme-domain or --tls-sni"
     [[ -n "${ACME_EMAIL:-}" ]] || die "TLS_MODE=acme-auto requires --acme-email"
+  fi
+
+  case "${WEB_FRONT_MODE:-auto}" in
+    auto|off|nginx|openresty) ;;
+    *) die "Invalid WEB_FRONT_MODE: ${WEB_FRONT_MODE}" ;;
+  esac
+
+  case "${HY2_OBFS_MODE:-off}" in
+    off|salamander) ;;
+    gecko) die "HY2_OBFS_MODE=gecko requires sing-box >=1.14 and is not exposed by this script yet" ;;
+    *) die "Invalid HY2_OBFS_MODE: ${HY2_OBFS_MODE}" ;;
+  esac
+
+  if [[ "${HY2_OBFS_MODE:-off}" != "off" && -n "${HY2_OBFS_PASSWORD:-}" && ${#HY2_OBFS_PASSWORD} -lt 8 ]]; then
+    die "HY2_OBFS_PASSWORD must be at least 8 characters"
   fi
 
   case "${XRAY_VLESS_ENC:-${xray_vless_enc:-false}}" in

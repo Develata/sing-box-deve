@@ -30,8 +30,12 @@ node_link_naive() {
 }
 
 node_link_hysteria2() {
-  local uuid="$1" ip="$2" port="$3" sni="$4"
-  echo "hysteria2://$uuid@$ip:${port}?security=tls&sni=$sni#sbd-hysteria2"
+  local uuid="$1" ip="$2" port="$3" sni="$4" obfs_mode="${5:-off}" obfs_password="${6:-}"
+  local obfs_q=""
+  if [[ "$obfs_mode" != "off" ]]; then
+    obfs_q="&obfs=$(uri_encode "$obfs_mode")&obfs-password=$(uri_encode "$obfs_password")"
+  fi
+  echo "hysteria2://$uuid@$ip:${port}?security=tls&sni=$sni${obfs_q}#sbd-hysteria2"
 }
 
 node_link_tuic() {

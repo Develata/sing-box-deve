@@ -255,10 +255,26 @@ sbd_unquote_env_value() {
   local value="$1"
   if [[ "$value" == \"*\" && "$value" == *\" && "${#value}" -ge 2 ]]; then
     value="${value:1:${#value}-2}"
+    value="${value//\\\"/\"}"
+    value="${value//\\\\/\\}"
   elif [[ "$value" == \'*\' && "$value" == *\' && "${#value}" -ge 2 ]]; then
     value="${value:1:${#value}-2}"
   fi
   printf '%s' "$value"
+}
+
+sbd_env_quote() {
+  local value="$1"
+  [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || die "Env value must be single-line"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+sbd_write_env_kv() {
+  local key="$1" value="${2:-}"
+  [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "Invalid env key: ${key}"
+  printf '%s=%s\n' "$key" "$(sbd_env_quote "$value")"
 }
 
 sbd_strip_inline_env_comment() {

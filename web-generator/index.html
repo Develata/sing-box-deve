@@ -44,6 +44,15 @@
         </select>
       </div>
       <div class="row">
+        <label for="preset">部署预设</label>
+        <select id="preset">
+          <option value="reality-only">reality-only（默认，无需域名）</option>
+          <option value="reality-plus-domain">reality-plus-domain（域名证书协议组）</option>
+          <option value="full">full（完整 sing-box 协议组）</option>
+          <option value="custom">custom（手动协议）</option>
+        </select>
+      </div>
+      <div class="row">
         <label>UUID</label>
         <div class="input-group">
           <input id="uuid" type="text" placeholder="留空则自动生成">
@@ -55,6 +64,47 @@
         <div class="checklist" id="protocols"></div>
       </div>
       <div id="protocolHint" class="hint"></div>
+    </div>
+
+    <div class="card" id="tlsPanel">
+      <h2>域名 TLS / Web Front</h2>
+      <p class="muted">reality-plus-domain / full 预设需要自有域名与可信证书；TCP Web Front 用于普通浏览器访问 archive-gateway。</p>
+      <div class="row">
+        <label for="tlsSni">TLS 域名 / SNI</label>
+        <input id="tlsSni" type="text" placeholder="example.com">
+      </div>
+      <div class="row">
+        <label for="tlsMode">TLS 模式</label>
+        <select id="tlsMode"></select>
+      </div>
+      <div id="tlsAcmePaths" class="hidden">
+        <div class="row">
+          <label for="acmeCertPath">ACME_CERT_PATH</label>
+          <input id="acmeCertPath" type="text" placeholder="/etc/letsencrypt/live/example.com/fullchain.pem">
+        </div>
+        <div class="row">
+          <label for="acmeKeyPath">ACME_KEY_PATH</label>
+          <input id="acmeKeyPath" type="text" placeholder="/etc/letsencrypt/live/example.com/privkey.pem">
+        </div>
+      </div>
+      <div id="tlsAcmeAuto" class="hidden">
+        <div class="row">
+          <label for="acmeEmail">ACME_EMAIL</label>
+          <input id="acmeEmail" type="email" placeholder="admin@example.com">
+        </div>
+      </div>
+      <div class="row">
+        <label for="webFrontMode">Web Front</label>
+        <select id="webFrontMode"></select>
+      </div>
+      <div class="row">
+        <label for="hy2ObfsMode">Hysteria2 obfs</label>
+        <select id="hy2ObfsMode"></select>
+      </div>
+      <div id="hy2ObfsPasswordRow" class="row hidden">
+        <label for="hy2ObfsPassword">HY2_OBFS_PASSWORD</label>
+        <input id="hy2ObfsPassword" type="text" placeholder="留空则部署时自动生成">
+      </div>
     </div>
 
     <div class="card">
@@ -214,6 +264,7 @@
     </div>
   </div>
 
+  <script src="./schema.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

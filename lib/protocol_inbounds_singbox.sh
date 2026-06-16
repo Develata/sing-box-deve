@@ -100,8 +100,8 @@ EOF
 }
 
 singbox_fragment_hysteria2() {
-  local uuid="$1" port="$2" tls_sni="$3" cert_file="$4" key_file="$5" masquerade_dir="${6:-}"
-  local uuid_json tls_sni_json cert_file_json key_file_json masquerade_json masquerade_line=""
+  local uuid="$1" port="$2" tls_sni="$3" cert_file="$4" key_file="$5" masquerade_dir="${6:-}" obfs_mode="${7:-off}" obfs_password="${8:-}"
+  local uuid_json tls_sni_json cert_file_json key_file_json masquerade_json masquerade_line="" obfs_line="" obfs_mode_json obfs_password_json
   uuid_json="$(sbd_json_string "$uuid")"
   tls_sni_json="$(sbd_json_string "$tls_sni")"
   cert_file_json="$(sbd_json_string "$cert_file")"
@@ -111,12 +111,18 @@ singbox_fragment_hysteria2() {
     masquerade_line=$',\n      "masquerade": '
     masquerade_line+="${masquerade_json}"
   fi
+  if [[ "$obfs_mode" != "off" ]]; then
+    obfs_mode_json="$(sbd_json_string "$obfs_mode")"
+    obfs_password_json="$(sbd_json_string "$obfs_password")"
+    obfs_line=$',\n      "obfs": {"type": '
+    obfs_line+="${obfs_mode_json}, \"password\": ${obfs_password_json}}"
+  fi
   cat <<EOF
     {
       "type": "hysteria2",
       "tag": "hy2",
       "listen": "::",
-      "listen_port": ${port},
+      "listen_port": ${port}${obfs_line},
       "users": [{"password": ${uuid_json}}],
       "tls": {
         "enabled": true,

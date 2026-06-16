@@ -205,7 +205,7 @@ fw_apply_rule_to_backend() {
 }
 
 fw_apply_rule() {
-  local proto="$1" port="$2" service="core" tag tracked_tag
+  local proto="$1" port="$2" service="${3:-core}" tag tracked_tag
 
   fw_validate_port_proto "$port" "$proto"
   tag="$(fw_tag "$service" "$proto" "$port")"

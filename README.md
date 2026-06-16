@@ -9,6 +9,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 - **6 种公开入站协议**：`vless-reality`, `vless-ws`, `shadowsocks-2022`, `naive`, `hysteria2`, `tuic`；`vless-xhttp` 作为 xray compatibility 协议保留。
 - **默认主线**：VPS + `sing-box` + `vless-reality`（`reality-only` preset，无需自有域名）。
 - **域名 TLS 门禁**：`hysteria2` / `tuic` / `naive` 必须使用自有域名与有效证书；自动签发仅支持 `acme.sh --standalone`。
+- **域名静态站面**：域名协议会生成 archive-gateway 静态站；优先复用 OpenResty，其次 nginx，两者都不存在时可按 nginx.org 官方仓库安装 nginx。
 - **可选兼容**：Serv00/Hostuno 受限环境、xray compatibility engine。
 - **Argo 隧道**：临时/固定模式，用于受限入口或 CDN 辅助暴露。
 - **WARP 出站**：仅作为 outbound mode，不暴露 WireGuard public inbound。
@@ -55,6 +56,7 @@ chmod +x ./sing-box-deve.sh
 ./sing-box-deve.sh install --preset reality-only --yes
 ./sing-box-deve.sh install --preset reality-plus-domain --tls-sni example.com --tls-mode acme --acme-cert-path /path/fullchain.pem --acme-key-path /path/privkey.pem --yes
 ./sing-box-deve.sh install --preset full --tls-sni example.com --tls-mode acme-auto --acme-email admin@example.com --yes
+./sing-box-deve.sh install --preset reality-plus-domain --tls-sni example.com --tls-mode acme --acme-cert-path /path/fullchain.pem --acme-key-path /path/privkey.pem --web-front openresty --hy2-obfs salamander --yes
 ```
 
 ## 运行管理

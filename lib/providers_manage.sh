@@ -227,6 +227,7 @@ provider_kernel_set() {
         xray) build_xray_config "${protocols:-vless-reality}" ;;
       esac
       validate_generated_config "$target_engine" "true"
+      provider_commit_domain_web_front "${protocols:-vless-reality}"
       write_systemd_service "$target_engine"
       write_nodes_output "$target_engine" "${protocols:-vless-reality}"
       persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "${protocols:-vless-reality}"

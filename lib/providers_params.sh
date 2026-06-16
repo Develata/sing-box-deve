@@ -119,6 +119,41 @@ sbd_proxyip_vless_xhttp() {
   param_get "PROXYIP_VLESS_XHTTP" "proxyip_vless_xhttp" "$fallback"
 }
 
+sbd_hy2_obfs_mode() {
+  param_get "HY2_OBFS_MODE" "hy2_obfs_mode" "off"
+}
+
+sbd_hy2_obfs_password() {
+  local mode password_file password
+  mode="$(sbd_hy2_obfs_mode)"
+  [[ "$mode" != "off" ]] || return 0
+  password="$(param_get "HY2_OBFS_PASSWORD" "hy2_obfs_password" "")"
+  if [[ -n "$password" ]]; then
+    HY2_OBFS_PASSWORD="$password"
+    export HY2_OBFS_PASSWORD
+    printf '%s' "$password"
+    return 0
+  fi
+  password_file="${SBD_DATA_DIR}/hy2_obfs_password"
+  if [[ -s "$password_file" ]]; then
+    password="$(tr -d '\r\n' < "$password_file")"
+    HY2_OBFS_PASSWORD="$password"
+    export HY2_OBFS_PASSWORD
+    printf '%s' "$password"
+    return 0
+  fi
+  if command -v openssl >/dev/null 2>&1; then
+    password="$(openssl rand -base64 24 | tr -d '\r\n')"
+  else
+    password="$(rand_hex_8)$(rand_hex_8)$(rand_hex_8)"
+  fi
+  printf '%s\n' "$password" > "$password_file"
+  chmod 600 "$password_file" 2>/dev/null || true
+  HY2_OBFS_PASSWORD="$password"
+  export HY2_OBFS_PASSWORD
+  printf '%s' "$password"
+}
+
 sbd_xray_vless_enc_enabled() {
   local mode
   mode="$(param_get "XRAY_VLESS_ENC" "xray_vless_enc" "false")"
