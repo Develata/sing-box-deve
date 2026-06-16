@@ -20,11 +20,12 @@ fw_validate_tag() {
   fi
 }
 
-fw_detect_backend() {
+fw_detect_backend_optional() {
+  FW_BACKEND=""
   if [[ -n "${SBD_FW_BACKEND:-}" ]]; then
     case "$SBD_FW_BACKEND" in
       ufw|firewalld|iptables|nftables) FW_BACKEND="$SBD_FW_BACKEND" ;;
-      *) die "$(msg "不支持的防火墙后端: ${SBD_FW_BACKEND}" "Unsupported firewall backend: ${SBD_FW_BACKEND}")" ;;
+      *) return 1 ;;
     esac
   elif command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     FW_BACKEND="ufw"
@@ -35,6 +36,16 @@ fw_detect_backend() {
   elif command -v nft >/dev/null 2>&1 && nft list ruleset >/dev/null 2>&1; then
     FW_BACKEND="nftables"
   else
+    return 1
+  fi
+  [[ -n "$FW_BACKEND" ]]
+}
+
+fw_detect_backend() {
+  if ! fw_detect_backend_optional; then
+    if [[ -n "${SBD_FW_BACKEND:-}" ]]; then
+      die "$(msg "不支持的防火墙后端: ${SBD_FW_BACKEND}" "Unsupported firewall backend: ${SBD_FW_BACKEND}")"
+    fi
     die "$(msg "未找到受支持的防火墙后端" "No supported firewall backend found")"
   fi
   log_info "$(msg "防火墙后端: ${FW_BACKEND}" "Firewall backend: ${FW_BACKEND}")"
@@ -56,19 +67,49 @@ fw_tag() {
   echo "MYBOX:${install_id:-unknown}:${service}:${proto}:${port}"
 }
 
+fw_endpoint_suffix_from_tag() {
+  local tag="$1" rest service tag_proto tag_port
+  [[ "$tag" == MYBOX:* ]] || return 1
+  rest="${tag#MYBOX:*:}"
+  service="${rest%%:*}"
+  rest="${rest#*:}"
+  tag_proto="${rest%%:*}"
+  tag_port="${rest##*:}"
+  [[ -n "$service" && -n "$tag_proto" && -n "$tag_port" ]] || return 1
+  printf ':%s:%s:%s' "$service" "$tag_proto" "$tag_port"
+}
+
+fw_record_tag_for_endpoint() {
+  local backend="$1" proto="$2" port="$3" service="${4:-core}" suffix
+  [[ -f "$SBD_RULES_FILE" ]] || return 1
+  suffix=":${service}:${proto}:${port}"
+  awk -F'|' -v b="$backend" -v pr="$proto" -v po="$port" -v s="$suffix" '
+    $1 == b && $2 == pr && $3 == po && index($4, "MYBOX:") == 1 && substr($4, length($4) - length(s) + 1) == s { print $4; exit }
+  ' "$SBD_RULES_FILE"
+}
+
 fw_record_rule() {
   local backend="$1" proto="$2" port="$3" tag="$4"
-  local created_at tmp_rules
+  local created_at tmp_rules endpoint_suffix
 
   fw_validate_port_proto "$port" "$proto"
   fw_validate_tag "$tag"
+  endpoint_suffix="$(fw_endpoint_suffix_from_tag "$tag" 2>/dev/null || true)"
 
   created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   tmp_rules="${SBD_RULES_FILE}.tmp.$$"
   mkdir -p "$(dirname "$SBD_RULES_FILE")"
   {
     if [[ -f "$SBD_RULES_FILE" ]]; then
-      awk -F'|' -v t="$tag" '$4 != t' "$SBD_RULES_FILE"
+      if [[ -n "$endpoint_suffix" ]]; then
+        awk -F'|' -v b="$backend" -v pr="$proto" -v po="$port" -v t="$tag" -v s="$endpoint_suffix" '
+          $4 == t { next }
+          $1 == b && $2 == pr && $3 == po && index($4, "MYBOX:") == 1 && substr($4, length($4) - length(s) + 1) == s { next }
+          { print }
+        ' "$SBD_RULES_FILE"
+      else
+        awk -F'|' -v t="$tag" '$4 != t' "$SBD_RULES_FILE"
+      fi
     fi
     printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "$created_at"
   } > "$tmp_rules"
@@ -164,14 +205,23 @@ fw_apply_rule_to_backend() {
 }
 
 fw_apply_rule() {
-  local proto="$1" port="$2" service="core" tag
+  local proto="$1" port="$2" service="core" tag tracked_tag
 
   fw_validate_port_proto "$port" "$proto"
   tag="$(fw_tag "$service" "$proto" "$port")"
   fw_validate_tag "$tag"
 
-  if fw_rule_exists_record "$tag"; then
-    log_info "$(msg "防火墙规则已存在记录: $tag" "Firewall rule already tracked: $tag")"
+  tracked_tag="$(fw_record_tag_for_endpoint "$FW_BACKEND" "$proto" "$port" "$service" 2>/dev/null || true)"
+  if [[ -n "$tracked_tag" ]]; then
+    fw_validate_tag "$tracked_tag"
+    if fw_backend_rule_present "$FW_BACKEND" "$proto" "$port" "$tracked_tag"; then
+      log_info "$(msg "防火墙规则已存在且后端可见: $tracked_tag" "Firewall rule already tracked and present: $tracked_tag")"
+      return 0
+    fi
+    log_warn "$(msg "防火墙记录存在但后端缺失，正在重放: $tracked_tag" "Firewall record exists but backend rule is missing; replaying: $tracked_tag")"
+    fw_apply_rule_to_backend "$FW_BACKEND" "$proto" "$port" "$tracked_tag"
+    fw_enable_replay_service
+    log_success "$(msg "已恢复防火墙规则: ${proto}/${port}" "Firewall rule restored: ${proto}/${port}")"
     return 0
   fi
 

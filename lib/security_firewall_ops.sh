@@ -118,5 +118,34 @@ fw_status() {
     return 0
   fi
 
+  local detected_backend="" backend proto port tag _created state
+  log_info "$(msg "托管防火墙规则:" "Managed firewall records:")"
   awk -F'|' '{printf "- backend=%s proto=%s port=%s tag=%s\n", $1, $2, $3, $4}' "$SBD_RULES_FILE"
+
+  if fw_detect_backend_optional; then
+    detected_backend="$FW_BACKEND"
+    log_info "$(msg "当前可检测后端: ${detected_backend}" "Detected backend: ${detected_backend}")"
+  else
+    log_warn "$(msg "未能检测可用防火墙后端；跳过后端存在性检查" "No usable firewall backend detected; backend presence check skipped")"
+    return 0
+  fi
+
+  log_info "$(msg "后端规则存在性:" "Backend rule presence:")"
+  while IFS='|' read -r backend proto port tag _created; do
+    [[ -n "$backend" && -n "$proto" && -n "$port" && -n "$tag" ]] || continue
+    if ! ( fw_validate_port_proto "$port" "$proto"; fw_validate_tag "$tag" ) >/dev/null 2>&1; then
+      printf -- '- backend=%s proto=%s port=%s tag=%s state=invalid-record\n' "$backend" "$proto" "$port" "$tag"
+      continue
+    fi
+    if [[ "$backend" != "$detected_backend" ]]; then
+      printf -- '- backend=%s proto=%s port=%s tag=%s state=skipped-current-backend-%s\n' "$backend" "$proto" "$port" "$tag" "$detected_backend"
+      continue
+    fi
+    if fw_backend_rule_present "$backend" "$proto" "$port" "$tag"; then
+      state="present"
+    else
+      state="missing"
+    fi
+    printf -- '- backend=%s proto=%s port=%s tag=%s state=%s\n' "$backend" "$proto" "$port" "$tag" "$state"
+  done < "$SBD_RULES_FILE"
 }

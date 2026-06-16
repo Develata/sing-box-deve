@@ -19,7 +19,6 @@ cli_handle_protocol_command() {
 cli_handle_fw_command() {
   case "${1:-}" in
     status)
-      fw_detect_backend
       fw_status
       ;;
     rollback)

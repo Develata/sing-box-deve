@@ -4,7 +4,7 @@
 
 - Default engine: `sing-box`
 - Optional engine: `xray`
-- WireGuard in V1: standalone VPN mode + outbound mode
+- WireGuard in V1: WARP outbound mode only; standalone WireGuard public inbound is not exposed
 - Lite profile: max 2 protocols
 - Lite default protocol: `vless-reality`
 - Lite recommended second protocol: `hysteria2`
@@ -19,7 +19,12 @@
 ## Firewall Policy
 
 - Strictly incremental firewall changes
-- Explicit rollback support
+- Managed-rule rollback support; rollback restores only rules tracked by `sing-box-deve`, not a full system firewall snapshot
+- Idempotent endpoint ownership: repeated installs do not duplicate managed rules for the same backend/proto/port/service, even when `install_id` changes
+- Drift self-healing: if a managed record exists but the backend rule is missing, the next apply/replay restores the backend rule
+- `fw status` always prints managed records first; backend presence checks are best-effort and skipped when no usable backend is available
+- `firewalld` has port/proto ownership granularity only; pre-existing ports are not adopted
+- `nftables` backend is best-effort for complex host rulesets; rule presence does not prove end-to-end reachability when other base chains drop traffic
 - Absolutely no:
   - `ufw disable`
   - `iptables -F`
@@ -29,14 +34,14 @@
 ## Firewall Backend Selection
 
 1. `ufw` when active
-2. `nftables` when available
-3. `firewalld` when running
-4. `iptables` as fallback
+2. `firewalld` when running
+3. `iptables` when usable
+4. `nftables` when usable
 
 ## Scope
 
 - Scenarios: VPS, Serv00/Hostuno, SAP, Workers, GitHub Actions
-- Protocol family: full set in V1, including Trojan and WireGuard
+- Protocol family: vless-reality, vless-ws, vless-xhttp, shadowsocks-2022, naive, hysteria2, tuic, anytls, trojan; WARP/Argo/Psiphon are feature modes, not public inbound protocols
 
 ## Platform Support Contract
 

@@ -649,7 +649,11 @@ sb warp socks5-stop
 - 不执行 `ufw disable`
 - 不执行 `iptables -F` / `iptables -X`
 - 不执行 `setenforce 0`
-- 仅管理本工具新增规则，并支持回滚
+- 仅管理本工具新增规则，并支持托管规则回滚；rollback 不是系统防火墙全量快照
+- 防火墙规则按 backend/proto/port/service 幂等管理，重复安装不会因 `install_id` 变化重复添加同一端口规则
+- 若托管记录存在但后端规则缺失，下一次 apply/replay 会自动恢复
+- `fw status` 会先显示托管记录；无可用防火墙后端时跳过后端存在性检查
+- `firewalld` 只能按 port/proto 管理，已有端口不会被本工具接管；`nftables` 在复杂主机规则集下为 best-effort
 
 ## 路线图
 
