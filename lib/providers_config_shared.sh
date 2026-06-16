@@ -65,3 +65,47 @@ generate_reality_keys() {
   # Public key can be world-readable
   chmod 644 "$public_key_file"
 }
+
+sbd_is_valid_ss2022_password() {
+  local password="${1:-}"
+  [[ -n "$password" ]] || return 1
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$password" <<'PY'
+import base64, sys
+try:
+    raw = base64.b64decode(sys.argv[1], validate=True)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if len(raw) == 16 else 1)
+PY
+    return $?
+  fi
+  return 0
+}
+
+ensure_ss2022_password() {
+  local password_file="${SBD_DATA_DIR}/ss2022_password"
+  local password=""
+
+  if [[ -f "$password_file" ]]; then
+    password="$(tr -d '\r\n' < "$password_file" 2>/dev/null || true)"
+    if sbd_is_valid_ss2022_password "$password"; then
+      chmod 600 "$password_file" 2>/dev/null || true
+      printf '%s\n' "$password"
+      return 0
+    fi
+    log_warn "$(msg "检测到损坏的 Shadowsocks-2022 密钥，正在自动重建" "Detected invalid Shadowsocks-2022 key; regenerating")"
+    rm -f "$password_file"
+  fi
+
+  if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
+    password="$("${SBD_BIN_DIR}/sing-box" generate rand --base64 16 2>/dev/null | head -n1 || true)"
+  fi
+  if ! sbd_is_valid_ss2022_password "$password" && command -v openssl >/dev/null 2>&1; then
+    password="$(openssl rand -base64 16 | head -n1)"
+  fi
+  sbd_is_valid_ss2022_password "$password" || die "Failed to generate valid Shadowsocks-2022 password"
+  printf '%s\n' "$password" > "$password_file"
+  chmod 600 "$password_file"
+  printf '%s\n' "$password"
+}

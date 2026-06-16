@@ -59,9 +59,9 @@ EOF
 }
 
 singbox_fragment_ss2022() {
-  local uuid="$1" port="$2"
-  local uuid_json
-  uuid_json="$(sbd_json_string "$uuid")"
+  local password="$1" port="$2"
+  local password_json
+  password_json="$(sbd_json_string "$password")"
   cat <<EOF
     {
       "type": "shadowsocks",
@@ -69,7 +69,7 @@ singbox_fragment_ss2022() {
       "listen": "::",
       "listen_port": ${port},
       "method": "2022-blake3-aes-128-gcm",
-      "password": ${uuid_json}
+      "password": ${password_json}
     }
 EOF
 }

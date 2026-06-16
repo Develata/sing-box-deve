@@ -7,6 +7,7 @@ build_sing_box_config() {
   local cert_file key_file
   cert_file="$(get_tls_cert_path)"
   key_file="$(get_tls_key_path)"
+  local ss2022_password=""
   generate_reality_keys
   local private_key public_key short_id
   private_key="$(<"${SBD_DATA_DIR}/reality_private.key")"
@@ -48,8 +49,9 @@ build_sing_box_config() {
   fi
 
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
+    ss2022_password="$(ensure_ss2022_password)"
     sbd_inbounds_append inbounds inbound_map "ss-2022" "$port_ss2022" \
-      "$(singbox_fragment_ss2022 "$uuid" "$port_ss2022")"
+      "$(singbox_fragment_ss2022 "$ss2022_password" "$port_ss2022")"
   fi
 
   if protocol_enabled "naive" "${protocols[@]}"; then

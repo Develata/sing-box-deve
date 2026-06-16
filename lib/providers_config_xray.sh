@@ -23,19 +23,30 @@ build_xray_config() {
   port_vless_ws="$(resolve_protocol_port_for_engine "xray" "vless-ws")"
   port_vless_xhttp="$(resolve_protocol_port_for_engine "xray" "vless-xhttp")"
 
-  if [[ ! -f "${SBD_DATA_DIR}/xray_private.key" ]]; then
+  local private_key public_key short_id
+  private_key=""; public_key=""; short_id=""
+  [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && private_key="$(tr -d '\r\n' < "${SBD_DATA_DIR}/xray_private.key")"
+  [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && public_key="$(tr -d '\r\n' < "${SBD_DATA_DIR}/xray_public.key")"
+  [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && short_id="$(tr -d '\r\n' < "${SBD_DATA_DIR}/xray_short_id")"
+  if ! sbd_is_valid_reality_key "$private_key" || ! sbd_is_valid_reality_key "$public_key" || ! sbd_is_valid_reality_short_id "$short_id"; then
     local out
     out="$("${SBD_BIN_DIR}/xray" x25519)"
-    echo "$out" | awk '/Private key/{print $3}' > "${SBD_DATA_DIR}/xray_private.key"
-    echo "$out" | awk '/Public key/{print $3}' > "${SBD_DATA_DIR}/xray_public.key"
-    openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id"
-    chmod 600 "${SBD_DATA_DIR}/xray_private.key" "${SBD_DATA_DIR}/xray_public.key" "${SBD_DATA_DIR}/xray_short_id"
+    private_key="$(printf '%s\n' "$out" | awk -F': *' '/Private[[:space:]]*[Kk]ey/{print $2; exit}')"
+    public_key="$(printf '%s\n' "$out" | awk -F': *' '/Public[[:space:]]*[Kk]ey|Password/{print $2; exit}')"
+    if command -v openssl >/dev/null 2>&1; then
+      short_id="$(openssl rand -hex 4)"
+    else
+      short_id="$(rand_hex_8)"
+    fi
+    sbd_is_valid_reality_key "$private_key" || die "Failed to generate valid xray reality private key"
+    sbd_is_valid_reality_key "$public_key" || die "Failed to generate valid xray reality public key"
+    sbd_is_valid_reality_short_id "$short_id" || die "Failed to generate valid xray reality short id"
+    printf '%s\n' "$private_key" > "${SBD_DATA_DIR}/xray_private.key"
+    printf '%s\n' "$public_key" > "${SBD_DATA_DIR}/xray_public.key"
+    printf '%s\n' "$short_id" > "${SBD_DATA_DIR}/xray_short_id"
+    chmod 600 "${SBD_DATA_DIR}/xray_private.key" "${SBD_DATA_DIR}/xray_short_id"
+    chmod 644 "${SBD_DATA_DIR}/xray_public.key" 2>/dev/null || true
   fi
-
-  local private_key public_key short_id
-  private_key="$(<"${SBD_DATA_DIR}/xray_private.key")"
-  public_key="$(<"${SBD_DATA_DIR}/xray_public.key")"
-  short_id="$(<"${SBD_DATA_DIR}/xray_short_id")"
 
   local inbounds=""
   local inbound_map=""

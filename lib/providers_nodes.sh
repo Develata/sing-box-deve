@@ -14,7 +14,7 @@ write_nodes_output() {
   local reality_sni reality_fp tls_sni vless_ws_path vless_ws_path_uri
   local xhttp_path xhttp_path_uri xhttp_mode enc_vless
   local ip_vless_ws ip_xhttp public_key short_id
-  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic
+  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic ss2022_password
   local protocols=()
 
   reality_sni="$(sbd_reality_server_name)"
@@ -63,7 +63,8 @@ write_nodes_output() {
     node_link_vless_xhttp "$uuid" "$ip_xhttp" "$p_xhttp" "$enc_vless" "$reality_sni" "$reality_fp" "$public_key" "$short_id" "$xhttp_path_uri" "$xhttp_mode" "$(sbd_cdn_host_vless_xhttp)" >> "$SBD_NODES_BASE_FILE"
   fi
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
-    node_link_ss2022 "$uuid" "$ip" "$p_ss" >> "$SBD_NODES_BASE_FILE"
+    ss2022_password="$(ensure_ss2022_password)"
+    node_link_ss2022 "$ss2022_password" "$ip" "$p_ss" >> "$SBD_NODES_BASE_FILE"
   fi
   if [[ "$engine" == "sing-box" ]] && protocol_enabled "naive" "${protocols[@]}"; then
     node_link_naive "$uuid" "$ip" "$p_naive" "$tls_sni" >> "$SBD_NODES_BASE_FILE"

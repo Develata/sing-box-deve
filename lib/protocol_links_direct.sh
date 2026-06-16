@@ -20,8 +20,8 @@ node_link_vless_xhttp() {
 }
 
 node_link_ss2022() {
-  local uuid="$1" ip="$2" port="$3"
-  echo "ss://$(printf '%s' "2022-blake3-aes-128-gcm:${uuid}" | base64 -w 0)@$ip:${port}#sbd-shadowsocks-2022"
+  local password="$1" ip="$2" port="$3"
+  echo "ss://$(printf '%s' "2022-blake3-aes-128-gcm:${password}" | base64 -w 0)@$ip:${port}#sbd-shadowsocks-2022"
 }
 
 node_link_naive() {
