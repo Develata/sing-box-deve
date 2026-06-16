@@ -60,8 +60,12 @@ build_sing_box_config() {
   fi
 
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
+    local archive_site_dir=""
+    if protocols_require_domain_cert "$protocols_csv"; then
+      archive_site_dir="$(sbd_archive_site_dir)"
+    fi
     sbd_inbounds_append inbounds inbound_map "hy2" "$port_hysteria2" \
-      "$(singbox_fragment_hysteria2 "$uuid" "$port_hysteria2" "$tls_server_name" "$cert_file" "$key_file")"
+      "$(singbox_fragment_hysteria2 "$uuid" "$port_hysteria2" "$tls_server_name" "$cert_file" "$key_file" "$archive_site_dir")"
   fi
 
   if protocol_enabled "tuic" "${protocols[@]}"; then

@@ -10,6 +10,7 @@ parse_install_args() {
   PROTOCOLS="$protocols_default_seed"
   DRY_RUN="false"
   PORT_MODE="${PORT_MODE:-random}"
+  INSTALL_PRESET="${INSTALL_PRESET:-}"
   MANUAL_PORT_MAP="${MANUAL_PORT_MAP:-}"
   INSTALL_MAIN_PORT="${INSTALL_MAIN_PORT:-}"
   RANDOM_MAIN_PORT="${RANDOM_MAIN_PORT:-false}"
@@ -60,13 +61,14 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--acme-dns-provider|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
+      --provider|--profile|--engine|--protocols|--preset|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
         require_option_value "$1" "$#"
         case "$1" in
           --provider) PROVIDER="$2" ;;
           --profile) PROFILE="$2" ;;
           --engine) ENGINE="$2" ;;
           --protocols) PROTOCOLS="$2"; protocols_explicit="true" ;;
+          --preset) INSTALL_PRESET="$2" ;;
           --uuid) SBD_UUID="$2" ;;
           --port-mode) PORT_MODE="$2" ;;
           --port-map) MANUAL_PORT_MAP="$2" ;;
@@ -84,7 +86,7 @@ parse_install_args() {
           --acme-key-path) ACME_KEY_PATH="$2" ;;
           --acme-domain) ACME_DOMAIN="$2" ;;
           --acme-email) ACME_EMAIL="$2" ;;
-          --acme-dns-provider) ACME_DNS_PROVIDER="$2" ;;
+
           --reality-sni) REALITY_SERVER_NAME="$2" ;;
           --reality-fp) REALITY_FINGERPRINT="$2" ;;
           --reality-port) REALITY_HANDSHAKE_PORT="$2" ;;
@@ -113,9 +115,32 @@ parse_install_args() {
     esac
   done
 
+  case "${INSTALL_PRESET:-}" in
+    "") ;;
+    reality-only)
+      ENGINE="sing-box"
+      PROFILE="lite"
+      PROTOCOLS="vless-reality"
+      protocols_explicit="true"
+      ;;
+    reality-plus-domain|reality-plus)
+      ENGINE="sing-box"
+      PROFILE="full"
+      PROTOCOLS="vless-reality,hysteria2,tuic,naive"
+      protocols_explicit="true"
+      ;;
+    full)
+      ENGINE="sing-box"
+      PROFILE="full"
+      PROTOCOLS="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
+      protocols_explicit="true"
+      ;;
+    *) die "--preset must be reality-only|reality-plus-domain|full" ;;
+  esac
+
   if [[ "$protocols_explicit" != "true" && "$PROTOCOLS" == "$protocols_default_seed" ]]; then
     if [[ "$ENGINE" == "sing-box" ]]; then
-      PROTOCOLS="vless-reality,hysteria2"
+      PROTOCOLS="vless-reality"
     else
       PROTOCOLS="vless-reality,vless-ws"
     fi

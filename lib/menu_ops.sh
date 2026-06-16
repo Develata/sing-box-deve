@@ -55,8 +55,7 @@ menu_ops() {
       16)
         read -r -p "$(msg "域名" "domain"): " d
         read -r -p "$(msg "邮箱" "email"): " e
-        read -r -p "$(msg "DNS Provider(泛域名可选，如 dns_cf)" "DNS provider(optional for wildcard, e.g. dns_cf)"): " dp
-        provider_sys_command acme-issue "$d" "$e" "$dp"
+        provider_sys_command acme-issue "$d" "$e"
         menu_pause
         ;;
       17)

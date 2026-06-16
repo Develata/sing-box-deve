@@ -56,7 +56,7 @@ menu_protocol_runtime_protocols_detect() {
 
 menu_protocol_show_csv_help() {
   log_info "$(msg "CSV = 逗号分隔列表。多个协议请用英文逗号 ',' 连接。" "CSV = comma-separated list. Use English comma ',' between items.")"
-  log_info "$(msg "输入示例: vless-reality,hysteria2   或   vless-ws" "Input example: vless-reality,hysteria2   or   vless-ws")"
+  log_info "$(msg "输入示例: vless-reality   或   vless-reality,vless-ws" "Input example: vless-reality   or   vless-reality,vless-ws")"
 }
 
 menu_protocol_show_add_candidates() {

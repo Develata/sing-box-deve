@@ -50,27 +50,6 @@ provider_vps_prepare_warp_account() {
   export WARP_PRIVATE_KEY WARP_PEER_PUBLIC_KEY WARP_RESERVED WARP_LOCAL_V4 WARP_LOCAL_V6 WARP_CLIENT_ID
 }
 
-resolve_tls_auto_for_install() {
-  [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]] || return 0
-
-  local domain="${ACME_DOMAIN:-${TLS_SERVER_NAME:-}}"
-  local tls_name
-  local email="${ACME_EMAIL:-}"
-  [[ -n "$domain" ]] || die "TLS_MODE=acme-auto requires --acme-domain or --tls-sni"
-  [[ -n "$email" ]] || die "TLS_MODE=acme-auto requires --acme-email"
-
-  provider_sys_acme_issue "$domain" "$email" "${ACME_DNS_PROVIDER:-}"
-  [[ -n "${SBD_LAST_ACME_CERT_PATH:-}" && -n "${SBD_LAST_ACME_KEY_PATH:-}" ]] || die "ACME auto issue did not return cert/key paths"
-
-  TLS_MODE="acme"
-  tls_name="${TLS_SERVER_NAME:-$domain}"
-  [[ "$tls_name" == "*."* ]] && tls_name="${tls_name#*.}"
-  ACME_DOMAIN="$domain"
-  ACME_CERT_PATH="$SBD_LAST_ACME_CERT_PATH"
-  ACME_KEY_PATH="$SBD_LAST_ACME_KEY_PATH"
-  TLS_SERVER_NAME="$tls_name"
-}
-
 provider_vps_install() {
   local profile="$1"
   local engine="$2"
@@ -78,7 +57,7 @@ provider_vps_install() {
 
   log_info "$(msg "开始安装: provider=vps profile=${profile} engine=${engine}" "Installing for provider=vps profile=${profile} engine=${engine}")"
   install_apt_dependencies
-  resolve_tls_auto_for_install
+  provider_prepare_domain_runtime_artifacts "$protocols_csv"
   validate_feature_modes
   provider_vps_prepare_warp_account
   assert_engine_protocol_compatibility "$engine" "$protocols_csv"
@@ -149,6 +128,7 @@ reality_server_name=${REALITY_SERVER_NAME:-${reality_server_name:-}}
 reality_fingerprint=${REALITY_FINGERPRINT:-${reality_fingerprint:-}}
 reality_handshake_port=${REALITY_HANDSHAKE_PORT:-${reality_handshake_port:-}}
 tls_server_name=${TLS_SERVER_NAME:-${tls_server_name:-}}
+archive_site_dir=${SBD_ARCHIVE_SITE_DIR:-${archive_site_dir:-}}
 vmess_ws_path=${VMESS_WS_PATH:-${vmess_ws_path:-}}
 vless_ws_path=${VLESS_WS_PATH:-${vless_ws_path:-}}
 vless_xhttp_path=${VLESS_XHTTP_PATH:-${vless_xhttp_path:-}}

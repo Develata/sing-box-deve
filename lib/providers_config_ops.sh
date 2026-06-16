@@ -34,6 +34,7 @@ provider_cfg_load_runtime_exports() {
   export REALITY_FINGERPRINT="${reality_fingerprint:-}"
   export REALITY_HANDSHAKE_PORT="${reality_handshake_port:-}"
   export TLS_SERVER_NAME="${tls_server_name:-}"
+  export SBD_ARCHIVE_SITE_DIR="${archive_site_dir:-}"
   export VLESS_WS_PATH="${vless_ws_path:-}"
   export VLESS_XHTTP_PATH="${vless_xhttp_path:-}"
   export VLESS_XHTTP_MODE="${vless_xhttp_mode:-auto}"
@@ -58,6 +59,7 @@ provider_cfg_rebuild_runtime() {
   fi
   [[ -n "$target_protocols" ]] && protocols="$target_protocols"
   validate_feature_modes
+  provider_prepare_domain_runtime_artifacts "${protocols:-vless-reality}"
   case "${engine:-sing-box}" in
     sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" "true" ;;
     xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" "true" ;;
@@ -141,18 +143,17 @@ provider_cfg_set_domain_split() {
 
 provider_cfg_set_tls() {
   ensure_root
-  local mode="${1:-}" cert="${2:-}" key="${3:-}" dns_provider="${4:-}"
+  local mode="${1:-}" cert="${2:-}" key="${3:-}"
   local domain="" email="" tls_name=""
   case "$mode" in self-signed|acme|acme-auto) ;;
-    *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email] [dns_provider]")" ;;
+    *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email]")" ;;
   esac
   provider_cfg_load_runtime_exports
   if [[ "$mode" == "acme-auto" ]]; then
     domain="$cert"
     email="$key"
-    [[ -n "$dns_provider" ]] || dns_provider="${ACME_DNS_PROVIDER:-}"
-    [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: cfg tls acme-auto <domain> <email> [dns_provider]" "Usage: cfg tls acme-auto <domain> <email> [dns_provider]")"
-    provider_sys_acme_issue "$domain" "$email" "$dns_provider"
+    [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: cfg tls acme-auto <domain> <email>" "Usage: cfg tls acme-auto <domain> <email>")"
+    provider_sys_acme_issue "$domain" "$email"
     cert="${SBD_LAST_ACME_CERT_PATH:-}"
     key="${SBD_LAST_ACME_KEY_PATH:-}"
     if [[ -z "$cert" || -z "$key" ]]; then
@@ -174,7 +175,7 @@ provider_cfg_set_tls() {
     [[ -n "$tls_name" ]] && TLS_SERVER_NAME="$tls_name"
     ACME_DOMAIN="${domain:-}"
     ACME_EMAIL="${email:-}"
-    ACME_DNS_PROVIDER="${dns_provider:-}"
+    ACME_DNS_PROVIDER=""
   else
     ACME_CERT_PATH=""
     ACME_KEY_PATH=""

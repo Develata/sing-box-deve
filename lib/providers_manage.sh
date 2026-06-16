@@ -221,6 +221,7 @@ provider_kernel_set() {
     if ! (
       provider_cfg_load_runtime_exports
       assert_engine_protocol_compatibility "$target_engine" "${protocols:-vless-reality}"
+      provider_prepare_domain_runtime_artifacts "${protocols:-vless-reality}"
       case "$target_engine" in
         sing-box) build_sing_box_config "${protocols:-vless-reality}" ;;
         xray) build_xray_config "${protocols:-vless-reality}" ;;

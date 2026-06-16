@@ -84,9 +84,10 @@ provider_sys_acme_install() {
 
 provider_sys_acme_issue() {
   ensure_root
-  local domain="${1:-}" email="${2:-}" dns_provider="${3:-${ACME_DNS_PROVIDER:-}}"
-  [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email> [dns_provider]" "Usage: sys acme-issue <domain> <email> [dns_provider]")"
+  local domain="${1:-}" email="${2:-}"
+  [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email>" "Usage: sys acme-issue <domain> <email>")"
   sbd_valid_domain_name "$domain" || die "Invalid ACME domain: ${domain}"
+  [[ "$domain" != "*."* ]] || die "Wildcard certificates are not supported by acme-auto; provide certificate paths manually"
   [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "Invalid ACME account email: ${email}"
   SBD_LAST_ACME_CERT_PATH=""
   SBD_LAST_ACME_KEY_PATH=""
@@ -102,37 +103,21 @@ provider_sys_acme_issue() {
   provider_sys_acme_install
   /root/.acme.sh/acme.sh --register-account -m "$email" >/dev/null 2>&1 || true
 
-  local cert_domain="$domain"
-  if [[ "$domain" == "*."* ]]; then
-    cert_domain="${domain#*.}"
-    if [[ -z "$dns_provider" ]]; then
-      if [[ -n "${CF_Token:-}" || -n "${CF_Key:-}" ]]; then
-        dns_provider="dns_cf"
-      fi
-    fi
-    [[ -n "$dns_provider" ]] || die "$(msg "泛域名证书需要 DNS 验证，请设置 ACME_DNS_PROVIDER（如 dns_cf）及对应凭据" "Wildcard cert requires DNS challenge. Set ACME_DNS_PROVIDER (e.g. dns_cf) and provider credentials.")"
-    /root/.acme.sh/acme.sh --issue --keylength ec-256 --dns "$dns_provider" -d "$cert_domain" -d "*.${cert_domain}"
-    log_info "$(msg "已使用 DNS 验证签发泛域名证书: provider=${dns_provider}" "Issued wildcard cert via DNS challenge: provider=${dns_provider}")"
-  elif [[ -n "$dns_provider" ]]; then
-    /root/.acme.sh/acme.sh --issue --keylength ec-256 --dns "$dns_provider" -d "$domain"
-    log_info "$(msg "已使用 DNS 验证签发证书: provider=${dns_provider}" "Issued cert via DNS challenge: provider=${dns_provider}")"
-  else
-    if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :80 )" 2>/dev/null | tail -n +2 | grep -q .; then
-      die "ACME standalone mode requires TCP port 80 to be free; stop the service using port 80 or use DNS challenge"
-    fi
-    /root/.acme.sh/acme.sh --issue --keylength ec-256 -d "$domain" --standalone
+  if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :80 )" 2>/dev/null | tail -n +2 | grep -q .; then
+    die "ACME standalone mode requires TCP port 80 to be free; stop the service using port 80 or provide certificate paths manually"
   fi
+  /root/.acme.sh/acme.sh --issue --keylength ec-256 -d "$domain" --standalone
 
   local cert="" key=""
-  acme_resolve_existing_cert "$cert_domain" cert key || true
+  acme_resolve_existing_cert "$domain" cert key || true
   [[ -n "$cert" && -n "$key" ]] || {
-    cert="/root/.acme.sh/${cert_domain}_ecc/fullchain.cer"
-    key="/root/.acme.sh/${cert_domain}_ecc/${cert_domain}.key"
+    cert="/root/.acme.sh/${domain}_ecc/fullchain.cer"
+    key="/root/.acme.sh/${domain}_ecc/${domain}.key"
   }
   [[ -f "$cert" && -f "$key" ]] || die "$(msg "ACME 签发成功但证书文件缺失" "ACME issue succeeded but cert files missing")"
   SBD_LAST_ACME_CERT_PATH="$cert"
   SBD_LAST_ACME_KEY_PATH="$key"
-  log_success "$(msg "ACME 证书签发完成: cert=${cert} key=${key}" "ACME cert issued: cert=${cert} key=${key}")"
+  log_success "$(msg "ACME standalone 证书签发完成: cert=${cert} key=${key}" "ACME standalone cert issued: cert=${cert} key=${key}")"
 }
 
 provider_sys_acme_apply() {
@@ -152,7 +137,7 @@ provider_sys_command() {
     acme-issue) provider_sys_acme_issue "$@" ;;
     acme-apply) provider_sys_acme_apply "$@" ;;
     *)
-      die "$(msg "用法: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email> [dns_provider]|acme-apply <cert> <key>]" "Usage: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email> [dns_provider]|acme-apply <cert> <key>]")"
+      die "$(msg "用法: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email>|acme-apply <cert> <key>]" "Usage: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email>|acme-apply <cert> <key>]")"
       ;;
   esac
 }

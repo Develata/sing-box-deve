@@ -26,7 +26,7 @@ PASS：核心服务 running，节点文件生成，端口监听检查通过。
 ## 2) VPS Full + Argo
 
 ```bash
-sudo ./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,hysteria2 --argo temp --yes
+sudo ./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,vless-ws --argo temp --yes
 sudo ./sing-box-deve.sh panel --full
 sudo ./sing-box-deve.sh doctor
 ```

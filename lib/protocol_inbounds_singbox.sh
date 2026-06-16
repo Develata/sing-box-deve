@@ -100,12 +100,17 @@ EOF
 }
 
 singbox_fragment_hysteria2() {
-  local uuid="$1" port="$2" tls_sni="$3" cert_file="$4" key_file="$5"
-  local uuid_json tls_sni_json cert_file_json key_file_json
+  local uuid="$1" port="$2" tls_sni="$3" cert_file="$4" key_file="$5" masquerade_dir="${6:-}"
+  local uuid_json tls_sni_json cert_file_json key_file_json masquerade_json masquerade_line=""
   uuid_json="$(sbd_json_string "$uuid")"
   tls_sni_json="$(sbd_json_string "$tls_sni")"
   cert_file_json="$(sbd_json_string "$cert_file")"
   key_file_json="$(sbd_json_string "$key_file")"
+  if [[ -n "$masquerade_dir" ]]; then
+    masquerade_json="$(sbd_json_string "file://${masquerade_dir}")"
+    masquerade_line=$',\n      "masquerade": '
+    masquerade_line+="${masquerade_json}"
+  fi
   cat <<EOF
     {
       "type": "hysteria2",
@@ -118,7 +123,7 @@ singbox_fragment_hysteria2() {
         "server_name": ${tls_sni_json},
         "certificate_path": ${cert_file_json},
         "key_path": ${key_file_json}
-      }
+      }${masquerade_line}
     }
 EOF
 }

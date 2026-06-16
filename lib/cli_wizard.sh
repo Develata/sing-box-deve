@@ -43,48 +43,46 @@ wizard() {
   fi
 
   echo
-  printf '%s\n' "$(msg "协议选择" "Protocol selection")"
-  local default_protocols
-  if [[ "$ENGINE" == "sing-box" ]]; then
-    default_protocols="vless-reality,hysteria2"
-  else
-    default_protocols="vless-reality,vless-ws"
-  fi
-  PROTOCOLS="$default_protocols"
-  if prompt_yes_no "$(msg "保留默认协议 '${default_protocols}' 吗？" "Keep default protocols '${default_protocols}'?")" "Y"; then
-    PROTOCOLS="$default_protocols"
-  else
-    PROTOCOLS=""
-    local p
-    for p in "${ALL_PROTOCOLS[@]}"; do
-      if [[ "$PROFILE" == "lite" ]]; then
-        local count
-        count="$(echo "$PROTOCOLS" | tr ',' '\n' | grep -c . || true)"
-        if (( count >= 2 )); then
-          break
-        fi
-      fi
-      local hint risk resource note
-      hint="$(protocol_hint "$p")"
-      risk="$(echo "$hint" | awk -F';' '{print $1}' | cut -d= -f2)"
-      resource="$(echo "$hint" | awk -F';' '{print $2}' | cut -d= -f2)"
-      note="$(echo "$hint" | awk -F';' '{print $3}' | cut -d= -f2-)"
-      log_info "$(msg "协议提示" "Protocol hint") ${p}: risk=${risk}, resource=${resource}, ${note}"
-      if prompt_yes_no "$(msg "启用协议 '${p}' 吗？" "Enable protocol '${p}'?")" "N"; then
-        if [[ -z "$PROTOCOLS" ]]; then
-          PROTOCOLS="$p"
-        else
-          PROTOCOLS+=" ,$p"
-        fi
-      fi
-    done
-    PROTOCOLS="$(echo "$PROTOCOLS" | tr -d ' ')"
-    [[ -n "$PROTOCOLS" ]] || PROTOCOLS="$default_protocols"
-  fi
+  printf '%s\n' "$(msg "部署预设" "Deployment preset")"
+  echo "1) reality-only: $(msg "仅 vless-reality；不需要域名" "vless-reality only; no domain required")"
+  echo "2) reality-plus-domain: $(msg "vless-reality + hysteria2/tuic/naive；必须自有域名和有效证书" "vless-reality + hysteria2/tuic/naive; requires domain and valid certificate")"
+  echo "3) full: $(msg "全部 sing-box 协议各部署一份；必须自有域名和有效证书" "all sing-box protocols; requires domain and valid certificate")"
+  local preset_choice
+  prompt_with_default "$(msg "选择预设 [1/2/3]" "Choose preset [1/2/3]")" "1" preset_choice
+  case "$preset_choice" in
+    1|reality-only)
+      INSTALL_PRESET="reality-only"
+      ENGINE="sing-box"
+      PROFILE="lite"
+      PROTOCOLS="vless-reality"
+      ;;
+    2|reality-plus-domain|reality-plus)
+      INSTALL_PRESET="reality-plus-domain"
+      ENGINE="sing-box"
+      PROFILE="full"
+      PROTOCOLS="vless-reality,hysteria2,tuic,naive"
+      ;;
+    3|full)
+      INSTALL_PRESET="full"
+      ENGINE="sing-box"
+      PROFILE="full"
+      PROTOCOLS="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
+      ;;
+    *) die "$(msg "预设必须是 1/2/3" "Preset must be 1/2/3")" ;;
+  esac
 
-  if [[ "$ENGINE" == "sing-box" && "$PROFILE" == "lite" ]] && prompt_yes_no "$(msg "Lite 模式：启用推荐第二协议 'hysteria2' 吗？" "Lite mode: enable recommended second protocol 'hysteria2'?")" "N"; then
-    if [[ "$PROTOCOLS" == "vless-reality" ]]; then
-      PROTOCOLS="vless-reality,hysteria2"
+  if protocols_require_domain_cert "$PROTOCOLS"; then
+    echo
+    printf '%s\n' "$(msg "所选协议包含 hysteria2/tuic/naive，必须提供自有域名和有效证书。" "Selected protocols include hysteria2/tuic/naive and require a domain with a valid certificate.")"
+    prompt_with_default "$(msg "输入 TLS 域名/SNI" "Input TLS domain/SNI")" "example.com" TLS_SERVER_NAME
+    ACME_DOMAIN="${ACME_DOMAIN:-$TLS_SERVER_NAME}"
+    if prompt_yes_no "$(msg "是否提供已有证书路径？" "Provide existing certificate paths?")" "N"; then
+      TLS_MODE="acme"
+      prompt_with_default "$(msg "输入 fullchain 证书路径" "Input fullchain certificate path")" "" ACME_CERT_PATH
+      prompt_with_default "$(msg "输入私钥路径" "Input private key path")" "" ACME_KEY_PATH
+    else
+      TLS_MODE="acme-auto"
+      prompt_with_default "$(msg "输入 ACME 注册邮箱（acme.sh standalone）" "Input ACME account email (acme.sh standalone)")" "" ACME_EMAIL
     fi
   fi
 

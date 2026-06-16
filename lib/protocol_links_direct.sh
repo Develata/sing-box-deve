@@ -31,12 +31,12 @@ node_link_naive() {
 
 node_link_hysteria2() {
   local uuid="$1" ip="$2" port="$3" sni="$4"
-  echo "hysteria2://$uuid@$ip:${port}?security=tls&sni=$sni&insecure=1#sbd-hysteria2"
+  echo "hysteria2://$uuid@$ip:${port}?security=tls&sni=$sni#sbd-hysteria2"
 }
 
 node_link_tuic() {
   local uuid="$1" ip="$2" port="$3" sni="$4"
-  echo "tuic://$uuid:$uuid@$ip:${port}?congestion_control=bbr&sni=$sni&allow_insecure=1#sbd-tuic"
+  echo "tuic://$uuid:$uuid@$ip:${port}?congestion_control=bbr&sni=$sni#sbd-tuic"
 }
 
 node_link_warp_mode() {

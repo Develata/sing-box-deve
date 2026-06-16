@@ -141,13 +141,13 @@ protocol_hint() {
       echo "risk=low;resource=low;note=password management required"
       ;;
     naive)
-      echo "risk=medium;resource=medium;note=sing-box only; production needs a trusted certificate"
+      echo "risk=medium;resource=medium;note=requires user-controlled domain and trusted certificate"
       ;;
     hysteria2)
-      echo "risk=medium;resource=medium;note=udp heavy at high throughput"
+      echo "risk=medium;resource=medium;note=requires user-controlled domain and trusted certificate; udp heavy at high throughput"
       ;;
     tuic)
-      echo "risk=medium;resource=medium;note=udp + tls cert overhead"
+      echo "risk=medium;resource=medium;note=requires user-controlled domain and trusted certificate; udp + tls cert overhead"
       ;;
     *)
       echo "risk=unknown;resource=unknown;note=n/a"

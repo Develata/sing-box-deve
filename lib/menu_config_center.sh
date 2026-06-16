@@ -48,7 +48,6 @@ menu_cfg_collect_change() {
       elif [[ "$MENU_CFG_ARG1" == "acme-auto" ]]; then
         read -r -p "$(msg "签发域名" "domain for cert"): " MENU_CFG_ARG2
         read -r -p "$(msg "签发邮箱" "email for cert"): " MENU_CFG_ARG3
-        read -r -p "$(msg "DNS Provider(泛域名可选，如 dns_cf)" "DNS provider(optional for wildcard, e.g. dns_cf)"): " MENU_CFG_ARG4
       fi
       ;;
     7)

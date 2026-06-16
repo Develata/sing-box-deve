@@ -20,7 +20,7 @@
 
 ```bash
 sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
-sudo ./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,hysteria2 --argo temp --yes
+sudo ./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,vless-ws --argo temp --yes
 sudo ./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality   --outbound-proxy-mode socks --outbound-proxy-host 1.2.3.4 --outbound-proxy-port 1080 --yes
 sudo ./sing-box-deve.sh doctor
 sudo ./sing-box-deve.sh panel --full

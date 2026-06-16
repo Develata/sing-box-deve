@@ -10,6 +10,13 @@ run_install() {
   validate_engine "$engine"
   validate_profile_protocols "$profile" "$protocols_csv"
   prepare_initial_install_ports "$protocols_csv"
+  validate_feature_modes
+  if [[ "$dry_run" == "true" ]] && protocols_require_domain_cert "$protocols_csv"; then
+    local dry_domain="${TLS_SERVER_NAME:-${ACME_DOMAIN:-}}"
+    [[ -n "$dry_domain" ]] || die "Dry-run: selected protocols require --tls-sni or --acme-domain"
+    sbd_valid_domain_name "$dry_domain" || die "Dry-run: invalid TLS domain: ${dry_domain}"
+    ! sbd_is_ip_literal "$dry_domain" || die "Dry-run: TLS domain must not be an IP literal: ${dry_domain}"
+  fi
 
   if [[ "$dry_run" == "true" ]]; then
     log_info "$(msg "已启用 Dry-run；不会执行系统修改" "Dry-run enabled; no system changes applied")"

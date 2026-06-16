@@ -26,6 +26,7 @@ provider_serv00_install() {
 
   reject_tls_auto_for_provider "serv00"
   validate_feature_modes
+  provider_prepare_domain_runtime_artifacts "$protocols_csv"
   install_apt_dependencies
   mkdir -p "${SBD_CONFIG_DIR}"
   cat > "${SBD_CONFIG_DIR}/serv00.env" <<EOF

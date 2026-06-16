@@ -7,7 +7,8 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 ## 特性概览
 
 - **6 种公开入站协议**：`vless-reality`, `vless-ws`, `shadowsocks-2022`, `naive`, `hysteria2`, `tuic`；`vless-xhttp` 作为 xray compatibility 协议保留。
-- **默认主线**：VPS + `sing-box` + `vless-reality,hysteria2`。
+- **默认主线**：VPS + `sing-box` + `vless-reality`（`reality-only` preset，无需自有域名）。
+- **域名 TLS 门禁**：`hysteria2` / `tuic` / `naive` 必须使用自有域名与有效证书；自动签发仅支持 `acme.sh --standalone`。
 - **可选兼容**：Serv00/Hostuno 受限环境、xray compatibility engine。
 - **Argo 隧道**：临时/固定模式，用于受限入口或 CDN 辅助暴露。
 - **WARP 出站**：仅作为 outbound mode，不暴露 WireGuard public inbound。
@@ -51,9 +52,9 @@ chmod +x ./sing-box-deve.sh
 ## 自动化安装示例
 
 ```bash
-./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
-./sing-box-deve.sh install --provider vps --profile lite --engine sing-box --protocols vless-reality,hysteria2 --random-main-port --yes
-./sing-box-deve.sh install --provider vps --profile full --engine sing-box --protocols vless-reality,hysteria2,tuic --argo temp --yes
+./sing-box-deve.sh install --preset reality-only --yes
+./sing-box-deve.sh install --preset reality-plus-domain --tls-sni example.com --tls-mode acme --acme-cert-path /path/fullchain.pem --acme-key-path /path/privkey.pem --yes
+./sing-box-deve.sh install --preset full --tls-sni example.com --tls-mode acme-auto --acme-email admin@example.com --yes
 ```
 
 ## 运行管理
@@ -107,7 +108,7 @@ chmod +x ./sing-box-deve.sh
 ./sing-box-deve.sh cfg ip-pref auto|v4|v6
 ./sing-box-deve.sh cfg cdn-host <domain>
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
-./sing-box-deve.sh cfg tls self-signed|acme|acme-auto [cert_path|domain] [key_path|email] [dns_provider]
+./sing-box-deve.sh cfg tls self-signed|acme|acme-auto [cert_path|domain] [key_path|email]
 ./sing-box-deve.sh cfg protocol-add <proto_csv> [random|manual] [proto:port,...]
 ./sing-box-deve.sh cfg protocol-remove <proto_csv|index_csv>
 ./sing-box-deve.sh cfg rebuild
@@ -125,7 +126,7 @@ chmod +x ./sing-box-deve.sh
 ./sing-box-deve.sh sys bbr-status
 ./sing-box-deve.sh sys bbr-enable
 ./sing-box-deve.sh sys acme-install
-./sing-box-deve.sh sys acme-issue <domain> <email> [dns_provider]
+./sing-box-deve.sh sys acme-issue <domain> <email>
 ./sing-box-deve.sh sys acme-apply <cert_path> <key_path>
 ```
 

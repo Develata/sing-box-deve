@@ -22,6 +22,7 @@ provider_set_egress() {
   export OUTBOUND_PROXY_PASS="$pass"
 
   validate_feature_modes
+  provider_prepare_domain_runtime_artifacts "$runtime_protocols"
   case "$runtime_engine" in
     sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
     xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
@@ -45,6 +46,7 @@ provider_set_route() {
   export ROUTE_MODE="$mode"
 
   validate_feature_modes
+  provider_prepare_domain_runtime_artifacts "$runtime_protocols"
   case "$runtime_engine" in
     sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
     xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
