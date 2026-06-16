@@ -9,6 +9,8 @@
 - Lite default protocol: `vless-reality`
 - Lite recommended second protocol: `hysteria2`
 - Primary targets: Ubuntu, Debian
+- Best-effort targets: Alpine Linux, FreeBSD-based Serv00/Hostuno, restricted non-root shells
+- Supported CPU architectures: `amd64`/`x86_64`, `arm64`/`aarch64`
 - No backward compatibility with old variable names
 - Static Web command generator on GitHub Pages
 - VPS must not run extra local web panel services by default
@@ -35,6 +37,13 @@
 
 - Scenarios: VPS, Serv00/Hostuno, SAP, Workers, GitHub Actions
 - Protocol family: full set in V1, including Trojan and WireGuard
+
+## Platform Support Contract
+
+- Ubuntu/Debian VPS is the primary support path and should be used for release-blocking validation.
+- Alpine Linux is supported on a best-effort basis via `apk` dependency installation and OpenRC/nohup service handling.
+- FreeBSD support is scoped primarily to Serv00/Hostuno-style non-root or restricted environments.
+- Unknown `/etc/os-release` IDs are allowed to continue with a warning, but are not considered supported until validated on a real target host.
 
 ## Current V1 Implementation Progress
 

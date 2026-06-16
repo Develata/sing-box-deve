@@ -5,7 +5,7 @@
 GitHub：`https://github.com/Develata/sing-box-deve`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Ubuntu%20%7C%20Debian%20%7C%20Alpine%20%7C%20FreeBSD-blue)](docs/V1-SPEC.md)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%2FDebian%20primary%20%7C%20Alpine%2FFreeBSD%20best--effort-blue)](docs/V1-SPEC.md)
 
 ## 特性概览
 
@@ -21,6 +21,13 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 - **保活体系**：本地 kp.sh、Serv00 serv00keep.sh、GitHub Actions 多方案
 - **SFW 客户端打包**：自动下载 Windows 客户端并打包配置
 - **Psiphon 预编译**：自动下载 psiphon-tunnel-core 二进制
+
+## 平台支持边界
+
+- **Primary support**：Ubuntu / Debian VPS，推荐 root + systemd，架构支持 `amd64` / `arm64`。
+- **Best-effort support**：Alpine Linux（OpenRC）、FreeBSD 系 Serv00/Hostuno、以及无 root/受限 shell 环境（自动回退到 nohup+crontab）。
+- **平台场景**：SAP Cloud Foundry、Workers、GitHub Actions 属于平台部署/自动化场景，不等同于传统 VPS OS 安装。
+- 未经实机验证的发行版会以“非主支持系统”继续尝试运行；生产环境建议先执行 `install --dry-run` 与目标主机 smoke test。
 
 ## 一键安装
 
