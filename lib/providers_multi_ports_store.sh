@@ -2,12 +2,18 @@
 
 SBD_MULTI_PORTS_FILE="${SBD_STATE_DIR}/multi-ports.db"
 
+multi_ports_store_path_sync() {
+  SBD_MULTI_PORTS_FILE="${SBD_STATE_DIR}/multi-ports.db"
+}
+
 multi_ports_store_init() {
+  multi_ports_store_path_sync
   mkdir -p "${SBD_STATE_DIR}"
   touch "$SBD_MULTI_PORTS_FILE"
 }
 
 multi_ports_store_records() {
+  multi_ports_store_path_sync
   [[ -f "$SBD_MULTI_PORTS_FILE" ]] || return 0
   awk -F'|' 'NF>=2 && $1!="" && $2!="" {print $1 "|" $2}' "$SBD_MULTI_PORTS_FILE"
 }

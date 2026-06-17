@@ -67,8 +67,8 @@ verify_installed_files() {
   local checksums_file="${PROJECT_ROOT}/checksums.txt"
 
   if [[ ! -f "$checksums_file" ]]; then
-    log_warn "$(msg "校验文件不存在，跳过验证" "Checksums file missing, skipping verification")"
-    return 0
+    log_error "$(msg "校验文件不存在，无法验证安装完整性" "Checksums file missing; cannot verify installed files")"
+    return 1
   fi
 
   if [[ -z "${UPDATE_MANIFEST_FILES[*]:-}" ]]; then

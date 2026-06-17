@@ -62,8 +62,13 @@ provider_uninstall() {
   rm -f /etc/systemd/system/sing-box-deve-fw-replay.service
   uninstall_remove_managed_global_bins
   sbd_service_daemon_reload
-  fw_detect_backend
-  fw_clear_managed_rules
+  if fw_detect_backend_optional; then
+    fw_clear_managed_rules
+  else
+    log_warn "$(msg "未检测到防火墙后端；跳过托管防火墙规则清理" "No firewall backend detected; skipping managed firewall cleanup")"
+    mkdir -p "$(dirname "$SBD_RULES_FILE")"
+    : > "$SBD_RULES_FILE" 2>/dev/null || true
+  fi
   if [[ "$keep_settings" == "true" ]]; then
     mkdir -p "${SBD_CONFIG_DIR}/backup"
     [[ -f "$SBD_SETTINGS_FILE" ]] && cp "$SBD_SETTINGS_FILE" "${SBD_CONFIG_DIR}/backup/"

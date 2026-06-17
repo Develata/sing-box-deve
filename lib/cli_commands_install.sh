@@ -51,12 +51,20 @@ run_install() {
     fi
   fi
 
-  fw_detect_backend
-  fw_snapshot_create
+  local firewall_snapshot_enabled="false"
+  if [[ "$provider" == "vps" ]]; then
+    fw_detect_backend
+    fw_snapshot_create
+    firewall_snapshot_enabled="true"
+  fi
 
   if ! provider_install "$provider" "$profile" "$engine" "$protocols_csv"; then
-    log_error "$(msg "安装失败，正在回滚防火墙变更" "Install failed; rolling back firewall changes")"
-    fw_rollback
+    if [[ "$firewall_snapshot_enabled" == "true" ]]; then
+      log_error "$(msg "安装失败，正在回滚防火墙变更" "Install failed; rolling back firewall changes")"
+      fw_rollback
+    else
+      log_error "$(msg "安装失败" "Install failed")"
+    fi
     exit 1
   fi
 

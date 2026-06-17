@@ -20,6 +20,23 @@ source "${ROOT_DIR}/lib/common_base.sh"
 source "${ROOT_DIR}/lib/common_file_helpers.sh"
 # shellcheck source=lib/common_launcher.sh
 source "${ROOT_DIR}/lib/common_launcher.sh"
+# shellcheck source=lib/update_manifest.sh
+source "${ROOT_DIR}/lib/update_manifest.sh"
+# shellcheck source=lib/common_update_rollback.sh
+source "${ROOT_DIR}/lib/common_update_rollback.sh"
+
+missing_checksum_root="${TMP_DIR}/missing-checksum-root"
+mkdir -p "$missing_checksum_root"
+PROJECT_ROOT="$missing_checksum_root"
+if verify_installed_files >"${TMP_DIR}/missing-checksum.out" 2>"${TMP_DIR}/missing-checksum.err"; then
+  echo "[FAIL] verify_installed_files passed without checksums.txt" >&2
+  exit 1
+fi
+grep -q "Checksums file missing" "${TMP_DIR}/missing-checksum.err" || {
+  echo "[FAIL] missing-checksum error is not explicit" >&2
+  exit 1
+}
+PROJECT_ROOT="$ROOT_DIR"
 
 SBD_INSTALL_DIR="${TMP_DIR}/install"
 

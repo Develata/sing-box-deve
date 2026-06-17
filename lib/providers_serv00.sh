@@ -27,7 +27,6 @@ provider_serv00_install() {
   reject_tls_auto_for_provider "serv00"
   validate_feature_modes
   provider_prepare_domain_runtime_artifacts "$protocols_csv"
-  install_apt_dependencies
   mkdir -p "${SBD_CONFIG_DIR}"
   cat > "${SBD_CONFIG_DIR}/serv00.env" <<EOF
 profile=${profile}
@@ -42,9 +41,21 @@ generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
   chmod 600 "${SBD_CONFIG_DIR}/serv00.env" 2>/dev/null || true
 
-  if ! command -v sshpass >/dev/null 2>&1; then
-    apt-get update -y >/dev/null
-    apt-get install -y sshpass >/dev/null
+  local needs_sshpass="false"
+  if [[ -n "${SERV00_ACCOUNTS_JSON:-}" ]]; then
+    needs_sshpass="true"
+  elif [[ -n "${SERV00_HOST:-}" && -n "${SERV00_USER:-}" && -n "${SERV00_PASS:-}" ]]; then
+    needs_sshpass="true"
+  fi
+  if [[ "$needs_sshpass" == "true" ]] && ! command -v sshpass >/dev/null 2>&1; then
+    if [[ "${SBD_USER_MODE:-false}" == "true" ]]; then
+      die "sshpass is required for Serv00 remote bootstrap; install it manually or omit SERV00 credentials to generate only the local bundle"
+    fi
+    install_apt_dependencies
+    if ! command -v sshpass >/dev/null 2>&1; then
+      apt-get update -y >/dev/null
+      apt-get install -y sshpass >/dev/null
+    fi
   fi
 
   local remote_cmd

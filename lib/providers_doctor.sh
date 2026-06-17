@@ -132,6 +132,7 @@ provider_doctor_check_acme_renew() {
 }
 
 provider_doctor_check_cfg_snapshots() {
+  provider_cfg_snapshot_paths_sync
   local count latest
   count="$(provider_cfg_snapshot_ids | sed '/^$/d' | wc -l | tr -d ' ')"
   if [[ "${count:-0}" == "0" ]]; then

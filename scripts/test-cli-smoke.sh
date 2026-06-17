@@ -61,6 +61,22 @@ assert_success dry-run env HOME="$HOME" "$SCRIPT" install --dry-run \
 
 assert_failure unknown-command "$SCRIPT" __definitely_unknown_command__
 
+uninstall_home="${TMP_DIR}/uninstall-home"
+mkdir -p "$uninstall_home"
+assert_success uninstall-no-firewall env HOME="$uninstall_home" SBD_FW_BACKEND=none "$SCRIPT" uninstall --keep-settings
+grep -q "No firewall backend detected" "${TMP_DIR}/uninstall-no-firewall.out" || fail "uninstall no-firewall warning missing"
+
+serv00_home="${TMP_DIR}/serv00-home"
+mkdir -p "$serv00_home"
+assert_success serv00-local-bundle env HOME="$serv00_home" "$SCRIPT" install --provider serv00 --yes
+grep -q "generated local bundle only" "${TMP_DIR}/serv00-local-bundle.out" || fail "serv00 local bundle warning missing"
+[[ -f "${serv00_home}/sing-box-deve/config/serv00.env" ]] || fail "serv00 local bundle missing serv00.env"
+
+serv00_cred_home="${TMP_DIR}/serv00-cred-home"
+mkdir -p "$serv00_cred_home"
+assert_failure serv00-credentials-no-sshpass env HOME="$serv00_cred_home" SERV00_HOST=h SERV00_USER=u SERV00_PASS=p "$SCRIPT" install --provider serv00 --yes
+grep -q "sshpass is required" "${TMP_DIR}/serv00-credentials-no-sshpass.err" || fail "serv00 sshpass error missing"
+
 assert_failure integration-smoke-missing-value "${ROOT_DIR}/scripts/integration-smoke.sh" --script
 grep -q "requires a value" "${TMP_DIR}/integration-smoke-missing-value.err" || fail "integration-smoke missing-value error is not explicit"
 
@@ -72,6 +88,78 @@ grep -q "Option --source requires a value" "${TMP_DIR}/update-option-next-token.
 
 assert_failure set-route-extra-arg env HOME="$HOME" "$SCRIPT" set-route direct extra
 grep -q "Usage: set-route" "${TMP_DIR}/set-route-extra-arg.err" || fail "set-route extra-arg error is not explicit"
+
+cfg_path_home="${TMP_DIR}/cfg-path-home"
+mkdir -p "$cfg_path_home"
+env PROJECT_ROOT="$ROOT_DIR" HOME="$cfg_path_home" bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+provider_cfg_snapshot_paths_sync
+multi_ports_store_path_sync
+case "$SBD_CFG_SNAPSHOT_DIR" in
+  "$HOME"/sing-box-deve/state/cfg-snapshots) ;;
+  *) echo "unexpected cfg snapshot dir: $SBD_CFG_SNAPSHOT_DIR" >&2; exit 1 ;;
+esac
+case "$SBD_MULTI_PORTS_FILE" in
+  "$HOME"/sing-box-deve/state/multi-ports.db) ;;
+  *) echo "unexpected multi-ports file: $SBD_MULTI_PORTS_FILE" >&2; exit 1 ;;
+esac
+mkdir -p "$SBD_CFG_SNAPSHOT_DIR/20260101T000000Z-aaaaaaaa" "$SBD_CFG_SNAPSHOT_DIR/20260102T000000Z-bbbbbbbb"
+printf '%s\n' '20260102T000000Z-bbbbbbbb' > "$SBD_CFG_SNAPSHOT_LATEST_FILE"
+provider_cfg_snapshots_list >/dev/null
+provider_cfg_snapshots_prune_unlocked 1 >/dev/null
+[[ -d "$SBD_CFG_SNAPSHOT_DIR/20260102T000000Z-bbbbbbbb" ]]
+[[ ! -d "$SBD_CFG_SNAPSHOT_DIR/20260101T000000Z-aaaaaaaa" ]]
+grep -qx '20260102T000000Z-bbbbbbbb' "$SBD_CFG_SNAPSHOT_LATEST_FILE"
+BASH
+
+set_port_home="${TMP_DIR}/set-port-home"
+mkdir -p "$set_port_home"
+env PROJECT_ROOT="$ROOT_DIR" HOME="$set_port_home" bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+mkdir -p "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CONFIG_DIR"
+cat > "$SBD_BIN_DIR/sing-box" <<'SH'
+#!/usr/bin/env bash
+case "${1:-}" in check|version) exit 0 ;; *) exit 0 ;; esac
+SH
+chmod +x "$SBD_BIN_DIR/sing-box"
+printf '%s\n' '11111111-1111-4111-8111-111111111111' > "$SBD_DATA_DIR/uuid"
+printf '%s\n' 'PUBKEYPUBKEYPUBKEYPUBKEYPUBKEYPUBKEYPUBKEYP' > "$SBD_DATA_DIR/reality_public.key"
+printf '%s\n' 'abcd1234' > "$SBD_DATA_DIR/reality_short_id"
+cat > "$SBD_CONFIG_DIR/runtime.env" <<EOF
+provider="vps"
+profile="lite"
+engine="sing-box"
+protocols="vless-reality"
+script_root="$PROJECT_ROOT"
+installed_at="2026-06-17T00:00:00Z"
+EOF
+cat > "$SBD_CONFIG_DIR/config.json" <<'EOF'
+{"inbounds":[{"type":"vless","tag":"vless-reality","listen":"::","listen_port":443,"users":[{"uuid":"11111111-1111-4111-8111-111111111111","flow":"xtls-rprx-vision"}],"tls":{"enabled":true,"server_name":"www.microsoft.com","reality":{"enabled":true,"handshake":{"server":"www.microsoft.com","server_port":443},"private_key":"PRIV","short_id":["abcd1234"]}}}],"outbounds":[{"type":"direct","tag":"direct"}],"route":{"rules":[]}}
+EOF
+provider_restart() { :; }
+detect_public_ip() { printf '%s\n' '203.0.113.1'; }
+fw_detect_backend() { FW_BACKEND="iptables"; }
+fw_apply_rule() { local proto="$1" port="$2" service="${3:-core}"; fw_record_rule "$FW_BACKEND" "$proto" "$port" "$(fw_tag "$service" "$proto" "$port")"; }
+AUTO_YES=true
+mkdir -p "$SBD_STATE_DIR"
+printf '%s|%s|%s|%s|%s\n' iptables tcp 443 'MYBOX:old1:core:tcp:443' now > "$SBD_RULES_FILE"
+printf '%s|%s|%s|%s|%s\n' iptables tcp 443 'MYBOX:old2:core:tcp:443' now >> "$SBD_RULES_FILE"
+provider_set_port vless-reality 24443
+grep -q ':24443?' "$SBD_NODES_FILE"
+! grep -q ':443?' "$SBD_NODES_FILE"
+! grep -q 'core:tcp:443' "$SBD_RULES_FILE"
+BASH
 
 release_unit="${TMP_DIR}/release-unit"
 mkdir -p "$release_unit"

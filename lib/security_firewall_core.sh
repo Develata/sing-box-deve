@@ -88,6 +88,15 @@ fw_record_tag_for_endpoint() {
   ' "$SBD_RULES_FILE"
 }
 
+fw_records_for_endpoint() {
+  local backend="$1" proto="$2" port="$3" service="${4:-core}" suffix
+  [[ -f "$SBD_RULES_FILE" ]] || return 0
+  suffix=":${service}:${proto}:${port}"
+  awk -F'|' -v b="$backend" -v pr="$proto" -v po="$port" -v s="$suffix" '
+    $1 == b && $2 == pr && $3 == po && index($4, "MYBOX:") == 1 && substr($4, length($4) - length(s) + 1) == s { print $1 "|" $2 "|" $3 "|" $4 }
+  ' "$SBD_RULES_FILE"
+}
+
 fw_record_rule() {
   local backend="$1" proto="$2" port="$3" tag="$4"
   local created_at tmp_rules endpoint_suffix

@@ -114,6 +114,12 @@ if grep -Fq "|${old_tag}|" "$SBD_RULES_FILE"; then
   exit 1
 fi
 
+# Endpoint enumeration returns every historical record for the same endpoint.
+fw_record_rule iptables tcp 9443 "MYBOX:hist1:core:tcp:9443"
+printf '%s|%s|%s|%s|%s\n' iptables tcp 9443 "MYBOX:hist2:core:tcp:9443" now >> "$SBD_RULES_FILE"
+enum_count="$(fw_records_for_endpoint iptables tcp 9443 core | wc -l | tr -d ' ')"
+assert_eq "2" "$enum_count" "endpoint enumeration includes duplicate historical records"
+
 # Web front can use its own service tag for TCP 80/443 ownership.
 install_id="web"
 fw_apply_rule tcp 80 web-front

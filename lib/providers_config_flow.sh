@@ -3,8 +3,14 @@
 SBD_CFG_SNAPSHOT_DIR="${SBD_STATE_DIR}/cfg-snapshots"
 SBD_CFG_SNAPSHOT_LATEST_FILE="${SBD_CFG_SNAPSHOT_DIR}/latest"
 
+provider_cfg_snapshot_paths_sync() {
+  SBD_CFG_SNAPSHOT_DIR="${SBD_STATE_DIR}/cfg-snapshots"
+  SBD_CFG_SNAPSHOT_LATEST_FILE="${SBD_CFG_SNAPSHOT_DIR}/latest"
+}
+
 provider_cfg_snapshot_create() {
   ensure_root
+  provider_cfg_snapshot_paths_sync
   local reason="${1:-cfg-change}" id dir
   mkdir -p "$SBD_CFG_SNAPSHOT_DIR"
   id="$(date -u +"%Y%m%dT%H%M%SZ")-$(rand_hex_8)"
@@ -29,11 +35,13 @@ EOF_META
 }
 
 provider_cfg_snapshot_ids() {
+  provider_cfg_snapshot_paths_sync
   [[ -d "$SBD_CFG_SNAPSHOT_DIR" ]] || return 0
   find "$SBD_CFG_SNAPSHOT_DIR" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort
 }
 
 provider_cfg_snapshot_update_latest() {
+  provider_cfg_snapshot_paths_sync
   local latest
   latest="$(provider_cfg_snapshot_ids | tail -n1)"
   if [[ -n "$latest" ]]; then
@@ -44,6 +52,7 @@ provider_cfg_snapshot_update_latest() {
 }
 
 provider_cfg_snapshots_list() {
+  provider_cfg_snapshot_paths_sync
   local ids id meta created reason count=0 latest=""
   ids="$(provider_cfg_snapshot_ids | sort -r)"
   [[ -n "$ids" ]] || {
@@ -74,6 +83,7 @@ provider_cfg_snapshots_list() {
 
 provider_cfg_snapshots_prune_unlocked() {
   ensure_root
+  provider_cfg_snapshot_paths_sync
   local keep="${1:-10}" ids id total remove_count removed=0
   [[ "$keep" =~ ^[0-9]+$ ]] || die "Usage: cfg snapshots prune [keep_count]"
 
@@ -190,6 +200,7 @@ provider_cfg_apply_with_snapshot_unlocked() {
 
 provider_cfg_rollback_unlocked() {
   ensure_root
+  provider_cfg_snapshot_paths_sync
   local id="${1:-latest}" target_dir runtime_file
   runtime_file="$(provider_cfg_runtime_file)"
   if [[ "$id" == "latest" ]]; then

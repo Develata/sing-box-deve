@@ -62,7 +62,7 @@ provider_set_port() {
   fw_proto="${fw_proto%%:*}"
 
   local cfg tmp_cfg old_port rollback_cfg rollback_runtime rollback_nodes
-  local old_tag new_tag new_rule_preexisting
+  local old_tag old_records new_tag new_rule_preexisting
   old_tag=""
   new_tag=""
   new_rule_preexisting="false"
@@ -112,7 +112,9 @@ provider_set_port() {
     new_rule_preexisting="true"
   fi
   if [[ -n "$old_port" && "$old_port" != "$new_port" ]]; then
-    old_tag="$(fw_tag "core" "$fw_proto" "$old_port")"
+    old_records="$(fw_records_for_endpoint "$FW_BACKEND" "$fw_proto" "$old_port" core 2>/dev/null || true)"
+    old_tag="$(printf '%s\n' "$old_records" | awk -F'|' 'NF>=4 {print $4; exit}')"
+    [[ -n "$old_tag" ]] || old_tag="$(fw_tag "core" "$fw_proto" "$old_port")"
   fi
 
   if ! ( fw_apply_rule "$fw_proto" "$new_port" ); then
@@ -134,6 +136,7 @@ provider_set_port() {
     rm -f "$rollback_cfg"
     die "Failed to restart core after set-port: ${protocol}:${new_port}"
   fi
+  write_nodes_output "$runtime_engine" "${protocols:-vless-reality}"
   if [[ -n "$old_tag" ]]; then
     local answer
     if fw_rule_exists_record "$old_tag"; then
@@ -144,9 +147,17 @@ provider_set_port() {
         answer="${answer:-Y}"
       fi
       if [[ "$answer" =~ ^[Yy]$ ]]; then
-        fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag"
-        awk -F'|' -v t="$old_tag" '$4 != t' "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" 2>/dev/null || true
-        mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE" 2>/dev/null || true
+        local record_backend record_proto record_port record_tag
+        if [[ -n "${old_records:-}" ]]; then
+          while IFS='|' read -r record_backend record_proto record_port record_tag; do
+            [[ -n "$record_backend" && -n "$record_proto" && -n "$record_port" && -n "$record_tag" ]] || continue
+            fw_remove_rule_by_record "$record_backend" "$record_proto" "$record_port" "$record_tag"
+            fw_remove_record_by_tag "$record_tag"
+          done <<< "$old_records"
+        else
+          fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag"
+          fw_remove_record_by_tag "$old_tag"
+        fi
         log_success "$(msg "已移除旧防火墙规则: ${fw_proto}/${old_port}" "Removed old firewall rule: ${fw_proto}/${old_port}")"
       else
         log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
