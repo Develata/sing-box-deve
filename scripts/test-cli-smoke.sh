@@ -64,6 +64,33 @@ assert_failure unknown-command "$SCRIPT" __definitely_unknown_command__
 assert_failure integration-smoke-missing-value "${ROOT_DIR}/scripts/integration-smoke.sh" --script
 grep -q "requires a value" "${TMP_DIR}/integration-smoke-missing-value.err" || fail "integration-smoke missing-value error is not explicit"
 
+assert_failure install-option-next-token env HOME="$HOME" "$SCRIPT" install --dry-run --tls-sni --yes
+grep -q "Option --tls-sni requires a value" "${TMP_DIR}/install-option-next-token.err" || fail "install next-option-as-value error is not explicit"
+
+assert_failure update-option-next-token env HOME="$HOME" "$SCRIPT" update --source --yes
+grep -q "Option --source requires a value" "${TMP_DIR}/update-option-next-token.err" || fail "update next-option-as-value error is not explicit"
+
+assert_failure set-route-extra-arg env HOME="$HOME" "$SCRIPT" set-route direct extra
+grep -q "Usage: set-route" "${TMP_DIR}/set-route-extra-arg.err" || fail "set-route extra-arg error is not explicit"
+
+release_unit="${TMP_DIR}/release-unit"
+mkdir -p "$release_unit"
+printf 'xray-archive' > "${release_unit}/Xray-linux-64.zip"
+sha256="$(sha256sum "${release_unit}/Xray-linux-64.zip" | awk '{print $1}')"
+printf 'MD5= ignored\nSHA2-256= %s\n' "$sha256" > "${release_unit}/Xray-linux-64.zip.dgst"
+env PROJECT_ROOT="$ROOT_DIR" RELEASE_UNIT="$release_unit" bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/providers_release.sh"
+verify_sha256_from_xray_dgst "$RELEASE_UNIT/Xray-linux-64.zip" "$RELEASE_UNIT/Xray-linux-64.zip.dgst"
+BASH
+
+assert_failure dry-run-domain-self-signed env HOME="$HOME" "$SCRIPT" install --dry-run \
+  --preset reality-plus-domain \
+  --tls-sni example.com \
+  --yes
+grep -q "not self-signed" "${TMP_DIR}/dry-run-domain-self-signed.err" || fail "domain self-signed dry-run error is not explicit"
+
 assert_success dry-run-domain env HOME="$HOME" "$SCRIPT" install --dry-run \
   --preset reality-plus-domain \
   --tls-sni example.com \
@@ -85,6 +112,28 @@ grep -q "HY2_OBFS_MODE=gecko" "${TMP_DIR}/dry-run-hy2-gecko.err" || fail "gecko 
 
 web_unit="${TMP_DIR}/web-front-unit"
 mkdir -p "${web_unit}/bin" "${web_unit}/home"
+cat > "${web_unit}/bin/systemctl" <<'SH'
+#!/usr/bin/env bash
+case "${1:-}" in
+  list-unit-files)
+    if [[ " ${*} " == *" existing.service "* ]]; then
+      printf 'existing.service enabled\n'
+    fi
+    exit 0
+    ;;
+  *) exit 0 ;;
+esac
+SH
+chmod +x "${web_unit}/bin/systemctl"
+env PROJECT_ROOT="$ROOT_DIR" PATH="${web_unit}/bin:${PATH}" bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+sbd_systemd_unit_exists existing
+! sbd_systemd_unit_exists missing
+BASH
 cat > "${web_unit}/bin/openresty" <<'SH'
 #!/usr/bin/env bash
 case "${1:-}" in

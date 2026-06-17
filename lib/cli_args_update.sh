@@ -16,7 +16,7 @@ parse_update_args() {
       --rollback) UPDATE_ROLLBACK="true"; shift ;;
       --force) UPDATE_FORCE="true"; shift ;;
       --source)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         UPDATE_SOURCE="$2"
         shift 2
         ;;

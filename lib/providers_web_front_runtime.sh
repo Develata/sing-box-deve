@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+sbd_systemd_unit_exists() {
+  local service="$1"
+  command -v systemctl >/dev/null 2>&1 || return 1
+  systemctl list-unit-files --type=service --no-legend "${service}.service" 2>/dev/null | awk -v svc="${service}.service" '$1 == svc { found = 1 } END { exit(found ? 0 : 1) }'
+}
+
 sbd_web_front_reload() {
   local engine="$1" bin="$2" service="$3"
   if [[ "${SBD_USER_MODE:-false}" == "true" ]]; then
@@ -7,7 +13,7 @@ sbd_web_front_reload() {
     return 0
   fi
   "$bin" -t >/dev/null
-  if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files "${service}.service" >/dev/null 2>&1; then
+  if sbd_systemd_unit_exists "$service"; then
     systemctl enable "$service" >/dev/null 2>&1 || true
     systemctl reload "$service" >/dev/null 2>&1 || systemctl restart "$service" >/dev/null || die "Failed to reload/restart ${service} via systemd"
   else

@@ -44,7 +44,7 @@ verify_sha256_from_xray_dgst() {
   local archive="$1"
   local dgst_file="$2"
   local expected
-  expected="$(awk '/SHA256/{print $NF}' "$dgst_file" | head -n1)"
+  expected="$(awk -F'= *' '/SHA2?-?256/{print $2; exit}' "$dgst_file")"
   [[ -n "$expected" ]] || die "Unable to parse SHA256 from xray dgst"
 
   local actual

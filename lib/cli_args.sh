@@ -65,7 +65,7 @@ parse_install_args() {
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
       --provider|--profile|--engine|--protocols|--preset|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--web-front|--hy2-obfs|--hy2-obfs-password|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         case "$1" in
           --provider) PROVIDER="$2" ;;
           --profile) PROFILE="$2" ;;

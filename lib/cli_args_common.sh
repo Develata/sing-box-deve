@@ -4,10 +4,13 @@
 require_option_value() {
   local opt="$1"
   local argc="$2"
+  local next_value="${3-}"
   (( argc >= 2 )) || die "Option ${opt} requires a value"
+  [[ -n "$next_value" && "$next_value" != --* ]] || die "Option ${opt} requires a value"
 }
 
 parse_set_route_args() {
+  [[ $# -eq 1 ]] || die "Usage: set-route <direct|global-proxy|cn-direct|cn-proxy>"
   SET_ROUTE_MODE="${1:-}"
   [[ -n "$SET_ROUTE_MODE" ]] || die "Usage: set-route <direct|global-proxy|cn-direct|cn-proxy>"
 }
@@ -81,12 +84,12 @@ parse_set_port_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --protocol)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_PORT_PROTOCOL="$2"
         shift 2
         ;;
       --port)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_PORT_VALUE="$2"
         shift 2
         ;;
@@ -105,27 +108,27 @@ parse_set_egress_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --mode)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_MODE="$2"
         shift 2
         ;;
       --host)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_HOST="$2"
         shift 2
         ;;
       --port)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_PORT="$2"
         shift 2
         ;;
       --user)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_USER="$2"
         shift 2
         ;;
       --pass)
-        require_option_value "$1" "$#"
+        require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_PASS="$2"
         shift 2
         ;;

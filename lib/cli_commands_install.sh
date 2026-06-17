@@ -16,6 +16,18 @@ run_install() {
     [[ -n "$dry_domain" ]] || die "Dry-run: selected protocols require --tls-sni or --acme-domain"
     sbd_valid_domain_name "$dry_domain" || die "Dry-run: invalid TLS domain: ${dry_domain}"
     ! sbd_is_ip_literal "$dry_domain" || die "Dry-run: TLS domain must not be an IP literal: ${dry_domain}"
+    case "${TLS_MODE:-self-signed}" in
+      self-signed)
+        die "Dry-run: selected protocols require --tls-mode acme or acme-auto, not self-signed"
+        ;;
+      acme)
+        [[ -n "${ACME_CERT_PATH:-}" && -n "${ACME_KEY_PATH:-}" ]] || die "Dry-run: --tls-mode acme requires --acme-cert-path and --acme-key-path"
+        [[ -f "${ACME_CERT_PATH:-}" && -f "${ACME_KEY_PATH:-}" ]] || die "Dry-run: ACME certificate/key files must exist for --tls-mode acme"
+        ;;
+      acme-auto)
+        [[ -n "${ACME_EMAIL:-}" ]] || die "Dry-run: --tls-mode acme-auto requires --acme-email"
+        ;;
+    esac
   fi
 
   if [[ "$dry_run" == "true" ]]; then
