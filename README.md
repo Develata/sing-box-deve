@@ -19,6 +19,28 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 已裁剪的旧功能：SAP Cloud Foundry provider、Workers 模板、Psiphon sidecar、SFW Windows 打包、GitLab/TG 订阅推送、jump 端口跳跃、set-share 手工分享端点、set-port-egress 按端口出站策略、`anytls`/`trojan` public inbound。
 
+## 当前状态与验证结论
+
+当前主线已完成第二轮模块级修复与回归验证。可以认为**基础功能面已经可用**，包括：
+
+- CLI 参数解析、`install --dry-run`、`wizard`/`panel`/`doctor`/`list` 等基础命令；
+- `reality-only` 默认安装路径，以及域名协议 preset 的 TLS 证书门禁；
+- `set-port` / `mport` 端口管理、节点链接重生、防火墙旧记录清理；
+- OpenResty/nginx web-front 契约与 web-generator 参数同步；
+- Hysteria2 `salamander` obfs 作为高级 opt-in；
+- 非 root user-mode 下的 state/config/snapshot 路径同步；
+- Serv00 provider 与 VPS provider 的依赖/防火墙边界；
+- self-update/rollback 的 checksum manifest 完整性校验。
+
+最近一轮本地验证覆盖：shell syntax、Node syntax、CLI smoke、firewall records、web schema drift、version compare、module size、update authority、clash ruleset、shellcheck、checksum verify、`git diff --check`，并经过 Codex blocker-only review：`PASS — no blockers found`。
+
+仍需谨慎看待的边界：
+
+- 自动化测试不能完全替代真实 VPS root install、真实 `acme.sh --standalone` 签发、真实 OpenResty/nginx reload、真实客户端连通性测试；
+- `scripts/consistency-check.sh` 是已安装主机上的 runtime 一致性检查，需要真实 `/etc/sing-box-deve/runtime.env`，不适合作为本地非 root checkout 测试；
+- FreeBSD/Serv00、Hostuno、OpenRC/nohup 等受限环境属于 best-effort，需要在目标平台再做 smoke test；
+- 域名协议要求有效证书与正确 DNS/SNI；脚本会 fail fast，但不会替你修复 DNS、运营商封锁或 80/443 被占用问题。
+
 ## 平台支持边界
 
 - **Primary support**：Ubuntu / Debian VPS，推荐 root + systemd，架构支持 `amd64` / `arm64`。
@@ -53,11 +75,36 @@ chmod +x ./sing-box-deve.sh
 ## 自动化安装示例
 
 ```bash
+# 默认推荐：无需域名，部署 sing-box + vless-reality
 ./sing-box-deve.sh install --preset reality-only --yes
-./sing-box-deve.sh install --preset reality-plus-domain --tls-sni example.com --tls-mode acme --acme-cert-path /path/fullchain.pem --acme-key-path /path/privkey.pem --yes
-./sing-box-deve.sh install --preset full --tls-sni example.com --tls-mode acme-auto --acme-email admin@example.com --yes
-./sing-box-deve.sh install --preset reality-plus-domain --tls-sni example.com --tls-mode acme --acme-cert-path /path/fullchain.pem --acme-key-path /path/privkey.pem --web-front openresty --hy2-obfs salamander --yes
+
+# 使用已有可信证书：部署 reality + hysteria2/tuic/naive
+./sing-box-deve.sh install --preset reality-plus-domain \
+  --tls-sni example.com \
+  --tls-mode acme \
+  --acme-cert-path /path/fullchain.pem \
+  --acme-key-path /path/privkey.pem \
+  --yes
+
+# 自动签发证书：要求域名 A/AAAA 已指向本机，且 80 端口可被 acme.sh standalone 占用
+./sing-box-deve.sh install --preset full \
+  --tls-sni example.com \
+  --tls-mode acme-auto \
+  --acme-email admin@example.com \
+  --yes
+
+# 高级：指定 OpenResty/nginx web front，并开启 Hysteria2 salamander obfs
+./sing-box-deve.sh install --preset reality-plus-domain \
+  --tls-sni example.com \
+  --tls-mode acme \
+  --acme-cert-path /path/fullchain.pem \
+  --acme-key-path /path/privkey.pem \
+  --web-front openresty \
+  --hy2-obfs salamander \
+  --yes
 ```
+
+`--web-front auto` 的选择顺序是：已有 OpenResty → 已有 nginx → 询问是否按 nginx.org 官方仓库安装 nginx。脚本不会自动安装 OpenResty。
 
 ## 运行管理
 
@@ -184,6 +231,33 @@ root 默认路径：
 ./sing-box-deve.sh update --all
 ./sing-box-deve.sh uninstall --keep-settings
 ```
+
+更新路径会校验 manifest 与 `checksums.txt`。如果 checksum manifest 缺失或校验失败，安装完整性验证会失败，不再静默跳过。
+
+## 真实主机 smoke test 建议
+
+在新 VPS 上建议按以下顺序验证：
+
+```bash
+# 1. 非破坏性预检
+sudo ./sing-box-deve.sh install --preset reality-only --dry-run --yes
+
+# 2. 最小主线安装
+sudo ./sing-box-deve.sh install --preset reality-only --yes
+
+# 3. 运行状态与节点产物
+sudo ./sing-box-deve.sh status
+sudo ./sing-box-deve.sh doctor
+sudo ./sing-box-deve.sh list --nodes
+sudo ./sing-box-deve.sh fw status
+
+# 4. 端口变更回归
+sudo ./sing-box-deve.sh set-port --protocol vless-reality --port 24443
+sudo ./sing-box-deve.sh list --nodes
+sudo ./sing-box-deve.sh fw status
+```
+
+域名协议另需验证：DNS 已指向本机、证书 SAN 覆盖 `--tls-sni`、80/443 未被非托管服务占用、OpenResty/nginx 配置测试与 reload 成功、客户端能按正常证书校验连接。
 
 ## 安全承诺
 
