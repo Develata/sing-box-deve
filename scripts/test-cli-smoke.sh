@@ -272,6 +272,21 @@ grep -q '^WEB_FRONT_ENGINE=nginx$' "$SBD_DATA_DIR/web_front.env"
 grep -q 'root ' "$SBD_CONFIG_DIR/web-front/nginx/conf.d/sing-box-deve-archive.conf"
 BASH
 
+env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home2b" PATH="${web_unit}/bin:${PATH}" \
+  WEB_FRONT_MODE=nginx TLS_SERVER_NAME=front.example.com \
+  ACME_CERT_PATH="${web_unit}/cert.pem" ACME_KEY_PATH="${web_unit}/key.pem" bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+sbd_write_archive_gateway_site >/dev/null
+sbd_configure_web_front hysteria2 >/dev/null
+grep -q '^WEB_FRONT_ENGINE=nginx$' "$SBD_DATA_DIR/web_front.env"
+BASH
+
 if env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home3" PATH="${web_unit}/bin:${PATH}" \
   WEB_FRONT_MODE=auto TLS_SERVER_NAME=front.example.com \
   ACME_CERT_PATH="${web_unit}/cert.pem" ACME_KEY_PATH="${web_unit}/key.pem" bash <<'BASH' >"${TMP_DIR}/web-front-443-conflict.out" 2>"${TMP_DIR}/web-front-443-conflict.err"
@@ -290,6 +305,52 @@ then
 fi
 grep -q "move selected TCP protocol" "${TMP_DIR}/web-front-443-conflict.err" || fail "web front 443 conflict error is not explicit"
 
+env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home3b" PATH="${web_unit}/bin:${PATH}" \
+  ENGINE=sing-box WEB_FRONT_MODE=off SBD_PORT_VLESS_REALITY=8443 bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+sbd_web_front_assert_tcp443_available vless-reality,hysteria2
+BASH
+
+if env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home3c" PATH="${web_unit}/bin:${PATH}" \
+  ENGINE=sing-box WEB_FRONT_MODE=off SBD_PORT_NAIVE=443 bash <<'BASH' >"${TMP_DIR}/web-front-naive-443.out" 2>"${TMP_DIR}/web-front-naive-443.err"
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+sbd_web_front_assert_tcp443_available naive,hysteria2
+BASH
+then
+  fail "web front accepted manually mapped naive TCP 443 conflict"
+fi
+grep -q "move selected TCP protocol" "${TMP_DIR}/web-front-naive-443.err" || fail "manual naive 443 conflict error is not explicit"
+
+if env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home3d" PATH="${web_unit}/bin:${PATH}" \
+  WEB_FRONT_MODE=nginx TLS_SERVER_NAME=front.example.com \
+  ACME_CERT_PATH=relative.pem ACME_KEY_PATH="${web_unit}/key.pem" bash <<'BASH' >"${TMP_DIR}/web-front-relative-cert.out" 2>"${TMP_DIR}/web-front-relative-cert.err"
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+sbd_write_archive_gateway_site >/dev/null
+sbd_configure_web_front hysteria2 >/dev/null
+BASH
+then
+  fail "web front accepted relative certificate path"
+fi
+grep -q "path must be absolute" "${TMP_DIR}/web-front-relative-cert.err" || fail "relative certificate path error is not explicit"
+
 if env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home4" PATH="${web_unit}/bin:${PATH}" \
   WEB_FRONT_MODE=auto TLS_SERVER_NAME='good.example;include/tmp/pwn' \
   ACME_CERT_PATH="${web_unit}/cert.pem" ACME_KEY_PATH="${web_unit}/key.pem" bash <<'BASH' >"${TMP_DIR}/web-front-server-name.out" 2>"${TMP_DIR}/web-front-server-name.err"
@@ -307,6 +368,28 @@ then
   fail "web front accepted unsafe nginx server_name"
 fi
 grep -q "nginx server_name contains unsupported characters" "${TMP_DIR}/web-front-server-name.err" || fail "unsafe server_name error is not explicit"
+
+env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home5" HY2_OBFS_MODE=salamander bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+pw1="$(sbd_hy2_obfs_password)"
+pw2="$(sbd_hy2_obfs_password)"
+[[ "$pw1" == "$pw2" && ${#pw1} -ge 8 ]] || { echo "invalid persisted hy2 obfs password" >&2; exit 1; }
+fragment="$(singbox_fragment_hysteria2 11111111-1111-4111-8111-111111111111 8443 h.example /abs/cert.pem /abs/key.pem /abs/site salamander "$pw1")"
+FRAGMENT_JSON="[$fragment]" python3 - "$pw1" <<'PY'
+import json, os, sys
+expected = sys.argv[1]
+data = json.loads(os.environ["FRAGMENT_JSON"])
+assert data[0]["obfs"]["type"] == "salamander"
+assert data[0]["obfs"]["password"] == expected
+assert data[0]["masquerade"] == "file:///abs/site"
+PY
+BASH
 
 include_unit="${TMP_DIR}/openresty-include-unit"
 mkdir -p "$include_unit"
