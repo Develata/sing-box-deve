@@ -26,16 +26,22 @@ uninstall_remove_legacy_engine_units() {
 }
 
 uninstall_remove_managed_global_bins() {
-  local p real
-  for p in "/usr/local/bin/sb" "/usr/local/bin/sing-box" "/usr/local/bin/xray"; do
+  local global_bin_dir="${SBD_GLOBAL_BIN_DIR:-/usr/local/bin}"
+  local p name real
+  if [[ "${SBD_USER_MODE:-false}" == "true" ]]; then
+    log_info "$(msg "非 root 模式：跳过全局命令入口清理: ${global_bin_dir}" "User mode: skipping global command cleanup: ${global_bin_dir}")"
+    return 0
+  fi
+  for p in "${global_bin_dir}/sb" "${global_bin_dir}/sing-box" "${global_bin_dir}/xray"; do
     [[ -e "$p" ]] || continue
+    name="$(basename "$p")"
     real="$(readlink -f "$p" 2>/dev/null || true)"
-    case "$p" in
-      /usr/local/bin/sb)
+    case "$name" in
+      sb)
         rm -f "$p"
         log_info "$(msg "已移除命令入口: ${p}" "Removed command entry: ${p}")"
         ;;
-      /usr/local/bin/sing-box|/usr/local/bin/xray)
+      sing-box|xray)
         if [[ "$real" == "${SBD_INSTALL_DIR}/"* ]]; then
           rm -f "$p"
           log_info "$(msg "已移除托管二进制链接: ${p}" "Removed managed binary link: ${p}")"
@@ -104,6 +110,7 @@ provider_uninstall() {
 # Priority 3.4: Verify that uninstall removed critical files
 verify_uninstall() {
   local remaining=()
+  local global_bin_dir="${SBD_GLOBAL_BIN_DIR:-/usr/local/bin}"
   
   # Check for remaining service files
   [[ -f "$SBD_SERVICE_FILE" ]] && remaining+=("$SBD_SERVICE_FILE")
@@ -119,7 +126,9 @@ verify_uninstall() {
   [[ -d "${SBD_INSTALL_DIR}/script" ]] && remaining+=("${SBD_INSTALL_DIR}/script")
   
   # Check for remaining binaries
-  [[ -f /usr/local/bin/sb ]] && remaining+=("/usr/local/bin/sb")
+  if [[ "${SBD_USER_MODE:-false}" != "true" ]]; then
+    [[ -f "${global_bin_dir}/sb" ]] && remaining+=("${global_bin_dir}/sb")
+  fi
   
   # Check if services are still active
   if sbd_service_is_active "sing-box-deve" 2>/dev/null; then

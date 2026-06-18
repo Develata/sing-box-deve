@@ -62,9 +62,13 @@ assert_success dry-run env HOME="$HOME" "$SCRIPT" install --dry-run \
 assert_failure unknown-command "$SCRIPT" __definitely_unknown_command__
 
 uninstall_home="${TMP_DIR}/uninstall-home"
+uninstall_global_bin="${TMP_DIR}/uninstall-global-bin"
 mkdir -p "$uninstall_home"
-assert_success uninstall-no-firewall env HOME="$uninstall_home" SBD_FW_BACKEND=none "$SCRIPT" uninstall --keep-settings
+mkdir -p "$uninstall_global_bin"
+printf '%s\n' '# fake root-owned global launcher fixture' > "${uninstall_global_bin}/sb"
+assert_success uninstall-no-firewall env HOME="$uninstall_home" SBD_FW_BACKEND=none SBD_GLOBAL_BIN_DIR="$uninstall_global_bin" "$SCRIPT" uninstall --keep-settings
 grep -q "No firewall backend detected" "${TMP_DIR}/uninstall-no-firewall.out" || fail "uninstall no-firewall warning missing"
+[[ -f "${uninstall_global_bin}/sb" ]] || fail "user-mode uninstall removed global sb fixture"
 
 serv00_home="${TMP_DIR}/serv00-home"
 mkdir -p "$serv00_home"
