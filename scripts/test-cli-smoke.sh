@@ -94,8 +94,18 @@ grep -q "generated local bundle only" "${TMP_DIR}/serv00-local-bundle.out" || fa
 [[ -f "${serv00_home}/sing-box-deve/config/serv00.env" ]] || fail "serv00 local bundle missing serv00.env"
 
 serv00_cred_home="${TMP_DIR}/serv00-cred-home"
-mkdir -p "$serv00_cred_home"
-assert_failure serv00-credentials-no-sshpass env HOME="$serv00_cred_home" SERV00_HOST=h SERV00_USER=u SERV00_PASS=p "$SCRIPT" install --provider serv00 --yes
+serv00_no_sshpass_bin="${TMP_DIR}/serv00-no-sshpass-bin"
+mkdir -p "$serv00_cred_home" "$serv00_no_sshpass_bin"
+for d in /usr/bin /bin; do
+  [[ -d "$d" ]] || continue
+  for exe in "$d"/*; do
+    [[ -x "$exe" && ! -d "$exe" ]] || continue
+    name="${exe##*/}"
+    [[ "$name" == "sshpass" ]] && continue
+    [[ -e "${serv00_no_sshpass_bin}/${name}" ]] || ln -s "$exe" "${serv00_no_sshpass_bin}/${name}"
+  done
+done
+assert_failure serv00-credentials-no-sshpass env PATH="$serv00_no_sshpass_bin" HOME="$serv00_cred_home" SERV00_HOST=h SERV00_USER=u SERV00_PASS=p "$SCRIPT" install --provider serv00 --yes
 grep -q "sshpass is required" "${TMP_DIR}/serv00-credentials-no-sshpass.err" || fail "serv00 sshpass error missing"
 
 assert_failure integration-smoke-missing-value "${ROOT_DIR}/scripts/integration-smoke.sh" --script
