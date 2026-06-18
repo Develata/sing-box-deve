@@ -58,11 +58,21 @@ sbd_runtime_env_files() {
     "${HOME:-}/sing-box-deve/config/runtime.env"
 }
 
+sbd_unquote_env_value() {
+  local value="$1"
+  value="${value#\"}"
+  value="${value%\"}"
+  value="${value#\'}"
+  value="${value%\'}"
+  printf '%s\n' "$value"
+}
+
 sbd_read_runtime_script_root() {
   local runtime_file root
   while IFS= read -r runtime_file; do
     [[ -f "$runtime_file" ]] || continue
     root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$runtime_file" 2>/dev/null || true)"
+    root="$(sbd_unquote_env_value "$root")"
     if [[ -n "$root" ]]; then
       printf '%s\n' "$root"
       return 0
@@ -227,11 +237,21 @@ sbd_version_ge() {
   (( lp >= rp ))
 }
 
+unquote_env_value() {
+  local value="$1"
+  value="${value#\"}"
+  value="${value%\"}"
+  value="${value#\'}"
+  value="${value%\'}"
+  printf '%s\n' "$value"
+}
+
 script_root=""
 
 for _p in "/etc/sing-box-deve/runtime.env" "${HOME:-}/sing-box-deve/config/runtime.env"; do
   if [[ -f "$_p" ]]; then
     script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$_p" 2>/dev/null || true)"
+    script_root="$(unquote_env_value "$script_root")"
     [[ -n "$script_root" ]] && break
   fi
 done

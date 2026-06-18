@@ -67,7 +67,7 @@ installed_root="${TMP_DIR}/installed-script"
 mkdir -p "$installed_root"
 cp -a "$ROOT_DIR/sing-box-deve.sh" "$ROOT_DIR/lib" "$ROOT_DIR/version" "$installed_root/"
 printf 'v0.0.1\n' > "${installed_root}/version"
-printf 'script_root=%s\n' "$installed_root" > "$runtime_file"
+printf 'script_root="%s"\n' "$installed_root" > "$runtime_file"
 PROJECT_ROOT="$ROOT_DIR"
 sync_installed_script_root_from_project
 [[ "$(tr -d '[:space:]' < "${installed_root}/version")" == "$(tr -d '[:space:]' < "${ROOT_DIR}/version")" ]] || {
@@ -112,6 +112,7 @@ grep -qx "script_root=${expected_persist}" "$runtime_file" || {
   exit 1
 }
 
+printf 'script_root="%s"\n' "$expected_persist" > "$runtime_file"
 launcher="${TMP_DIR}/sb"
 write_sb_launcher "$launcher"
 launcher_root="$(cd "$TMP_DIR" && "$launcher" --print-root)"
