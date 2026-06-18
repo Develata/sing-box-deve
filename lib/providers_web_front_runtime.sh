@@ -36,7 +36,7 @@ sbd_web_front_open_firewall() {
 
 sbd_write_web_front_conf_staged() {
   local conf_file="$1" bin="$2" domain="$3" cert="$4" key="$5" site_dir="$6"
-  local conf_dir tmp_conf backup=""
+  local conf_dir tmp_conf backup="" dump=""
   conf_dir="$(dirname "$conf_file")"
   mkdir -p "$conf_dir"
   tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")"
@@ -80,20 +80,23 @@ EOF
     fi
     die "Web front generated config failed syntax test: ${conf_file}"
   fi
-  if [[ "${SBD_USER_MODE:-false}" != "true" ]] && ! "$bin" -T 2>&1 | grep -Fq "$conf_file"; then
-    if [[ -n "$backup" ]]; then
-      mv -f "$backup" "$conf_file"
-    else
-      rm -f "$conf_file"
+  if [[ "${SBD_USER_MODE:-false}" != "true" ]]; then
+    dump="$($bin -T 2>&1 || true)"
+    if ! grep -Fq "$conf_file" <<<"$dump" && ! grep -Fq "server_name ${domain};" <<<"$dump"; then
+      if [[ -n "$backup" ]]; then
+        mv -f "$backup" "$conf_file"
+      else
+        rm -f "$conf_file"
+      fi
+      die "Web front managed config is not included by nginx/OpenResty: ${conf_file}"
     fi
-    die "Web front managed config is not included by nginx/OpenResty: ${conf_file}"
   fi
   [[ -z "$backup" ]] || rm -f "$backup"
 }
 
 sbd_write_web_front_http_conf_staged() {
   local conf_file="$1" bin="$2" domain="$3" site_dir="$4"
-  local conf_dir tmp_conf backup=""
+  local conf_dir tmp_conf backup="" dump=""
   conf_dir="$(dirname "$conf_file")"
   mkdir -p "$conf_dir"
   tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")"
@@ -125,13 +128,16 @@ EOF
     fi
     die "Web front HTTP config failed syntax test: ${conf_file}"
   fi
-  if [[ "${SBD_USER_MODE:-false}" != "true" ]] && ! "$bin" -T 2>&1 | grep -Fq "$conf_file"; then
-    if [[ -n "$backup" ]]; then
-      mv -f "$backup" "$conf_file"
-    else
-      rm -f "$conf_file"
+  if [[ "${SBD_USER_MODE:-false}" != "true" ]]; then
+    dump="$($bin -T 2>&1 || true)"
+    if ! grep -Fq "$conf_file" <<<"$dump" && ! grep -Fq "server_name ${domain};" <<<"$dump"; then
+      if [[ -n "$backup" ]]; then
+        mv -f "$backup" "$conf_file"
+      else
+        rm -f "$conf_file"
+      fi
+      die "Web front HTTP config is not included by nginx/OpenResty: ${conf_file}"
     fi
-    die "Web front HTTP config is not included by nginx/OpenResty: ${conf_file}"
   fi
   [[ -z "$backup" ]] || rm -f "$backup"
 }
