@@ -210,21 +210,25 @@ provider_cfg_protocol_add() {
   validate_protocols_csv "$add_csv"
 
   provider_cfg_load_runtime_exports
-  local current_csv="${protocols:-vless-reality}" target_csv added_csv
+  local current_provider="${provider:-vps}" current_profile="${profile:-lite}"
+  local current_engine="${engine:-sing-box}" current_csv="${protocols:-vless-reality}" target_csv added_csv
   target_csv="$(provider_cfg_protocol_csv_merge "$current_csv" "$add_csv")"
   [[ "$target_csv" != "$current_csv" ]] || {
     log_info "$(msg "没有可新增的协议" "No new protocols to add")"
     return 0
   }
 
-  validate_profile_protocols "${profile:-lite}" "$target_csv"
-  assert_engine_protocol_compatibility "${engine:-sing-box}" "$target_csv"
+  validate_profile_protocols "$current_profile" "$target_csv"
+  assert_engine_protocol_compatibility "$current_engine" "$target_csv"
   added_csv="$(provider_cfg_protocol_csv_added "$current_csv" "$target_csv")"
-  prepare_incremental_protocol_ports "${engine:-sing-box}" "$current_csv" "$target_csv" "$port_mode" "$port_map"
+  prepare_incremental_protocol_ports "$current_engine" "$current_csv" "$target_csv" "$port_mode" "$port_map"
   provider_cfg_protocol_open_firewall_for_added "$added_csv" || die "Failed to apply firewall rules for added protocols: ${added_csv}"
 
   local added_fw_records
   added_fw_records="${SBD_LAST_ADDED_FW_RECORDS:-}"
+  provider="$current_provider"
+  profile="$current_profile"
+  engine="$current_engine"
   protocols="$target_csv"
   if ! ( provider_cfg_protocol_sync_argo_service "$target_csv"; provider_cfg_rebuild_runtime "$target_csv" ); then
     provider_cfg_protocol_close_firewall_records "$added_fw_records" || true
@@ -239,8 +243,9 @@ provider_cfg_protocol_remove() {
   [[ -n "$drop_raw" ]] || die "Usage: cfg protocol-remove <proto_csv|index_csv>"
 
   provider_cfg_load_runtime_exports
+  local current_provider="${provider:-vps}" current_profile="${profile:-lite}" current_engine="${engine:-sing-box}"
   local drop_csv
-  drop_csv="$(provider_cfg_protocol_resolve_drop_csv "${protocols:-vless-reality}" "$drop_raw" "${engine:-sing-box}")"
+  drop_csv="$(provider_cfg_protocol_resolve_drop_csv "${protocols:-vless-reality}" "$drop_raw" "$current_engine")"
   validate_protocols_csv "$drop_csv"
   local current_csv="${protocols:-vless-reality}" target_csv
   target_csv="$(provider_cfg_protocol_csv_remove "$current_csv" "$drop_csv")"
@@ -250,10 +255,13 @@ provider_cfg_protocol_remove() {
   }
   [[ -n "$target_csv" ]] || die "At least one protocol must remain enabled"
 
-  validate_profile_protocols "${profile:-lite}" "$target_csv"
-  assert_engine_protocol_compatibility "${engine:-sing-box}" "$target_csv"
+  validate_profile_protocols "$current_profile" "$target_csv"
+  assert_engine_protocol_compatibility "$current_engine" "$target_csv"
   local removed_fw_records
   removed_fw_records="$(provider_cfg_protocol_firewall_records_for_removed "$drop_csv")"
+  provider="$current_provider"
+  profile="$current_profile"
+  engine="$current_engine"
   protocols="$target_csv"
   provider_cfg_protocol_sync_argo_service "$target_csv"
   provider_cfg_rebuild_runtime "$target_csv"

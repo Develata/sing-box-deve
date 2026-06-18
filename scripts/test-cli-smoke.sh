@@ -211,6 +211,9 @@ installed_at="2026-06-17T00:00:00Z"
 EOF
 provider_cfg_apply_with_snapshot_unlocked profile full
 grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
+provider_cfg_protocol_add hysteria2 random
+grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
+grep -q '^protocols="vless-reality,hysteria2"$' "$SBD_CONFIG_DIR/runtime.env"
 BASH
 
 release_unit="${TMP_DIR}/release-unit"
