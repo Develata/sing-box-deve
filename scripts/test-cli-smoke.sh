@@ -86,6 +86,12 @@ grep -q "Option --tls-sni requires a value" "${TMP_DIR}/install-option-next-toke
 assert_failure update-option-next-token env HOME="$HOME" "$SCRIPT" update --source --yes
 grep -q "Option --source requires a value" "${TMP_DIR}/update-option-next-token.err" || fail "update next-option-as-value error is not explicit"
 
+local_remote_root="${TMP_DIR}/local-remote"
+mkdir -p "$local_remote_root"
+printf '%s\n' "$(tr -d '[:space:]' < "${ROOT_DIR}/version")" > "${local_remote_root}/version"
+assert_success update-default-script-only env HOME="$HOME" SBD_UPDATE_BASE_URL="file://${local_remote_root}" "$SCRIPT" update --source primary --yes
+! grep -q "Update installed core engine" "${TMP_DIR}/update-default-script-only.out" || fail "default update should not attempt core update"
+
 assert_failure set-route-extra-arg env HOME="$HOME" "$SCRIPT" set-route direct extra
 grep -q "Usage: set-route" "${TMP_DIR}/set-route-extra-arg.err" || fail "set-route extra-arg error is not explicit"
 

@@ -219,30 +219,6 @@ sbd_version_ge() {
   (( lp >= rp ))
 }
 
-choose_git_checkout_root() {
-  local reference_root="${1:-}" reference_version candidate candidate_version
-  local -a candidates=(
-    "$PWD"
-    "$PWD/sing-box-deve"
-  )
-
-  if [[ -n "$reference_root" && -f "$reference_root/version" ]]; then
-    reference_version="$(read_sbd_version "$reference_root")"
-  else
-    reference_version="v0.0.0"
-  fi
-
-  for candidate in "${candidates[@]}"; do
-    [[ -n "$candidate" ]] || continue
-    is_sbd_git_checkout "$candidate" || continue
-    candidate_version="$(read_sbd_version "$candidate")"
-    if sbd_version_ge "$candidate_version" "$reference_version"; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-}
-
 script_root=""
 
 for _p in "/etc/sing-box-deve/runtime.env" "${HOME:-}/sing-box-deve/config/runtime.env"; do
@@ -251,9 +227,6 @@ for _p in "/etc/sing-box-deve/runtime.env" "${HOME:-}/sing-box-deve/config/runti
     [[ -n "$script_root" ]] && break
   fi
 done
-
-git_root="$(choose_git_checkout_root "$script_root" || true)"
-[[ -n "$git_root" ]] && script_root="$git_root"
 
 if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
   :

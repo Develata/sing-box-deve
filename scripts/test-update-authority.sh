@@ -99,8 +99,8 @@ expected_version="$(tr -d '[:space:]' < "${expected_persist}/version")"
   exit 1
 }
 checkout_root="$(cd "$ROOT_DIR" && "$launcher" --print-root)"
-[[ "$checkout_root" == "$ROOT_DIR" ]] || {
-  echo "[FAIL] launcher did not prefer checkout cwd: expected ${ROOT_DIR}, got ${checkout_root}" >&2
+[[ "$checkout_root" == "$expected_persist" ]] || {
+  echo "[FAIL] launcher should ignore checkout cwd: expected ${expected_persist}, got ${checkout_root}" >&2
   exit 1
 }
 

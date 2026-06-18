@@ -40,6 +40,5 @@ parse_update_args() {
 
   if [[ "$UPDATE_SCRIPT" == "false" && "$UPDATE_CORE" == "false" ]]; then
     UPDATE_SCRIPT="true"
-    UPDATE_CORE="true"
   fi
 }

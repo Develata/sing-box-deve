@@ -70,7 +70,15 @@ chmod +x ./sing-box-deve.sh
 ./sing-box-deve.sh doctor
 ./sing-box-deve.sh list --nodes
 ./sing-box-deve.sh restart --core
+
+# 完成一次安装后，也可以使用全局快捷入口：
+sb panel --full
+sb doctor
+sb list --nodes
+sb restart --core
 ```
+
+`install` 成功后会写入 `/usr/local/bin/sb`。`sb` 是固定快捷入口：它优先读取已安装运行时的 `script_root`，通常指向 `/opt/sing-box-deve/script` 或当前安装绑定的 Git checkout；不会因为你刚好在另一个源码 checkout 目录里执行 `sb` 就切换目标。调试源码 checkout 时请直接运行 `./sing-box-deve.sh ...`。
 
 ## 自动化安装示例
 
@@ -226,13 +234,32 @@ root 默认路径：
 
 ```bash
 ./sing-box-deve.sh version
+./sing-box-deve.sh update
 ./sing-box-deve.sh update --script
 ./sing-box-deve.sh update --core
 ./sing-box-deve.sh update --all
 ./sing-box-deve.sh uninstall --keep-settings
 ```
 
-更新路径会校验 manifest 与 `checksums.txt`。如果 checksum manifest 缺失或校验失败，安装完整性验证会失败，不再静默跳过。
+完成安装后可等价使用：
+
+```bash
+sb version
+sb update
+sb update --script
+sb update --core
+sb update --all
+sb update --rollback
+```
+
+更新语义：
+
+- `update` / `update --script`：只刷新脚本与模块文件，不更新 sing-box/xray core；
+- `update --core`：只更新已安装 core，需要已有 runtime；
+- `update --all`：先刷新脚本，再用刷新后的脚本继续更新 core；
+- `update --rollback`：回滚上一轮脚本更新快照。
+
+更新路径会校验 manifest 与 `checksums.txt`。如果 checksum manifest 缺失或校验失败，安装完整性验证会失败，不再静默跳过。`sb` launcher 也会在脚本更新后重新写入并校验，避免快捷入口指向旧脚本。
 
 ## 真实主机 smoke test 建议
 
@@ -245,13 +272,24 @@ sudo ./sing-box-deve.sh install --preset reality-only --dry-run --yes
 # 2. 最小主线安装
 sudo ./sing-box-deve.sh install --preset reality-only --yes
 
-# 3. 运行状态与节点产物
+# 3. 快捷入口与运行状态
+sb --print-root
+sb --print-version
+sb status
+sb doctor
+
+# 4. 运行状态与节点产物
 sudo ./sing-box-deve.sh status
 sudo ./sing-box-deve.sh doctor
 sudo ./sing-box-deve.sh list --nodes
 sudo ./sing-box-deve.sh fw status
 
-# 4. 端口变更回归
+# 5. 更新路径
+sb update --script --force --yes
+sb update --core --yes
+sb version
+
+# 6. 端口变更回归
 sudo ./sing-box-deve.sh set-port --protocol vless-reality --port 24443
 sudo ./sing-box-deve.sh list --nodes
 sudo ./sing-box-deve.sh fw status
