@@ -69,11 +69,10 @@ detect_init_system() {
 sbd_systemd_daemon_reload() {
   local required="${1:-false}" context="${2:-systemd daemon-reload}"
   local rc output
-  output="$(systemctl daemon-reload 2>&1)"
-  rc=$?
-  if (( rc == 0 )); then
+  if output="$(systemctl daemon-reload 2>&1)"; then
     return 0
   fi
+  rc=$?
 
   [[ -n "$output" ]] && log_warn "$output"
   log_warn "$(msg \

@@ -22,6 +22,17 @@ This is mandatory even for small fixes. In particular, always include:
 
 If a check cannot run locally, record the exact blocker before asking to push. Do not assume GitHub CI will catch it later.
 
+## After every push
+
+After pushing to `main`, inspect the GitHub Actions result instead of assuming the push is healthy:
+
+```bash
+gh run list --branch main --limit 5
+gh run view <run-id> --log-failed
+```
+
+Report whether the relevant workflow is `success`, `failure`, or still `in_progress`/`queued`.
+
 ## Hook policy
 
 Install the repository pre-push hook on local checkouts used for development:

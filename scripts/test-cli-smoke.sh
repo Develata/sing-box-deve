@@ -63,12 +63,29 @@ assert_failure unknown-command "$SCRIPT" __definitely_unknown_command__
 
 uninstall_home="${TMP_DIR}/uninstall-home"
 uninstall_global_bin="${TMP_DIR}/uninstall-global-bin"
+uninstall_systemd_bin="${TMP_DIR}/uninstall-systemd-bin"
 mkdir -p "$uninstall_home"
-mkdir -p "$uninstall_global_bin"
+mkdir -p "$uninstall_global_bin" "$uninstall_systemd_bin"
 printf '%s\n' '# fake root-owned global launcher fixture' > "${uninstall_global_bin}/sb"
+cat > "${uninstall_systemd_bin}/systemctl" <<'SH'
+#!/usr/bin/env bash
+case "${1:-}" in
+  daemon-reload) echo 'simulated user-mode daemon-reload failure' >&2; exit 1 ;;
+  disable|stop|is-active) exit 1 ;;
+  *) exit 0 ;;
+esac
+SH
+chmod +x "${uninstall_systemd_bin}/systemctl"
 assert_success uninstall-no-firewall env HOME="$uninstall_home" SBD_FW_BACKEND=none SBD_GLOBAL_BIN_DIR="$uninstall_global_bin" "$SCRIPT" uninstall --keep-settings
 grep -q "No firewall backend detected" "${TMP_DIR}/uninstall-no-firewall.out" || fail "uninstall no-firewall warning missing"
 [[ -f "${uninstall_global_bin}/sb" ]] || fail "user-mode uninstall removed global sb fixture"
+env PROJECT_ROOT="$ROOT_DIR" PATH="${uninstall_systemd_bin}:${PATH}" bash <<'BASH' >"${TMP_DIR}/daemon-reload-failure.out" 2>"${TMP_DIR}/daemon-reload-failure.err"
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+SBD_INIT_SYSTEM=systemd
+sbd_systemd_daemon_reload false "test daemon-reload"
+BASH
+grep -q "simulated user-mode daemon-reload failure" "${TMP_DIR}/daemon-reload-failure.out" || fail "daemon-reload failure was not logged"
 
 serv00_home="${TMP_DIR}/serv00-home"
 mkdir -p "$serv00_home"
