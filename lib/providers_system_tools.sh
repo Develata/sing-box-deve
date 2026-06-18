@@ -84,10 +84,11 @@ provider_sys_acme_install() {
 
 provider_sys_acme_issue() {
   ensure_root
-  local domain="${1:-}" email="${2:-}"
-  [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email>" "Usage: sys acme-issue <domain> <email>")"
+  local domain="${1:-}" email="${2:-}" webroot="${3:-}"
+  [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: sys acme-issue <domain> <email> [webroot]" "Usage: sys acme-issue <domain> <email> [webroot]")"
   sbd_valid_domain_name "$domain" || die "Invalid ACME domain: ${domain}"
   [[ "$domain" != "*."* ]] || die "Wildcard certificates are not supported by acme-auto; provide certificate paths manually"
+  [[ "$webroot" != dns_* ]] || die "DNS ACME providers are no longer accepted by sys acme-issue; use nginx/OpenResty webroot or provide certificate paths"
   [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "Invalid ACME account email: ${email}"
   SBD_LAST_ACME_CERT_PATH=""
   SBD_LAST_ACME_KEY_PATH=""
@@ -103,10 +104,13 @@ provider_sys_acme_issue() {
   provider_sys_acme_install
   /root/.acme.sh/acme.sh --register-account -m "$email" >/dev/null 2>&1 || true
 
-  if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :80 )" 2>/dev/null | tail -n +2 | grep -q .; then
-    die "ACME standalone mode requires TCP port 80 to be free; stop the service using port 80 or provide certificate paths manually"
+  if [[ -z "$webroot" ]]; then
+    sbd_write_archive_gateway_site >/dev/null
+    sbd_configure_web_front_http_challenge "$domain" >/dev/null
+    webroot="$(sbd_archive_site_dir)"
   fi
-  /root/.acme.sh/acme.sh --issue --keylength ec-256 -d "$domain" --standalone
+  [[ -d "$webroot" ]] || die "ACME webroot directory not found: ${webroot}"
+  /root/.acme.sh/acme.sh --issue --keylength ec-256 -d "$domain" --webroot "$webroot"
 
   local cert="" key=""
   acme_resolve_existing_cert "$domain" cert key || true
@@ -117,7 +121,7 @@ provider_sys_acme_issue() {
   [[ -f "$cert" && -f "$key" ]] || die "$(msg "ACME 签发成功但证书文件缺失" "ACME issue succeeded but cert files missing")"
   SBD_LAST_ACME_CERT_PATH="$cert"
   SBD_LAST_ACME_KEY_PATH="$key"
-  log_success "$(msg "ACME standalone 证书签发完成: cert=${cert} key=${key}" "ACME standalone cert issued: cert=${cert} key=${key}")"
+  log_success "$(msg "ACME webroot 证书签发完成: cert=${cert} key=${key}" "ACME webroot cert issued: cert=${cert} key=${key}")"
 }
 
 provider_sys_acme_apply() {
@@ -137,7 +141,7 @@ provider_sys_command() {
     acme-issue) provider_sys_acme_issue "$@" ;;
     acme-apply) provider_sys_acme_apply "$@" ;;
     *)
-      die "$(msg "用法: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email>|acme-apply <cert> <key>]" "Usage: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email>|acme-apply <cert> <key>]")"
+      die "$(msg "用法: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email> [webroot]|acme-apply <cert> <key>]" "Usage: sys [bbr-status|bbr-enable|acme-install|acme-issue <domain> <email> [webroot]|acme-apply <cert> <key>]")"
       ;;
   esac
 }

@@ -92,6 +92,23 @@ grep -q '^WEB_FRONT_ENGINE=nginx$' "$SBD_DATA_DIR/web_front.env"
 grep -q 'root ' "$SBD_CONFIG_DIR/web-front/nginx/conf.d/sing-box-deve-archive.conf"
 BASH
 
+env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home2a" PATH="${web_unit}/bin:${PATH}" \
+  WEB_FRONT_MODE=auto TLS_SERVER_NAME=front.example.com bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/security.sh"
+source "$PROJECT_ROOT/lib/providers.sh"
+detect_privilege_level
+init_runtime_layout
+sbd_write_archive_gateway_site >/dev/null
+sbd_configure_web_front_http_challenge front.example.com >/dev/null
+conf="$SBD_CONFIG_DIR/web-front/nginx/conf.d/sing-box-deve-archive.conf"
+grep -q 'listen 80;' "$conf"
+grep -q 'root ' "$conf"
+! grep -q 'ssl_certificate' "$conf"
+BASH
+
 env PROJECT_ROOT="$ROOT_DIR" HOME="${web_unit}/home2b" PATH="${web_unit}/bin:${PATH}" \
   WEB_FRONT_MODE=nginx TLS_SERVER_NAME=front.example.com \
   ACME_CERT_PATH="${web_unit}/cert.pem" ACME_KEY_PATH="${web_unit}/key.pem" bash <<'BASH'

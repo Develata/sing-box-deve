@@ -90,3 +90,48 @@ EOF
   fi
   [[ -z "$backup" ]] || rm -f "$backup"
 }
+
+sbd_write_web_front_http_conf_staged() {
+  local conf_file="$1" bin="$2" domain="$3" site_dir="$4"
+  local conf_dir tmp_conf backup=""
+  conf_dir="$(dirname "$conf_file")"
+  mkdir -p "$conf_dir"
+  tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")"
+  cat > "$tmp_conf" <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${domain};
+
+    root ${site_dir};
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /404.html;
+    }
+}
+EOF
+
+  if [[ -f "$conf_file" ]]; then
+    backup="$(mktemp "${conf_file}.bak.XXXXXX")"
+    cp -f "$conf_file" "$backup"
+  fi
+  mv -f "$tmp_conf" "$conf_file"
+  if ! "$bin" -t >/dev/null; then
+    if [[ -n "$backup" ]]; then
+      mv -f "$backup" "$conf_file"
+    else
+      rm -f "$conf_file"
+    fi
+    die "Web front HTTP config failed syntax test: ${conf_file}"
+  fi
+  if [[ "${SBD_USER_MODE:-false}" != "true" ]] && ! "$bin" -T 2>&1 | grep -Fq "$conf_file"; then
+    if [[ -n "$backup" ]]; then
+      mv -f "$backup" "$conf_file"
+    else
+      rm -f "$conf_file"
+    fi
+    die "Web front HTTP config is not included by nginx/OpenResty: ${conf_file}"
+  fi
+  [[ -z "$backup" ]] || rm -f "$backup"
+}

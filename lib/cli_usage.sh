@@ -38,7 +38,7 @@ Usage:
   sing-box-deve.sh sys bbr-status
   sing-box-deve.sh sys bbr-enable
   sing-box-deve.sh sys acme-install
-  sing-box-deve.sh sys acme-issue <domain> <email>
+  sing-box-deve.sh sys acme-issue <domain> <email> [webroot]
   sing-box-deve.sh sys acme-apply <cert_path> <key_path>
   sing-box-deve.sh regen-nodes
   sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--force] [--yes] [--rollback]

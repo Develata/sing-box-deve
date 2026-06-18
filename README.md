@@ -8,7 +8,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 - **6 种公开入站协议**：`vless-reality`, `vless-ws`, `shadowsocks-2022`, `naive`, `hysteria2`, `tuic`；`vless-xhttp` 作为 xray compatibility 协议保留。
 - **默认主线**：VPS + `sing-box` + `vless-reality`（`reality-only` preset，无需自有域名）。
-- **域名 TLS 门禁**：`hysteria2` / `tuic` / `naive` 必须使用自有域名与有效证书；自动签发仅支持 `acme.sh --standalone`。
+- **域名 TLS 门禁**：`hysteria2` / `tuic` / `naive` 必须使用自有域名与有效证书；自动签发使用 nginx/OpenResty webroot，不再使用会抢占 80 端口的 standalone 模式。
 - **域名静态站面**：域名协议会生成 archive-gateway 静态站；优先复用 OpenResty，其次 nginx，两者都不存在时可按 nginx.org 官方仓库安装 nginx。
 - **可选兼容**：Serv00/Hostuno 受限环境、xray compatibility engine。
 - **Argo 隧道**：临时/固定模式，用于受限入口或 CDN 辅助暴露。
@@ -36,7 +36,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 仍需谨慎看待的边界：
 
-- 自动化测试不能完全替代真实 VPS root install、真实 `acme.sh --standalone` 签发、真实 OpenResty/nginx reload、真实客户端连通性测试；
+- 自动化测试不能完全替代真实 VPS root install、真实 nginx/OpenResty webroot ACME 签发、真实 OpenResty/nginx reload、真实客户端连通性测试；
 - `scripts/consistency-check.sh` 是已安装主机上的 runtime 一致性检查，需要真实 `/etc/sing-box-deve/runtime.env`，不适合作为本地非 root checkout 测试；
 - FreeBSD/Serv00、Hostuno、OpenRC/nohup 等受限环境属于 best-effort，需要在目标平台再做 smoke test；
 - 域名协议要求有效证书与正确 DNS/SNI；脚本会 fail fast，但不会替你修复 DNS、运营商封锁或 80/443 被占用问题。
@@ -94,7 +94,7 @@ sb restart --core
   --acme-key-path /path/privkey.pem \
   --yes
 
-# 自动签发证书：要求域名 A/AAAA 已指向本机，且 80 端口可被 acme.sh standalone 占用
+# 自动签发证书：要求域名 A/AAAA 已指向本机；脚本通过 nginx/OpenResty webroot 完成 HTTP-01
 ./sing-box-deve.sh install --preset full \
   --tls-sni example.com \
   --tls-mode acme-auto \

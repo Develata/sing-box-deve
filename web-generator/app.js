@@ -64,7 +64,7 @@ function initSchemaSelects() {
   fillSelect("tlsMode", schema.tlsModes || ["self-signed", "acme", "acme-auto"], {
     "self-signed": "self-signed（仅非域名证书协议）",
     acme: "acme（已有证书路径）",
-    "acme-auto": "acme-auto（standalone 自动签发）"
+    "acme-auto": "acme-auto（nginx/OpenResty webroot 自动签发）"
   });
   fillSelect("webFrontMode", schema.webFrontModes || ["auto", "off", "nginx", "openresty"], {
     auto: "auto（OpenResty 优先，其次 nginx）",
@@ -189,6 +189,7 @@ function validateForm() {
   var outPort = fieldValue("outboundProxyPort");
   var provider = byId("provider").value;
   var tlsMode = byId("tlsMode").value;
+  var webFrontMode = byId("webFrontMode").value;
   var tlsSni = fieldValue("tlsSni");
   var cert = fieldValue("acmeCertPath");
   var key = fieldValue("acmeKeyPath");
@@ -204,7 +205,8 @@ function validateForm() {
     if (!tlsSni) return "域名证书协议必须填写 TLS 域名 / SNI";
     if (tlsMode === "self-signed") return "域名证书协议不能使用 self-signed，请选择 acme 或 acme-auto";
     if (tlsMode === "acme" && (!cert || !key)) return "TLS 模式 acme 必须填写证书和私钥路径";
-    if (tlsMode === "acme-auto" && !email) return "TLS 模式 acme-auto 必须填写 ACME_EMAIL";
+    if (tlsMode === "acme-auto" && !email) return "TLS 模式 acme-auto 必须填写 ACME_EMAIL，并启用 nginx/OpenResty web front";
+    if (tlsMode === "acme-auto" && webFrontMode === "off") return "TLS 模式 acme-auto 使用 nginx/OpenResty webroot，不能选择 web-front off";
   }
   if (hy2ObfsMode !== "off" && !hasHy2()) return "启用 Hysteria2 obfs 时必须选择 hysteria2";
   if (hy2ObfsPassword && hy2ObfsPassword.length < 8) return "HY2_OBFS_PASSWORD 至少 8 个字符";

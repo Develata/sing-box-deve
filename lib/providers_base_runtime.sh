@@ -51,6 +51,7 @@ validate_feature_modes() {
   if [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]]; then
     [[ -n "${ACME_DOMAIN:-${TLS_SERVER_NAME:-}}" ]] || die "TLS_MODE=acme-auto requires --acme-domain or --tls-sni"
     [[ -n "${ACME_EMAIL:-}" ]] || die "TLS_MODE=acme-auto requires --acme-email"
+    [[ "${WEB_FRONT_MODE:-auto}" != "off" ]] || die "TLS_MODE=acme-auto uses nginx/OpenResty webroot and requires WEB_FRONT_MODE!=off"
   fi
 
   case "${WEB_FRONT_MODE:-auto}" in

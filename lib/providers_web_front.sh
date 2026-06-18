@@ -34,3 +34,33 @@ sbd_configure_web_front() {
   export WEB_FRONT_ENGINE WEB_FRONT_CONF WEB_FRONT_DOMAIN
   printf 'WEB_FRONT_ENGINE=%s\nWEB_FRONT_CONF=%s\nWEB_FRONT_DOMAIN=%s\n' "$engine" "$conf_file" "$domain" > "${SBD_DATA_DIR}/web_front.env"
 }
+
+sbd_configure_web_front_http_challenge() {
+  local domain="${1:-}" found engine bin paths conf_file service site_dir
+  [[ "$(sbd_web_front_mode)" != "off" ]] || die "ACME webroot mode requires WEB_FRONT_MODE!=off"
+  sbd_web_front_install_if_needed || die "ACME webroot mode requires OpenResty/nginx web front"
+  found="$(sbd_find_web_front)" || die "ACME webroot mode requires OpenResty/nginx web front"
+  engine="${found%%|*}"
+  domain="$(sbd_nginx_safe_server_name "$domain")"
+  site_dir="$(sbd_nginx_safe_path site-root "$(sbd_archive_site_dir)")"
+  [[ -d "$site_dir" ]] || die "Archive site directory not found: ${site_dir}"
+
+  if [[ "$engine" == "openresty" ]]; then
+    bin="${found#*|}"
+    sbd_ensure_openresty_confd_include "$(sbd_openresty_conf_root)" "$bin"
+  fi
+  paths="$(sbd_web_front_conf_paths "$engine")"
+  conf_file="${paths%%|*}"
+  paths="${paths#*|}"
+  bin="${paths%%|*}"
+  service="${paths#*|}"
+
+  sbd_write_web_front_http_conf_staged "$conf_file" "$bin" "$domain" "$site_dir"
+  sbd_web_front_open_firewall
+  sbd_web_front_reload "$engine" "$bin" "$service"
+  WEB_FRONT_ENGINE="$engine"
+  WEB_FRONT_CONF="$conf_file"
+  WEB_FRONT_DOMAIN="$domain"
+  export WEB_FRONT_ENGINE WEB_FRONT_CONF WEB_FRONT_DOMAIN
+  printf 'WEB_FRONT_ENGINE=%s\nWEB_FRONT_CONF=%s\nWEB_FRONT_DOMAIN=%s\n' "$engine" "$conf_file" "$domain" > "${SBD_DATA_DIR}/web_front.env"
+}

@@ -82,7 +82,7 @@ wizard() {
       prompt_with_default "$(msg "输入私钥路径" "Input private key path")" "" ACME_KEY_PATH
     else
       TLS_MODE="acme-auto"
-      prompt_with_default "$(msg "输入 ACME 注册邮箱（acme.sh standalone）" "Input ACME account email (acme.sh standalone)")" "" ACME_EMAIL
+      prompt_with_default "$(msg "输入 ACME 注册邮箱（nginx/OpenResty webroot）" "Input ACME account email (nginx/OpenResty webroot)")" "" ACME_EMAIL
     fi
   fi
 

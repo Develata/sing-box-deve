@@ -138,7 +138,10 @@ prepare_domain_cert_for_protocols() {
 
   if [[ "${TLS_MODE:-self-signed}" == "acme-auto" ]]; then
     [[ -n "${ACME_EMAIL:-}" ]] || die "TLS_MODE=acme-auto requires --acme-email for domain ${domain}"
-    provider_sys_acme_issue "$domain" "$ACME_EMAIL"
+    [[ "$(sbd_web_front_mode)" != "off" ]] || die "TLS_MODE=acme-auto uses nginx/OpenResty webroot and requires WEB_FRONT_MODE!=off"
+    sbd_write_archive_gateway_site >/dev/null
+    sbd_configure_web_front_http_challenge "$domain" >/dev/null
+    provider_sys_acme_issue "$domain" "$ACME_EMAIL" "$(sbd_archive_site_dir)"
     cert="${SBD_LAST_ACME_CERT_PATH:-}"
     key="${SBD_LAST_ACME_KEY_PATH:-}"
     sbd_validate_domain_cert_pair "$domain" "$cert" "$key"

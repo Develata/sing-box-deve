@@ -18,7 +18,7 @@ run_install() {
     ! sbd_is_ip_literal "$dry_domain" || die "Dry-run: TLS domain must not be an IP literal: ${dry_domain}"
     case "${TLS_MODE:-self-signed}" in
       self-signed)
-        die "Dry-run: selected protocols require --tls-mode acme or acme-auto, not self-signed"
+        die "Dry-run: selected protocols require --tls-mode acme or acme-auto(webroot), not self-signed"
         ;;
       acme)
         [[ -n "${ACME_CERT_PATH:-}" && -n "${ACME_KEY_PATH:-}" ]] || die "Dry-run: --tls-mode acme requires --acme-cert-path and --acme-key-path"
@@ -26,6 +26,7 @@ run_install() {
         ;;
       acme-auto)
         [[ -n "${ACME_EMAIL:-}" ]] || die "Dry-run: --tls-mode acme-auto requires --acme-email"
+        [[ "${WEB_FRONT_MODE:-auto}" != "off" ]] || die "Dry-run: --tls-mode acme-auto requires --web-front auto|nginx|openresty"
         ;;
     esac
   fi

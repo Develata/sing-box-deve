@@ -28,10 +28,10 @@ For domain-certificate protocols, the script accepts only:
 
 1. Explicit certificate paths: `--tls-mode acme --acme-cert-path <fullchain> --acme-key-path <key> --tls-sni <domain>`.
 2. Existing local certificates detected at conservative known paths, currently Let's Encrypt and acme.sh locations.
-3. Automatic issue via `acme.sh --standalone` only: `--tls-mode acme-auto --tls-sni <domain> --acme-email <email>`.
+3. Automatic issue via `acme.sh --webroot` through the managed OpenResty/nginx archive-gateway web front: `--tls-mode acme-auto --tls-sni <domain> --acme-email <email>`.
 4. Manual retry by providing certificate paths after a failed automatic attempt.
 
-The script must not auto-modify caddy or arbitrary reverse-proxy configuration. For the managed archive-gateway web front only, it may create/update its own OpenResty/nginx server block after certificate validation.
+The script must not use standalone ACME that competes for TCP 80. It may create/update its own OpenResty/nginx server block for HTTP-01 webroot validation and then replace it with the final HTTPS archive-gateway server block after certificate validation.
 
 ## TCP web front
 
