@@ -196,6 +196,11 @@ provider_set_port vless-reality 24443
 grep -q ':24443?' "$SBD_NODES_FILE"
 ! grep -q ':443?' "$SBD_NODES_FILE"
 ! grep -q 'core:tcp:443' "$SBD_RULES_FILE"
+provider_cfg_rebuild_runtime() {
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+}
+provider_cfg_set_profile full
+grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
 BASH
 
 release_unit="${TMP_DIR}/release-unit"

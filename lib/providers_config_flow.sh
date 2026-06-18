@@ -240,11 +240,11 @@ provider_cfg_command() {
     preview) provider_cfg_preview "$@" ;;
     apply) provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$@" ;;
     rollback) provider_cfg_with_lock provider_cfg_rollback_unlocked "${1:-latest}" ;;
-    rotate-id|argo|ip-pref|cdn-host|domain-split|tls|protocol-add|protocol-remove|rebuild)
+    rotate-id|argo|ip-pref|cdn-host|domain-split|tls|profile|protocol-add|protocol-remove|rebuild)
       provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$action" "$@"
       ;;
     *)
-      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email]|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv|index_csv>|rebuild]"
+      die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email]|profile <lite|full>|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv|index_csv>|rebuild]"
       ;;
   esac
 }

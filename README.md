@@ -166,6 +166,7 @@ sb restart --core
 ./sing-box-deve.sh cfg cdn-host <domain>
 ./sing-box-deve.sh cfg domain-split <direct_csv> <proxy_csv> <block_csv>
 ./sing-box-deve.sh cfg tls self-signed|acme|acme-auto [cert_path|domain] [key_path|email]
+./sing-box-deve.sh cfg profile lite|full
 ./sing-box-deve.sh cfg protocol-add <proto_csv> [random|manual] [proto:port,...]
 ./sing-box-deve.sh cfg protocol-remove <proto_csv|index_csv>
 ./sing-box-deve.sh cfg rebuild

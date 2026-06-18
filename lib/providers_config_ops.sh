@@ -194,6 +194,19 @@ provider_cfg_set_tls() {
   log_success "$(msg "TLS 模式已更新: ${mode}" "TLS mode updated: ${mode}")"
 }
 
+provider_cfg_set_profile() {
+  ensure_root
+  local new_profile="${1:-}"
+  case "$new_profile" in lite|full) ;;
+    *) die "$(msg "用法: cfg profile <lite|full>" "Usage: cfg profile <lite|full>")" ;;
+  esac
+  provider_cfg_load_runtime_exports
+  validate_profile_protocols "$new_profile" "${protocols:-vless-reality}"
+  profile="$new_profile"
+  provider_cfg_rebuild_runtime
+  log_success "$(msg "运行档位已更新: ${new_profile}" "Profile updated: ${new_profile}")"
+}
+
 provider_cfg_apply_dispatch() {
   local action="${1:-}"
   shift || true
@@ -204,6 +217,7 @@ provider_cfg_apply_dispatch() {
     cdn-host) provider_cfg_set_cdn_host "$@" ;;
     domain-split) provider_cfg_set_domain_split "${1:-}" "${2:-}" "${3:-}" ;;
     tls) provider_cfg_set_tls "$@" ;;
+    profile) provider_cfg_set_profile "${1:-}" ;;
     protocol-add) provider_cfg_protocol_add "${1:-}" "${2:-random}" "${3:-}" ;;
     protocol-remove) provider_cfg_protocol_remove "${1:-}" ;;
     rebuild) provider_cfg_rebuild_runtime ;;
