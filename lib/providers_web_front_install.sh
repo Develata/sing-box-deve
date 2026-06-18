@@ -52,6 +52,7 @@ sbd_web_front_install_if_needed() {
     log_warn "$(msg "用户模式下跳过 nginx 自动安装；archive-gateway 仅写入文件与 Hysteria2 masquerade" "User mode: skip nginx auto-install; archive-gateway is only written to files and Hysteria2 masquerade")"
     return 1
   fi
+  [[ -n "${OS_ID:-}" ]] || detect_os
   if ! sbd_nginx_official_install_supported; then
     log_warn "$(msg "当前系统不支持 nginx.org 自动安装；请手动安装 OpenResty/nginx 或设置 --web-front off" "Official nginx auto-install is unsupported on this OS; install OpenResty/nginx manually or set --web-front off")"
     return 1
