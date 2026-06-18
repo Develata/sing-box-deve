@@ -146,7 +146,9 @@ provider_cfg_protocol_open_firewall_for_csv() {
     preexisting="false"
     fw_rule_exists_record "$tag" && preexisting="true"
     if ! ( fw_apply_rule "$proto" "$port" ); then
-      [[ "$rollback_new" == "true" ]] && provider_cfg_protocol_close_firewall_records "$applied_records" || true
+      if [[ "$rollback_new" == "true" ]]; then
+        provider_cfg_protocol_close_firewall_records "$applied_records" || true
+      fi
       return 1
     fi
     if [[ "$preexisting" != "true" ]]; then
