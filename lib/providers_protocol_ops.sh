@@ -141,7 +141,7 @@ provider_cfg_protocol_open_firewall_for_csv() {
     protocol_needs_local_listener "$p" || continue
     mapping="$(protocol_port_map "$p")"
     proto="${mapping%%:*}"
-    port="$(get_protocol_port "$p")"
+    port="$(resolve_protocol_port_for_engine "${engine:-sing-box}" "$p" 2>/dev/null || get_protocol_port "$p")"
     tag="$(fw_tag "core" "$proto" "$port")"
     preexisting="false"
     fw_rule_exists_record "$tag" && preexisting="true"
