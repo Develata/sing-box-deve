@@ -61,7 +61,12 @@ config_port_for_tag() {
 }
 
 resolve_protocol_port_for_engine() {
-  local engine="$1" protocol="$2" default_port tag current_port
+  local engine="$1" protocol="$2" default_port tag current_port env_key
+  env_key="$(sbd_port_env_key "$protocol" 2>/dev/null || echo "SBD_PORT_$(echo "$protocol" | tr '[:lower:]-' '[:upper:]_')")"
+  if [[ -n "${!env_key:-}" ]]; then
+    get_protocol_port "$protocol"
+    return 0
+  fi
   default_port="$(get_protocol_port "$protocol")"
   if ! tag="$(protocol_inbound_tag "$protocol")"; then
     echo "$default_port"

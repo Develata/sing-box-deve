@@ -112,6 +112,20 @@ prepare_initial_install_ports() {
   done
 }
 
+sbd_export_protocol_ports_from_engine() {
+  local source_engine="$1" protocols_csv="$2"
+  local protocols=() p port env_key
+  protocols_to_array "$protocols_csv" protocols
+  for p in "${protocols[@]}"; do
+    protocol_needs_local_listener "$p" || continue
+    port="$(resolve_protocol_port_for_engine "$source_engine" "$p" 2>/dev/null || true)"
+    [[ "$port" =~ ^[0-9]+$ ]] || continue
+    env_key="$(sbd_port_env_key "$p")"
+    printf -v "$env_key" '%s' "$port"
+    export "${env_key}=${port}"
+  done
+}
+
 prepare_incremental_protocol_ports() {
   local engine="$1" current_csv="$2" target_csv="$3" mode="${4:-random}" map_csv="${5:-}"
   [[ "$mode" == "random" || "$mode" == "manual" ]] || die "Port mode must be random or manual"

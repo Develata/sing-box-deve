@@ -214,6 +214,26 @@ grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
 provider_cfg_protocol_add hysteria2 random
 grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
 grep -q '^protocols="vless-reality,hysteria2"$' "$SBD_CONFIG_DIR/runtime.env"
+sbd_export_protocol_ports_from_engine sing-box vless-reality
+[[ "${SBD_PORT_VLESS_REALITY:-}" == "24443" ]]
+cat > "$SBD_CONFIG_DIR/xray-config.json" <<'EOF'
+{"inbounds":[{"tag":"vless-reality","port":443}]}
+EOF
+cat > "$SBD_BIN_DIR/xray" <<'SH'
+#!/usr/bin/env bash
+case "${1:-}" in
+  x25519)
+    printf '%s\n' 'Private key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' 'Public key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+    ;;
+  run)
+    exit 0
+    ;;
+  *) exit 0 ;;
+esac
+SH
+chmod +x "$SBD_BIN_DIR/xray"
+build_xray_config vless-reality
+grep -Eq '"port"[[:space:]]*:[[:space:]]*24443' "$SBD_CONFIG_DIR/xray-config.json"
 BASH
 
 release_unit="${TMP_DIR}/release-unit"

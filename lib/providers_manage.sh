@@ -221,17 +221,19 @@ provider_kernel_set() {
   if [[ "$has_runtime" == "true" ]]; then
     if ! (
       provider_cfg_load_runtime_exports
-      assert_engine_protocol_compatibility "$target_engine" "${protocols:-vless-reality}"
-      provider_prepare_domain_runtime_artifacts "${protocols:-vless-reality}"
+      local source_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
+      assert_engine_protocol_compatibility "$target_engine" "$runtime_protocols"
+      sbd_export_protocol_ports_from_engine "$source_engine" "$runtime_protocols"
+      provider_prepare_domain_runtime_artifacts "$runtime_protocols"
       case "$target_engine" in
-        sing-box) build_sing_box_config "${protocols:-vless-reality}" ;;
-        xray) build_xray_config "${protocols:-vless-reality}" ;;
+        sing-box) build_sing_box_config "$runtime_protocols" ;;
+        xray) build_xray_config "$runtime_protocols" ;;
       esac
       validate_generated_config "$target_engine" "true"
-      provider_commit_domain_web_front "${protocols:-vless-reality}"
+      provider_commit_domain_web_front "$runtime_protocols"
       write_systemd_service "$target_engine"
-      write_nodes_output "$target_engine" "${protocols:-vless-reality}"
-      persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "${protocols:-vless-reality}"
+      write_nodes_output "$target_engine" "$runtime_protocols"
+      persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "$runtime_protocols"
     ); then
       provider_core_backup_restore "$target_engine"
       die "$(msg "内核已下载，但运行配置重建失败；已尝试恢复旧内核" "Engine downloaded, but runtime rebuild failed; previous engine restore attempted")"
