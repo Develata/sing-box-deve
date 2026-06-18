@@ -209,11 +209,13 @@ provider_warp_config() {
     echo "2) $(msg "自动生成/刷新 WARP 账户（warp register）" "Generate/refresh WARP account (warp register)")"
     echo "3) $(msg "手动修改 WARP 账户参数（私钥/IP/reserved）" "Edit WARP account settings (key/IP/reserved)")"
     echo "4) $(msg "设置 WARP_MODE（并重建运行时）" "Set WARP_MODE (and rebuild runtime)")"
-    echo "5) $(msg "设置地区代码（映射 Psiphon）" "Set region code (maps to Psiphon)")"
+    echo "5) $(msg "设置地区代码（预留兼容）" "Set region code (reserved compatibility)")"
     echo "6) $(msg "应用当前账户到运行时配置" "Apply current account to runtime config")"
     echo "7) $(msg "查看可选地区代码" "Show available region codes")"
     echo "0) $(msg "返回" "Back")"
-    read -r -p "$(msg "请选择" "Select"): " c
+    if ! read -r -p "$(msg "请选择" "Select"): " c; then
+      return 0
+    fi
     case "${c:-0}" in
       1) provider_warp_account_show ;;
       2) provider_warp_register ;;
