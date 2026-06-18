@@ -212,7 +212,7 @@ sbd_service_logs() {
 
   case "$SBD_INIT_SYSTEM" in
     systemd)
-      journalctl -u "${svc_name}.service" -n "$lines" --no-pager
+      journalctl -u "${svc_name}.service" -n "$lines" --no-pager || true
       ;;
     openrc|nohup)
       local log_file="${SBD_DATA_DIR}/${svc_name}.log"
