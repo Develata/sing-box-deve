@@ -143,8 +143,11 @@ provider_set_port() {
       if [[ "${AUTO_YES:-false}" == "true" ]]; then
         answer="Y"
       else
-        read -r -p "$(msg "是否移除旧端口的防火墙规则 ${fw_proto}/${old_port}? [Y/n]: " "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: ")" answer
-        answer="${answer:-Y}"
+        if ! read -r -p "$(msg "是否移除旧端口的防火墙规则 ${fw_proto}/${old_port}? [Y/n]: " "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: ")" answer; then
+          answer="Y"
+        else
+          answer="${answer:-Y}"
+        fi
       fi
       if [[ "$answer" =~ ^[Yy]$ ]]; then
         local record_backend record_proto record_port record_tag
