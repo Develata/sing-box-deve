@@ -76,6 +76,13 @@ update_command() {
       fi
     elif version_eq "$remote_ver" "$local_ver" && [[ "${UPDATE_FORCE:-false}" != "true" ]]; then
       log_info "$(msg "脚本已是最新版本" "Script is already up to date") (${local_ver})"
+      if [[ "$UPDATE_SCRIPT" == "true" ]]; then
+        sync_installed_script_root_from_project || die "$(msg "同步脚本入口失败；请检查 runtime.env 权限后重试" "Failed to sync script entrypoint; check runtime.env permissions and retry")"
+        if [[ "${EUID:-$(id -u)}" -eq 0 ]] && declare -F write_sb_launcher >/dev/null 2>&1; then
+          write_sb_launcher || die "$(msg "刷新 sb 启动器失败" "Failed to refresh sb launcher")"
+        fi
+        verify_sb_launcher_target true
+      fi
     else
       log_info "$(msg "本地版本" "Local version"): ${local_ver}"
       log_info "$(msg "远程版本" "Remote version"): ${remote_ver}"
