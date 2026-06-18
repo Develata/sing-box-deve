@@ -15,10 +15,10 @@ sbd_install_official_nginx_apt() {
     apt-get install -y curl gnupg2 ca-certificates lsb-release debian-archive-keyring >/dev/null
   fi
   mkdir -p /usr/share/keyrings /etc/apt/sources.list.d /etc/apt/preferences.d
-  local key_show
+  local key_fprs
   curl -fsSL https://nginx.org/keys/nginx_signing.key | gpg --dearmor > /usr/share/keyrings/nginx-archive-keyring.gpg
-  key_show="$(gpg --dry-run --quiet --no-keyring --import --import-options import-show /usr/share/keyrings/nginx-archive-keyring.gpg 2>&1 || true)"
-  if ! grep -q '573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62' <<<"$key_show"; then
+  key_fprs="$(gpg --show-keys --with-colons --fingerprint /usr/share/keyrings/nginx-archive-keyring.gpg 2>/dev/null | awk -F: '$1 == "fpr" {print $10}')"
+  if ! grep -qx '573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62' <<<"$key_fprs"; then
     die "Unable to verify official nginx signing key fingerprint"
   fi
   local codename repo_os
