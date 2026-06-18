@@ -201,6 +201,16 @@ provider_cfg_rebuild_runtime() {
 }
 provider_cfg_set_profile full
 grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
+cat > "$SBD_CONFIG_DIR/runtime.env" <<EOF
+provider="vps"
+profile="lite"
+engine="sing-box"
+protocols="vless-reality"
+script_root="$PROJECT_ROOT"
+installed_at="2026-06-17T00:00:00Z"
+EOF
+provider_cfg_apply_with_snapshot_unlocked profile full
+grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
 BASH
 
 release_unit="${TMP_DIR}/release-unit"

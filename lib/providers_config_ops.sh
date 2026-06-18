@@ -64,19 +64,21 @@ provider_cfg_rebuild_runtime() {
     provider_cfg_load_runtime_exports
   fi
   [[ -n "$target_protocols" ]] && protocols="$target_protocols"
+  local runtime_provider="${provider:-vps}" runtime_profile="${profile:-lite}"
+  local runtime_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
   validate_feature_modes
-  provider_prepare_domain_runtime_artifacts "${protocols:-vless-reality}"
-  case "${engine:-sing-box}" in
-    sing-box) build_sing_box_config "${protocols:-vless-reality}" && validate_generated_config "sing-box" "true" ;;
-    xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" "true" ;;
-    *) die "$(msg "运行时内核不受支持: ${engine:-unknown}" "Unsupported engine in runtime: ${engine:-unknown}")" ;;
+  provider_prepare_domain_runtime_artifacts "$runtime_protocols"
+  case "$runtime_engine" in
+    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
+    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
+    *) die "$(msg "运行时内核不受支持: ${runtime_engine}" "Unsupported engine in runtime: ${runtime_engine}")" ;;
   esac
   if declare -F provider_cfg_protocol_ensure_firewall_for_current >/dev/null 2>&1; then
-    provider_cfg_protocol_ensure_firewall_for_current "${protocols:-vless-reality}" || die "Failed to reconcile firewall rules for current protocols: ${protocols:-vless-reality}"
+    provider_cfg_protocol_ensure_firewall_for_current "$runtime_protocols" || die "Failed to reconcile firewall rules for current protocols: ${runtime_protocols}"
   fi
-  provider_commit_domain_web_front "${protocols:-vless-reality}"
-  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
-  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  provider_commit_domain_web_front "$runtime_protocols"
+  write_nodes_output "$runtime_engine" "$runtime_protocols"
+  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
 }
 
