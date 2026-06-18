@@ -58,7 +58,8 @@ provider_logs() {
       ;;
     argo)
       if [[ ! -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-        die "$(msg "Argo 服务未安装" "Argo service is not installed")"
+        log_warn "$(msg "Argo 服务未安装" "Argo service is not installed")"
+        return 0
       fi
       sbd_service_logs "sing-box-deve-argo" 120
       ;;
