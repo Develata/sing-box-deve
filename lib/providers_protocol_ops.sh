@@ -124,9 +124,9 @@ provider_cfg_protocol_sync_argo_service() {
   configure_argo_tunnel "$protocols_csv" "${engine:-sing-box}"
 }
 
-provider_cfg_protocol_open_firewall_for_added() {
-  local added_csv="$1"
-  [[ -n "$added_csv" ]] || return 0
+provider_cfg_protocol_open_firewall_for_csv() {
+  local target_csv="$1" rollback_new="${2:-false}"
+  [[ -n "$target_csv" ]] || return 0
   SBD_LAST_ADDED_FW_RECORDS=""
   mkdir -p "$SBD_STATE_DIR"
   touch "$SBD_RULES_FILE"
@@ -135,9 +135,9 @@ provider_cfg_protocol_open_firewall_for_added() {
   fi
   fw_detect_backend
 
-  local added=() p mapping proto port tag preexisting applied_records=""
-  protocols_to_array "$added_csv" added
-  for p in "${added[@]}"; do
+  local target=() p mapping proto port tag preexisting applied_records=""
+  protocols_to_array "$target_csv" target
+  for p in "${target[@]}"; do
     protocol_needs_local_listener "$p" || continue
     mapping="$(protocol_port_map "$p")"
     proto="${mapping%%:*}"
@@ -146,7 +146,7 @@ provider_cfg_protocol_open_firewall_for_added() {
     preexisting="false"
     fw_rule_exists_record "$tag" && preexisting="true"
     if ! ( fw_apply_rule "$proto" "$port" ); then
-      provider_cfg_protocol_close_firewall_records "$applied_records" || true
+      [[ "$rollback_new" == "true" ]] && provider_cfg_protocol_close_firewall_records "$applied_records" || true
       return 1
     fi
     if [[ "$preexisting" != "true" ]]; then
@@ -157,6 +157,15 @@ provider_cfg_protocol_open_firewall_for_added() {
       SBD_LAST_ADDED_FW_RECORDS="$applied_records"
     fi
   done
+}
+
+provider_cfg_protocol_open_firewall_for_added() {
+  provider_cfg_protocol_open_firewall_for_csv "$1" true
+}
+
+provider_cfg_protocol_ensure_firewall_for_current() {
+  [[ "${SBD_USER_MODE:-false}" != "true" ]] || return 0
+  provider_cfg_protocol_open_firewall_for_csv "$1" false
 }
 
 provider_cfg_protocol_firewall_records_for_removed() {

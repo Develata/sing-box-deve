@@ -71,6 +71,9 @@ provider_cfg_rebuild_runtime() {
     xray) build_xray_config "${protocols:-vless-reality}" && validate_generated_config "xray" "true" ;;
     *) die "$(msg "运行时内核不受支持: ${engine:-unknown}" "Unsupported engine in runtime: ${engine:-unknown}")" ;;
   esac
+  if declare -F provider_cfg_protocol_ensure_firewall_for_current >/dev/null 2>&1; then
+    provider_cfg_protocol_ensure_firewall_for_current "${protocols:-vless-reality}" || die "Failed to reconcile firewall rules for current protocols: ${protocols:-vless-reality}"
+  fi
   provider_commit_domain_web_front "${protocols:-vless-reality}"
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
