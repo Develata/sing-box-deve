@@ -24,6 +24,8 @@ source "${ROOT_DIR}/lib/common_launcher.sh"
 source "${ROOT_DIR}/lib/update_manifest.sh"
 # shellcheck source=lib/common_update_rollback.sh
 source "${ROOT_DIR}/lib/common_update_rollback.sh"
+# shellcheck source=lib/common_update_methods.sh
+source "${ROOT_DIR}/lib/common_update_methods.sh"
 
 missing_checksum_root="${TMP_DIR}/missing-checksum-root"
 mkdir -p "$missing_checksum_root"
@@ -60,6 +62,31 @@ grep -qx "script_root=${ROOT_DIR}" "$runtime_file" || {
   echo "[FAIL] runtime.env did not switch to checkout root" >&2
   exit 1
 }
+
+installed_root="${TMP_DIR}/installed-script"
+mkdir -p "$installed_root"
+cp -a "$ROOT_DIR/sing-box-deve.sh" "$ROOT_DIR/lib" "$ROOT_DIR/version" "$installed_root/"
+printf 'v0.0.1\n' > "${installed_root}/version"
+printf 'script_root=%s\n' "$installed_root" > "$runtime_file"
+PROJECT_ROOT="$ROOT_DIR"
+sync_installed_script_root_from_project
+[[ "$(tr -d '[:space:]' < "${installed_root}/version")" == "$(tr -d '[:space:]' < "${ROOT_DIR}/version")" ]] || {
+  echo "[FAIL] installed script root was not synced from checkout" >&2
+  exit 1
+}
+grep -qx "script_root=${installed_root}" "$runtime_file" || {
+  echo "[FAIL] runtime.env should keep installed script_root after sync" >&2
+  exit 1
+}
+
+cat > "$runtime_file" <<EOF
+provider=vps
+profile=lite
+engine=sing-box
+protocols=vless-reality
+script_root=/opt/sing-box-deve/script
+installed_at=2026-04-30T00:00:00Z
+EOF
 
 ephemeral_root="${TMP_DIR}/src"
 mkdir -p "$ephemeral_root"

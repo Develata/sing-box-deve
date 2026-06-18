@@ -78,13 +78,21 @@ perform_git_update() {
 }
 
 sync_installed_script_root_from_project() {
-  local old_root authoritative_root
+  local old_root authoritative_root copied
 
   [[ -f "${PROJECT_ROOT}/sing-box-deve.sh" ]] || return 0
   old_root="$(sbd_read_runtime_script_root 2>/dev/null || true)"
 
   if sbd_is_ephemeral_script_root "$PROJECT_ROOT"; then
     sbd_persist_script_root_if_needed "$PROJECT_ROOT" || return 1
+    return 0
+  fi
+
+  if [[ -n "$old_root" && "$old_root" != "$PROJECT_ROOT" && -d "$old_root" && ! -d "${old_root}/.git" ]]; then
+    copied="$(sbd_copy_script_tree "$PROJECT_ROOT" "$old_root")" || return 1
+    log_success "$(msg "已同步已安装脚本入口: ${old_root} (${copied} 个文件)" "Installed script entrypoint synced: ${old_root} (${copied} files)")"
+    sbd_update_runtime_script_root "$old_root" 2>/dev/null || true
+    return 0
   fi
 
   authoritative_root="$(sbd_choose_authoritative_script_root "$PROJECT_ROOT" || true)"

@@ -132,9 +132,28 @@ sbd_choose_authoritative_script_root() {
   done
 }
 
+sbd_copy_script_tree() {
+  local source_dir="$1" target_dir="$2" rel copied=0
+  sbd_is_project_root "$source_dir" || return 1
+  [[ -n "$target_dir" ]] || return 1
+  mkdir -p "$target_dir"
+  # shellcheck source=lib/update_manifest.sh
+  source "${source_dir}/lib/update_manifest.sh"
+  for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
+    [[ -f "${source_dir}/${rel}" ]] || continue
+    install -D -m 0644 "${source_dir}/${rel}" "${target_dir}/${rel}"
+    ((copied += 1))
+  done
+  [[ -f "${source_dir}/checksums.txt" ]] && install -D -m 0644 "${source_dir}/checksums.txt" "${target_dir}/checksums.txt"
+  for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
+    chmod +x "${target_dir}/${rel}" 2>/dev/null || true
+  done
+  printf '%s\n' "$copied"
+}
+
 sbd_persist_script_root_if_needed() {
   local source_dir="${1:-${PROJECT_ROOT:-}}" persist_dir="${SBD_INSTALL_DIR:-/opt/sing-box-deve}/script"
-  local rel copied=0
+  local copied
 
   sbd_is_project_root "$source_dir" || {
     log_warn "$(msg "无法找到完整脚本源，跳过脚本持久化" "Unable to find complete script source, skipping script persistence")"
@@ -148,18 +167,7 @@ sbd_persist_script_root_if_needed() {
   fi
 
   log_info "$(msg "当前脚本位于临时目录，正在持久化到 ${persist_dir}" "Current script is in a temporary directory; persisting to ${persist_dir}")"
-  mkdir -p "$persist_dir"
-  # shellcheck source=lib/update_manifest.sh
-  source "${source_dir}/lib/update_manifest.sh"
-  for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
-    [[ -f "${source_dir}/${rel}" ]] || continue
-    install -D -m 0644 "${source_dir}/${rel}" "${persist_dir}/${rel}"
-    ((copied += 1))
-  done
-  [[ -f "${source_dir}/checksums.txt" ]] && install -D -m 0644 "${source_dir}/checksums.txt" "${persist_dir}/checksums.txt"
-  for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
-    chmod +x "${persist_dir}/${rel}" 2>/dev/null || true
-  done
+  copied="$(sbd_copy_script_tree "$source_dir" "$persist_dir")"
   PROJECT_ROOT="$persist_dir"
   sbd_update_runtime_script_root "$PROJECT_ROOT" 2>/dev/null || true
   log_success "$(msg "脚本已持久化到 ${persist_dir} (${copied} 个文件)" "Script persisted to ${persist_dir} (${copied} files)")"
