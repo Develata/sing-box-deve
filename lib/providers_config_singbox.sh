@@ -77,6 +77,12 @@ build_sing_box_config() {
       "$(singbox_fragment_tuic "$uuid" "$port_tuic" "$tls_server_name" "$cert_file" "$key_file")"
   fi
 
+  local endpoints
+  endpoints=""
+  if [[ "$has_warp" == "true" ]]; then
+    endpoints="$(build_warp_endpoint_singbox)"
+  fi
+
   local outbounds final_tag upstream_mode available_outbounds
   final_tag="direct"
   available_outbounds="direct"
@@ -90,14 +96,19 @@ build_sing_box_config() {
     available_outbounds+=",proxy-out"
   fi
   if [[ "$has_warp" == "true" ]]; then
-    outbounds+=$',\n'
-    outbounds+="$(build_warp_outbound_singbox)"
     [[ "$upstream_mode" == "direct" ]] && final_tag="warp-out"
     available_outbounds+=",warp-out"
   fi
 
   inbounds="${inbounds//\\n/$'\n'}"
   outbounds="${outbounds//\\n/$'\n'}"
+  endpoints="${endpoints//\\n/$'\n'}"
+  local endpoints_block=""
+  if [[ -n "$endpoints" ]]; then
+    endpoints_block=$'  "endpoints": [\n'
+    endpoints_block+="$endpoints"
+    endpoints_block+=$'\n  ],\n'
+  fi
   local route_json
   route_json="$(build_singbox_route_json "$final_tag" "$inbound_map" "$available_outbounds")"
 
@@ -109,7 +120,7 @@ build_sing_box_config() {
   "inbounds": [
 ${inbounds}
   ],
-  "outbounds": [
+${endpoints_block}  "outbounds": [
 ${outbounds}
   ],
   "route": ${route_json}

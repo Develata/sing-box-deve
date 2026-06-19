@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-build_warp_outbound_singbox() {
+build_warp_endpoint_singbox() {
   local private_key="${WARP_PRIVATE_KEY:-}"
   local peer_public_key="${WARP_PEER_PUBLIC_KEY:-}"
   local local_v4="${WARP_LOCAL_V4:-172.16.0.2/32}"
@@ -27,7 +27,7 @@ build_warp_outbound_singbox() {
   local_v6_json="$(sbd_json_string "$local_v6")"
 
   cat <<EOF
-    {"type": "wireguard", "tag": "warp-out", "server": "engage.cloudflareclient.com", "server_port": 2408, "local_address": [${local_v4_json}, ${local_v6_json}], "private_key": ${private_key_json}, "peer_public_key": ${peer_public_key_json}, "reserved": ${reserved}, "mtu": 1280}
+    {"type": "wireguard", "tag": "warp-out", "address": [${local_v4_json}, ${local_v6_json}], "private_key": ${private_key_json}, "mtu": 1280, "peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": ${peer_public_key_json}, "allowed_ips": ["0.0.0.0/0", "::/0"], "reserved": ${reserved}}]}
 EOF
 }
 

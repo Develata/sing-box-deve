@@ -38,8 +38,10 @@ provider_warp_socks5_write_config() {
   "inbounds": [
     {"type":"socks","tag":"socks-in","listen":"127.0.0.1","listen_port":${port}}
   ],
+  "endpoints": [
+    {"type":"wireguard","tag":"warp-out","address":["${client_ipv4}","${client_ipv6}"],"private_key":"${WARP_PRIVATE_KEY}","mtu":1280,"peers":[{"address":"engage.cloudflareclient.com","port":2408,"public_key":"${WARP_PEER_PUBLIC_KEY}","allowed_ips":["0.0.0.0/0","::/0"],"reserved":${WARP_RESERVED}}]}
+  ],
   "outbounds": [
-    {"type":"wireguard","tag":"warp-out","server":"engage.cloudflareclient.com","server_port":2408,"local_address":["${client_ipv4}","${client_ipv6}"],"private_key":"${WARP_PRIVATE_KEY}","peer_public_key":"${WARP_PEER_PUBLIC_KEY}","reserved":${WARP_RESERVED},"mtu":1280},
     {"type":"direct","tag":"direct"}
   ],
   "route": {"final":"warp-out"}
