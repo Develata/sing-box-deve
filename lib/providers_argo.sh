@@ -88,9 +88,17 @@ EOF
   [[ -n "$domain" ]] && echo "$domain" > "${SBD_DATA_DIR}/argo_domain"
 
   if [[ "$mode" == "temp" ]]; then
-    sleep 3
-    local temp_domain
-    temp_domain="$(grep -aEo 'https://[^ ]*trycloudflare.com' "$argo_log" | head -n1 | sed 's#https://##')"
-    [[ -n "$temp_domain" ]] && echo "$temp_domain" > "${SBD_DATA_DIR}/argo_domain"
+    local temp_domain="" remaining=20
+    while (( remaining > 0 )); do
+      temp_domain="$(grep -aEo 'https://[^ ]*trycloudflare.com' "$argo_log" 2>/dev/null | head -n1 | sed 's#https://##')"
+      [[ -n "$temp_domain" ]] && break
+      remaining=$((remaining - 1))
+      sleep 1
+    done
+    if [[ -n "$temp_domain" ]]; then
+      echo "$temp_domain" > "${SBD_DATA_DIR}/argo_domain"
+    else
+      log_warn "$(msg "未能在 20 秒内提取 Argo 临时域名，请稍后执行 regen-nodes" "Unable to extract temporary Argo domain within 20s; run regen-nodes later")"
+    fi
   fi
 }
