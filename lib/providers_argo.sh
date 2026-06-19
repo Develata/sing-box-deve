@@ -10,25 +10,20 @@ install_cloudflared_binary() {
   tag="$(fetch_latest_release_tag "cloudflare/cloudflared")"
   [[ -n "$tag" && "$tag" != "null" ]] || die "Unable to fetch latest cloudflared release"
 
-  local url sha_url
+  local url digest expected
   url="$(fetch_release_asset_url "cloudflare/cloudflared" "$tag" "$asset")"
-  sha_url="$(fetch_release_asset_url "cloudflare/cloudflared" "$tag" "${asset}.sha256")"
+  digest="$(fetch_release_asset_digest "cloudflare/cloudflared" "$tag" "$asset")"
   [[ -n "$url" ]] || die "Unable to locate cloudflared asset ${asset}"
-  [[ -n "$sha_url" ]] || die "Unable to locate cloudflared sha256 asset"
+  [[ "$digest" == sha256:* ]] || die "Unable to locate cloudflared sha256 digest metadata for ${asset}"
+  expected="${digest#sha256:}"
 
-  local bin_out sha_out
+  local bin_out
   bin_out="${SBD_BIN_DIR}/cloudflared"
-  sha_out="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}/${asset}.sha256"
-  mkdir -p "$(dirname "$sha_out")"
+  mkdir -p "$SBD_BIN_DIR"
 
   download_file "$url" "$bin_out"
   chmod 0755 "$bin_out"
-  download_file "$sha_url" "$sha_out"
-
-  local expected actual
-  expected="$(awk '{print $1}' "$sha_out" | head -n1)"
-  actual="$(sha256sum "$bin_out" | awk '{print $1}')"
-  [[ "$expected" == "$actual" ]] || die "Checksum mismatch for cloudflared"
+  verify_sha256_expected "$bin_out" "$expected"
 }
 
 configure_argo_tunnel() {
