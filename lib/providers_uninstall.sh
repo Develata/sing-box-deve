@@ -69,6 +69,7 @@ provider_uninstall() {
   uninstall_remove_managed_global_bins
   sbd_service_daemon_reload
   if fw_detect_backend_optional; then
+    fw_clear_legacy_iptables_core_rules
     fw_clear_managed_rules
   else
     log_warn "$(msg "未检测到防火墙后端；跳过托管防火墙规则清理" "No firewall backend detected; skipping managed firewall cleanup")"

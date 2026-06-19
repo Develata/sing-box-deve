@@ -133,4 +133,32 @@ grep -Fq "backend=iptables proto=tcp port=443" "${tmp_dir}/status.out"
 grep -Fq "backend=iptables proto=tcp port=80" "${tmp_dir}/status.out"
 grep -Fq "跳过后端存在性检查" "${tmp_dir}/status.out"
 
+# Full uninstall should also remove legacy direct INPUT ACCEPT rules for
+# current core ports that older versions may have written before the
+# managed SING_BOX_DEVE_INPUT chain existed.
+declare -A LEGACY_RULES=([tcp:9443]=1 [udp:9443]=1 [tcp:80]=1)
+iptables() {
+  local action="${1:-}" chain="${2:-}" proto="" port=""
+  shift 2 || true
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -p) proto="$2"; shift 2 ;;
+      --dport) port="$2"; shift 2 ;;
+      -j) shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  [[ "$chain" == "INPUT" && -n "$proto" && -n "$port" ]] || return 1
+  case "$action" in
+    -C) [[ -n "${LEGACY_RULES[${proto}:${port}]:-}" ]] ;;
+    -D) unset "LEGACY_RULES[${proto}:${port}]" ;;
+    *) return 1 ;;
+  esac
+}
+SBD_FW_BACKEND="iptables"
+fw_clear_legacy_iptables_core_rules
+[[ -z "${LEGACY_RULES[tcp:9443]:-}" ]]
+[[ -z "${LEGACY_RULES[udp:9443]:-}" ]]
+[[ -n "${LEGACY_RULES[tcp:80]:-}" ]]
+
 echo "[OK] firewall record/idempotency tests passed"

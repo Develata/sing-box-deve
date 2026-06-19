@@ -80,6 +80,29 @@ fw_clear_managed_rules() {
   fi
 }
 
+fw_collect_core_ports() {
+  [[ -s "$SBD_RULES_FILE" ]] || return 0
+  awk -F'|' '
+    $4 ~ /^MYBOX:[^|]+:core:/ && $3 ~ /^[0-9]+$/ { print $3 }
+  ' "$SBD_RULES_FILE" | sort -n -u
+}
+
+fw_clear_legacy_iptables_core_rules() {
+  command -v iptables >/dev/null 2>&1 || return 0
+  [[ -s "$SBD_RULES_FILE" ]] || return 0
+
+  local port proto
+  while read -r port; do
+    [[ -n "$port" ]] || continue
+    for proto in tcp udp; do
+      while iptables -C INPUT -p "$proto" --dport "$port" -j ACCEPT >/dev/null 2>&1; do
+        iptables -D INPUT -p "$proto" --dport "$port" -j ACCEPT >/dev/null 2>&1 || break
+        log_info "$(msg "已移除旧版直写防火墙规则: ${proto}/${port}" "Removed legacy direct firewall rule: ${proto}/${port}")"
+      done
+    done
+  done < <(fw_collect_core_ports)
+}
+
 fw_cleanup_nftables_table() {
   if command -v nft >/dev/null 2>&1; then
     nft delete chain inet sing_box_deve input 2>/dev/null || true
