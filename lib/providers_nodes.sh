@@ -82,11 +82,11 @@ write_nodes_output() {
   if protocol_enabled "tuic" "${protocols[@]}"; then
     node_link_tuic "$uuid" "$tls_host" "$p_tuic" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
   fi
-  if [[ "${WARP_MODE:-off}" != "off" ]]; then
-    node_link_warp_mode "${WARP_MODE:-off}" >> "$SBD_NODES_BASE_FILE"
+  if [[ "${WARP_MODE:-${warp_mode:-off}}" != "off" ]]; then
+    node_link_warp_mode "${WARP_MODE:-${warp_mode:-off}}" >> "$SBD_NODES_BASE_FILE"
   fi
 
-  if [[ "${ARGO_MODE:-off}" != "off" && -f "${SBD_DATA_DIR}/argo_domain" ]]; then
+  if [[ "${ARGO_MODE:-${argo_mode:-off}}" != "off" && -f "${SBD_DATA_DIR}/argo_domain" ]]; then
     append_argo_primary_links "$SBD_NODES_BASE_FILE" "$protocols_csv" "$uuid" "$(<"${SBD_DATA_DIR}/argo_domain")" "$enc_vless"
   fi
 
