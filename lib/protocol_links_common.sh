@@ -2,9 +2,9 @@
 
 protocol_csv_has() {
   local protocols_csv="$1" needle="$2"
-  local items=()
-  protocols_to_array "$protocols_csv" items
-  protocol_enabled "$needle" "${items[@]}"
+  local protocol_items=()
+  protocols_to_array "$protocols_csv" protocol_items
+  protocol_enabled "$needle" "${protocol_items[@]}"
 }
 
 rewrite_link_with_endpoint() {

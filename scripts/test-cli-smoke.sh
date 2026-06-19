@@ -40,6 +40,17 @@ assert_failure() {
 export HOME="${TMP_DIR}/home"
 mkdir -p "$HOME"
 
+# shellcheck disable=SC2034
+PROJECT_ROOT="$ROOT_DIR"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/lib/protocols.sh"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/lib/protocol_links_common.sh"
+protocol_csv_has "vless-reality,hysteria2,tuic,naive,vless-ws" "vless-ws" || fail "protocol_csv_has missed vless-ws"
+if protocol_csv_has "vless-reality,hysteria2" "vless-ws"; then
+  fail "protocol_csv_has returned false positive"
+fi
+
 remote_root="${TMP_DIR}/remote"
 mkdir -p "$remote_root"
 printf '%s\n' 'v9.9.9' > "${remote_root}/version"
