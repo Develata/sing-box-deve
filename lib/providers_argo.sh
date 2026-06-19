@@ -58,6 +58,7 @@ configure_argo_tunnel() {
     exec_cmd="${SBD_BIN_DIR}/cloudflared tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token ${token}"
   else
     mode="temp"
+    : > "$argo_log"
     exec_cmd="${SBD_BIN_DIR}/cloudflared tunnel --url http://127.0.0.1:${target_port} --edge-ip-version auto --no-autoupdate --protocol http2"
   fi
 
