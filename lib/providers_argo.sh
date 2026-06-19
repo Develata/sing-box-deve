@@ -90,7 +90,7 @@ EOF
   if [[ "$mode" == "temp" ]]; then
     local temp_domain="" remaining=20
     while (( remaining > 0 )); do
-      temp_domain="$(grep -aEo 'https://[^ ]*trycloudflare.com' "$argo_log" 2>/dev/null | head -n1 | sed 's#https://##')"
+      temp_domain="$(grep -aEo 'https://[^ ]*trycloudflare.com' "$argo_log" 2>/dev/null | tail -n1 | sed 's#https://##')"
       [[ -n "$temp_domain" ]] && break
       remaining=$((remaining - 1))
       sleep 1
