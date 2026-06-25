@@ -142,7 +142,7 @@ features:
   acme_dns_provider: ${acme_dns_provider:-""}
   web_front_mode: ${web_front_mode:-"auto"}
   hy2_obfs_mode: ${hy2_obfs_mode:-"off"}
-  reality_server_name: ${reality_server_name:-www.microsoft.com}
+  reality_server_name: ${reality_server_name:-www.bing.com}
   reality_fingerprint: ${reality_fingerprint:-chrome}
   reality_handshake_port: ${reality_handshake_port:-443}
   tls_server_name: ${tls_server_name:-$(sbd_tls_server_name)}

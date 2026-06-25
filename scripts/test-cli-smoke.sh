@@ -193,7 +193,7 @@ script_root="$PROJECT_ROOT"
 installed_at="2026-06-17T00:00:00Z"
 EOF
 cat > "$SBD_CONFIG_DIR/config.json" <<'EOF'
-{"inbounds":[{"type":"vless","tag":"vless-reality","listen":"::","listen_port":443,"users":[{"uuid":"11111111-1111-4111-8111-111111111111","flow":"xtls-rprx-vision"}],"tls":{"enabled":true,"server_name":"www.microsoft.com","reality":{"enabled":true,"handshake":{"server":"www.microsoft.com","server_port":443},"private_key":"PRIV","short_id":["abcd1234"]}}}],"outbounds":[{"type":"direct","tag":"direct"}],"route":{"rules":[]}}
+{"inbounds":[{"type":"vless","tag":"vless-reality","listen":"::","listen_port":443,"users":[{"uuid":"11111111-1111-4111-8111-111111111111","flow":"xtls-rprx-vision"}],"tls":{"enabled":true,"server_name":"www.bing.com","reality":{"enabled":true,"handshake":{"server":"www.bing.com","server_port":443},"private_key":"PRIV","short_id":["abcd1234"]}}}],"outbounds":[{"type":"direct","tag":"direct"}],"route":{"rules":[]}}
 EOF
 provider_restart() { :; }
 detect_public_ip() { printf '%s\n' '203.0.113.1'; }
