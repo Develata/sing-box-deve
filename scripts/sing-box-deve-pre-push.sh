@@ -33,6 +33,7 @@ run bash scripts/test-version-compare.sh
 run bash scripts/test-update-authority.sh
 run bash scripts/test-firewall-records.sh
 run bash scripts/test-web-schema-sync.sh
+run bash scripts/test-menu-consistency.sh
 run bash scripts/test-cli-smoke.sh
 
 checksum_before="$(mktemp)"

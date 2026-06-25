@@ -143,6 +143,24 @@ menu_protocol() {
         fi
         menu_pause
         ;;
+      4)
+        menu_protocol_show_remove_candidates
+        read -r -p "$(msg "移除协议列表(csv 或序号csv)" "protocols to remove(csv or index csv)"): " rp
+        if [[ -z "${rp// }" ]]; then
+          log_warn "$(msg "未输入移除协议，已取消本次操作" "No protocol input, operation cancelled")"
+          menu_pause
+          continue
+        fi
+        local remove_args=()
+        remove_args=("protocol-remove" "$rp")
+        provider_cfg_command preview "${remove_args[@]}"
+        if prompt_yes_no "$(msg "确认应用该协议移除变更？" "Apply this protocol-remove change?")" "Y"; then
+          provider_cfg_command apply "${remove_args[@]}"
+        else
+          log_warn "$(msg "已取消应用" "Apply cancelled")"
+        fi
+        menu_pause
+        ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
@@ -174,6 +192,12 @@ menu_port() {
         read -r -p "$(msg "输入协议名" "Protocol name"): " p
         read -r -p "$(msg "输入新增监听端口(1-65535)" "New listener port(1-65535)"): " port
         provider_multi_ports_add "$p" "$port"
+        menu_pause
+        ;;
+      5)
+        read -r -p "$(msg "输入协议名" "Protocol name"): " p
+        read -r -p "$(msg "输入要移除的监听端口(1-65535)" "Listener port to remove(1-65535)"): " port
+        provider_multi_ports_remove "$p" "$port"
         menu_pause
         ;;
       6)

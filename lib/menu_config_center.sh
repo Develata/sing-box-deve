@@ -111,6 +111,7 @@ menu_config_center() {
         provider_split3_set "$sd" "$sp" "$sb"
         menu_pause
         ;;
+      8) menu_port ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
