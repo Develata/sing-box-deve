@@ -43,6 +43,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) st
 - Removed legacy/excess public features from the mainline: SAP Cloud Foundry provider, Workers templates, Psiphon sidecar, SFW Windows packaging, GitLab/TG subscription push, jump port hopping, `set-share`, `set-port-egress`, `anytls`, and `trojan` public inbound generation.
 - Removed standalone ACME as the automatic signing path for managed domain presets.
 
+## [v1.0.4]
+
+### Changed
+
+- Changed the default Reality SNI/handshake server from `www.microsoft.com` to `www.bing.com` for new installs.
+
 ## [v1.0.3]
 
 ### Changed
