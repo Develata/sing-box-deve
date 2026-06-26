@@ -139,6 +139,27 @@ grep -q "Usage: set-route" "${TMP_DIR}/set-route-extra-arg.err" || fail "set-rou
 
 cfg_path_home="${TMP_DIR}/cfg-path-home"
 mkdir -p "$cfg_path_home"
+
+# Regression: prepare_domain_cert_for_protocols must not leak or read unbound
+# cert/key locals when an existing domain certificate is discovered under set -u.
+env PROJECT_ROOT="$ROOT_DIR" bash <<'BASH'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/common.sh"
+source "$PROJECT_ROOT/lib/protocols.sh"
+source "$PROJECT_ROOT/lib/providers_system_tools.sh"
+source "$PROJECT_ROOT/lib/providers_domain_tls.sh"
+cert_tmp="$(mktemp -d)"
+touch "$cert_tmp/fullchain.cer" "$cert_tmp/key.key"
+sbd_candidate_cert_pairs_for_domain() { printf '%s|%s\n' "$cert_tmp/fullchain.cer" "$cert_tmp/key.key"; }
+sbd_check_domain_cert_pair() { return 0; }
+TLS_SERVER_NAME=example.com
+TLS_MODE=self-signed
+prepare_domain_cert_for_protocols hysteria2
+[[ "$TLS_MODE" == "acme" ]]
+[[ "$ACME_CERT_PATH" == "$cert_tmp/fullchain.cer" ]]
+[[ "$ACME_KEY_PATH" == "$cert_tmp/key.key" ]]
+BASH
+
 env PROJECT_ROOT="$ROOT_DIR" HOME="$cfg_path_home" bash <<'BASH'
 set -euo pipefail
 source "$PROJECT_ROOT/lib/common.sh"

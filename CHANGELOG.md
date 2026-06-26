@@ -43,6 +43,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) st
 - Removed legacy/excess public features from the mainline: SAP Cloud Foundry provider, Workers templates, Psiphon sidecar, SFW Windows packaging, GitLab/TG subscription push, jump port hopping, `set-share`, `set-port-egress`, `anytls`, and `trojan` public inbound generation.
 - Removed standalone ACME as the automatic signing path for managed domain presets.
 
+## [v1.0.6]
+
+### Fixed
+
+- Fixed domain-certificate auto-detection under `set -u` so existing local ACME certificates do not trigger an unbound `cert` variable during full/domain installs.
+
 ## [v1.0.5]
 
 ### Fixed

@@ -89,13 +89,14 @@ EOF
 }
 
 sbd_detect_existing_domain_cert() {
-  local domain="$1" out_cert_var="$2" out_key_var="$3" cert key
-  while IFS='|' read -r cert key; do
-    [[ -n "$cert" && -n "$key" ]] || continue
-    [[ -f "$cert" && -f "$key" ]] || continue
-    if sbd_check_domain_cert_pair "$domain" "$cert" "$key" >/dev/null 2>&1; then
-      printf -v "$out_cert_var" '%s' "$cert"
-      printf -v "$out_key_var" '%s' "$key"
+  local domain="$1" out_cert_var="$2" out_key_var="$3"
+  local candidate_cert candidate_key
+  while IFS='|' read -r candidate_cert candidate_key; do
+    [[ -n "$candidate_cert" && -n "$candidate_key" ]] || continue
+    [[ -f "$candidate_cert" && -f "$candidate_key" ]] || continue
+    if sbd_check_domain_cert_pair "$domain" "$candidate_cert" "$candidate_key" >/dev/null 2>&1; then
+      printf -v "$out_cert_var" '%s' "$candidate_cert"
+      printf -v "$out_key_var" '%s' "$candidate_key"
       return 0
     fi
   done < <(sbd_candidate_cert_pairs_for_domain "$domain")
@@ -103,7 +104,7 @@ sbd_detect_existing_domain_cert() {
 }
 
 prepare_domain_cert_for_protocols() {
-  local protocols_csv="$1" reasons domain cert key
+  local protocols_csv="$1" reasons domain cert="" key=""
   protocols_require_domain_cert "$protocols_csv" || return 0
   reasons="$(protocols_domain_cert_reasons "$protocols_csv")"
   domain="${TLS_SERVER_NAME:-${ACME_DOMAIN:-}}"
