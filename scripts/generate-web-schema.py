@@ -99,6 +99,7 @@ def main() -> None:
         "hy2ObfsModes": [m for m in parse_case_modes(base_runtime, "HY2_OBFS_MODE") if m != "gecko"],
         "routeModes": ["direct", "global-proxy", "cn-direct", "cn-proxy"],
         "outboundProxyModes": ["direct", "socks", "http", "https"],
+        "outboundProxyUdpModes": parse_case_modes(base_runtime, "OUTBOUND_PROXY_UDP_MODE"),
     }
 
     out = ROOT / "web-generator/schema.js"

@@ -86,8 +86,7 @@ build_sing_box_config() {
   local outbounds final_tag upstream_mode available_outbounds
   final_tag="direct"
   available_outbounds="direct"
-  outbounds=$'    {"type": "direct", "tag": "direct"},\n'
-  outbounds+=$'    {"type": "block", "tag": "block"}'
+  outbounds=$'    {"type": "direct", "tag": "direct"}'
   upstream_mode="${OUTBOUND_PROXY_MODE:-direct}"
   if [[ "$upstream_mode" != "direct" ]]; then
     outbounds+=$',\n'
@@ -117,6 +116,7 @@ build_sing_box_config() {
   cat > "$tmp_config" <<EOF_JSON
 {
   "log": {"level": "info"},
+  "dns": {"servers": [{"type": "local", "tag": "dns-local"}]},
   "inbounds": [
 ${inbounds}
   ],

@@ -27,20 +27,29 @@ build_warp_endpoint_singbox() {
   local_v6_json="$(sbd_json_string "$local_v6")"
 
   cat <<EOF
-    {"type": "wireguard", "tag": "warp-out", "address": [${local_v4_json}, ${local_v6_json}], "private_key": ${private_key_json}, "mtu": 1280, "peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": ${peer_public_key_json}, "allowed_ips": ["0.0.0.0/0", "::/0"], "reserved": ${reserved}}]}
+    {"type": "wireguard", "tag": "warp-out", "address": [${local_v4_json}, ${local_v6_json}], "private_key": ${private_key_json}, "mtu": 1280, "domain_resolver": "dns-local", "peers": [{"address": "engage.cloudflareclient.com", "port": 2408, "public_key": ${peer_public_key_json}, "allowed_ips": ["0.0.0.0/0", "::/0"], "reserved": ${reserved}}]}
 EOF
+}
+
+singbox_domain_resolver_fragment() {
+  local host="$1"
+  if [[ "$host" == *:* || "$host" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    return 0
+  fi
+  printf '%s' ', "domain_resolver": "dns-local"'
 }
 
 build_upstream_outbound_singbox() {
   local mode="${OUTBOUND_PROXY_MODE:-direct}"
   [[ "$mode" != "direct" ]] || return 0
 
-  local host port user pass auth host_json user_json pass_json
+  local host port user pass auth host_json user_json pass_json resolver
   host="${OUTBOUND_PROXY_HOST}"
   port="${OUTBOUND_PROXY_PORT}"
   user="${OUTBOUND_PROXY_USER:-}"
   pass="${OUTBOUND_PROXY_PASS:-}"
   host_json="$(sbd_json_string "$host")"
+  resolver="$(singbox_domain_resolver_fragment "$host")"
 
   auth=""
   if [[ -n "$user" || -n "$pass" ]]; then
@@ -52,19 +61,27 @@ build_upstream_outbound_singbox() {
   case "$mode" in
     socks)
       cat <<EOF
-    {"type": "socks", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}}
+    {"type": "socks", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}${resolver}}
 EOF
       ;;
     http)
       cat <<EOF
-    {"type": "http", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}}
+    {"type": "http", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}${resolver}}
 EOF
       ;;
     https)
       cat <<EOF
-    {"type": "http", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}, "tls": {"enabled": true, "server_name": ${host_json}}}
+    {"type": "http", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}${resolver}, "tls": {"enabled": true, "server_name": ${host_json}}}
 EOF
       ;;
+  esac
+}
+
+xray_target_strategy_fragment() {
+  case "${IP_PREFERENCE:-auto}" in
+    auto) ;;
+    v4) printf '%s' ',"targetStrategy":"UseIPv4"' ;;
+    v6) printf '%s' ',"targetStrategy":"UseIPv6"' ;;
   esac
 }
 
@@ -72,7 +89,7 @@ build_upstream_outbound_xray() {
   local mode="${OUTBOUND_PROXY_MODE:-direct}"
   [[ "$mode" != "direct" ]] || return 0
 
-  local protocol host port user pass users_json stream_tls host_json user_json pass_json
+  local protocol host port user pass users_json stream_tls target_strategy host_json user_json pass_json
   host="${OUTBOUND_PROXY_HOST}"
   port="${OUTBOUND_PROXY_PORT}"
   user="${OUTBOUND_PROXY_USER:-}"
@@ -100,9 +117,10 @@ build_upstream_outbound_xray() {
       stream_tls=",\"streamSettings\":{\"security\":\"tls\"}"
       ;;
   esac
+  target_strategy="$(xray_target_strategy_fragment)"
 
   cat <<EOF
-    {"protocol":"${protocol}","tag":"proxy-out","settings":{"servers":[{"address":${host_json},"port":${port},"users":${users_json}}]}${stream_tls}}
+    {"protocol":"${protocol}","tag":"proxy-out","settings":{"servers":[{"address":${host_json},"port":${port},"users":${users_json}}]}${stream_tls}${target_strategy}}
 EOF
 }
 

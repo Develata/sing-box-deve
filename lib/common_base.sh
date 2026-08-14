@@ -17,6 +17,9 @@ SBD_CACHE_DIR="${SBD_INSTALL_DIR}/cache"
 SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
 SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
 SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
+SBD_NODE_MODEL_FILE="${SBD_DATA_DIR}/nodes-model.json"
+SBD_ARGO_TOKEN_FILE="${SBD_DATA_DIR}/argo-token"
+SBD_ARGO_EXEC_FILE="${SBD_DATA_DIR}/argo-exec"
 SBD_SERVICE_FILE="/etc/systemd/system/sing-box-deve.service"
 SBD_ARGO_SERVICE_FILE="/etc/systemd/system/sing-box-deve-argo.service"
 SBD_FW_REPLAY_SERVICE_FILE="/etc/systemd/system/sing-box-deve-fw-replay.service"
@@ -220,20 +223,14 @@ systemd_reload_and_enable() {
 }
 
 safe_service_restart() {
-  detect_init_system 2>/dev/null || true
-  case "${SBD_INIT_SYSTEM:-systemd}" in
-    systemd)
-      systemctl restart sing-box-deve.service
-      ;;
-    openrc)
-      rc-service sing-box-deve restart 2>/dev/null || true
-      ;;
-    nohup)
-      # Caller should use sbd_service_restart with full exec_cmd
-      log_warn "$(msg "nohup 模式下需通过 sbd_service_restart 重启" \
-                   "Use sbd_service_restart in nohup mode")"
-      ;;
+  local runtime_engine="${engine:-sing-box}" exec_cmd
+  case "$runtime_engine" in
+    sing-box) exec_cmd="${SBD_BIN_DIR}/sing-box run -c ${SBD_CONFIG_DIR}/config.json" ;;
+    xray) exec_cmd="${SBD_BIN_DIR}/xray run -config ${SBD_CONFIG_DIR}/xray-config.json" ;;
+    *) log_error "Unsupported runtime engine: ${runtime_engine}"; return 1 ;;
   esac
+  sbd_service_restart "sing-box-deve" "$exec_cmd" || return 1
+  sbd_service_wait_active "sing-box-deve" 10
 }
 
 rand_hex_8() {
@@ -252,11 +249,22 @@ sbd_trim_whitespace() {
 }
 
 sbd_unquote_env_value() {
-  local value="$1"
+  local value="$1" out="" ch next i
   if [[ "$value" == \"*\" && "$value" == *\" && "${#value}" -ge 2 ]]; then
     value="${value:1:${#value}-2}"
-    value="${value//\\\"/\"}"
-    value="${value//\\\\/\\}"
+    for ((i = 0; i < ${#value}; i++)); do
+      ch="${value:i:1}"
+      if [[ "$ch" == "\\" && $((i + 1)) -lt ${#value} ]]; then
+        next="${value:i+1:1}"
+        if [[ "$next" == "\\" || "$next" == '"' ]]; then
+          out+="$next"
+          i=$((i + 1))
+          continue
+        fi
+      fi
+      out+="$ch"
+    done
+    value="$out"
   elif [[ "$value" == \'*\' && "$value" == *\' && "${#value}" -ge 2 ]]; then
     value="${value:1:${#value}-2}"
   fi
@@ -279,9 +287,19 @@ sbd_write_env_kv() {
 
 sbd_strip_inline_env_comment() {
   local value="$1" out="" ch prev=""
-  local in_single="false" in_double="false" i
+  local in_single="false" in_double="false" escaped="false" i
   for ((i = 0; i < ${#value}; i++)); do
     ch="${value:i:1}"
+    if [[ "$in_double" == "true" && "$ch" == "\\" ]]; then
+      out+="$ch"
+      if [[ "$escaped" == "true" ]]; then
+        escaped="false"
+      else
+        escaped="true"
+      fi
+      prev="$ch"
+      continue
+    fi
     if [[ "$ch" == "'" && "$in_double" == "false" ]]; then
       if [[ "$in_single" == "true" ]]; then
         in_single="false"
@@ -292,7 +310,7 @@ sbd_strip_inline_env_comment() {
       prev="$ch"
       continue
     fi
-    if [[ "$ch" == "\"" && "$in_single" == "false" ]]; then
+    if [[ "$ch" == "\"" && "$in_single" == "false" && "$escaped" == "false" ]]; then
       if [[ "$in_double" == "true" ]]; then
         in_double="false"
       else
@@ -302,6 +320,7 @@ sbd_strip_inline_env_comment() {
       prev="$ch"
       continue
     fi
+    escaped="false"
     if [[ "$ch" == "#" && "$in_single" == "false" && "$in_double" == "false" ]]; then
       if [[ -n "$prev" && "$prev" =~ [[:space:]] ]]; then
         break

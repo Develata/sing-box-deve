@@ -12,7 +12,7 @@ validate_feature_modes() {
     CDN_HOST_VMESS CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP \
     PROXYIP_VMESS PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP \
     DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK \
-    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS \
+    OUTBOUND_PROXY_MODE OUTBOUND_PROXY_UDP_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS \
     WEB_FRONT_MODE HY2_OBFS_MODE HY2_OBFS_PASSWORD; do
     value="${!key:-}"
     if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
@@ -34,6 +34,16 @@ validate_feature_modes() {
     direct|socks|http|https) ;;
     *) die "Invalid OUTBOUND_PROXY_MODE: ${OUTBOUND_PROXY_MODE}" ;;
   esac
+
+  case "${OUTBOUND_PROXY_UDP_MODE:-proxy}" in
+    proxy|direct|block) ;;
+    *) die "Invalid OUTBOUND_PROXY_UDP_MODE: ${OUTBOUND_PROXY_UDP_MODE}" ;;
+  esac
+
+  if [[ "${OUTBOUND_PROXY_MODE:-direct}" == "http" || "${OUTBOUND_PROXY_MODE:-direct}" == "https" ]] && \
+    [[ "${OUTBOUND_PROXY_UDP_MODE:-proxy}" == "proxy" ]]; then
+    die "OUTBOUND_PROXY_UDP_MODE=proxy is unsupported for OUTBOUND_PROXY_MODE=${OUTBOUND_PROXY_MODE}; use direct or block"
+  fi
 
   validate_route_mode
 
@@ -91,8 +101,8 @@ validate_feature_modes() {
     (( OUTBOUND_PROXY_PORT >= 1 && OUTBOUND_PROXY_PORT <= 65535 )) || die "OUTBOUND_PROXY_PORT must be between 1 and 65535"
   fi
 
-  if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" && "${WARP_MODE:-off}" == "global" ]]; then
-    die "WARP_MODE=global conflicts with OUTBOUND_PROXY_MODE!=direct; choose one outbound strategy"
+  if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" && "${WARP_MODE:-off}" != "off" ]]; then
+    die "WARP_MODE=${WARP_MODE} conflicts with OUTBOUND_PROXY_MODE=${OUTBOUND_PROXY_MODE}; chained WARP plus upstream proxy is not supported"
   fi
 
 }

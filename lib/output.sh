@@ -17,6 +17,7 @@ print_plan_summary() {
   printf '%s\n' "$(msg "出站" "Egress")   : ${OUTBOUND_PROXY_MODE:-direct}"
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     printf '%s\n' "$(msg "上游代理" "Outbound Proxy"): ${OUTBOUND_PROXY_MODE}://${OUTBOUND_PROXY_HOST:-}:${OUTBOUND_PROXY_PORT:-}"
+    printf '%s\n' "$(msg "上游 UDP" "Outbound UDP"): ${OUTBOUND_PROXY_UDP_MODE:-proxy}"
   fi
   printf '\n%s\n%s\n' "$(msg "安全策略" "Safety")" "------"
   printf -- '- %s\n' "$(msg "仅增量添加防火墙规则" "Incremental firewall rules only")"

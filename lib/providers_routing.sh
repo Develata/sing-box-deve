@@ -58,7 +58,7 @@ build_custom_domain_rules_singbox() {
   fi
   if [[ "$block_arr" != "[]" ]]; then
     [[ -n "$rules" ]] && rules+=","
-    rules+="{\"domain_suffix\":${block_arr},\"outbound\":\"block\"}"
+    rules+="{\"domain_suffix\":${block_arr},\"action\":\"reject\"}"
   fi
   echo "$rules"
 }
@@ -118,11 +118,30 @@ build_singbox_warp_route_json() {
   esac
 }
 
+build_singbox_proxy_udp_rule() {
+  [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]] || return 0
+  case "${OUTBOUND_PROXY_UDP_MODE:-proxy}" in
+    proxy) ;;
+    direct) echo '{"network":"udp","outbound":"direct"}' ;;
+    block) echo '{"network":"udp","action":"reject"}' ;;
+  esac
+}
+
+build_xray_proxy_udp_rule() {
+  [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]] || return 0
+  case "${OUTBOUND_PROXY_UDP_MODE:-proxy}" in
+    proxy) ;;
+    direct) echo '{"type":"field","network":"udp","outboundTag":"direct"}' ;;
+    block) echo '{"type":"field","network":"udp","outboundTag":"block"}' ;;
+  esac
+}
+
 build_singbox_route_json() {
-  local primary_tag="$1" mode="${ROUTE_MODE:-direct}" rules="" rule_set="" final="direct" custom
+  local primary_tag="$1" mode="${ROUTE_MODE:-direct}" rules="" rule_set="" final="direct" custom udp_rule
   validate_route_mode
   if [[ "$mode" == "cn-direct" || "$mode" == "cn-proxy" ]]; then
-    ensure_sing_route_rulesets_local
+    # Callers capture this function's stdout as JSON.
+    ensure_sing_route_rulesets_local >&2
   fi
 
   if [[ "$mode" == "direct" && "$primary_tag" == "warp-out" ]] && warp_mode_targets_singbox "${WARP_MODE:-off}"; then
@@ -173,6 +192,8 @@ build_singbox_route_json() {
       ;;
   esac
 
+  udp_rule="$(build_singbox_proxy_udp_rule)"
+  [[ -n "$udp_rule" ]] && rules="${udp_rule}${rules:+,${rules}}"
   custom="$(build_custom_domain_rules_singbox "$primary_tag")"
   [[ -n "$custom" ]] && rules+="${rules:+,}${custom}"
 
@@ -188,36 +209,38 @@ build_singbox_route_json() {
 }
 
 build_xray_routing_fragment() {
-  local primary_tag="$1" mode="${ROUTE_MODE:-direct}" ds="AsIs" rules="" custom
+  local primary_tag="$1" mode="${ROUTE_MODE:-direct}" rules="" catch_all="" custom udp_rule
   validate_route_mode
   [[ -n "$primary_tag" ]] || primary_tag="direct"
-  [[ "${IP_PREFERENCE:-auto}" == "v4" ]] && ds="UseIPv4"
-  [[ "${IP_PREFERENCE:-auto}" == "v6" ]] && ds="UseIPv6"
 
   case "$mode" in
     direct)
-      [[ "$primary_tag" != "direct" ]] && rules="{\"type\":\"field\",\"network\":\"tcp,udp\",\"outboundTag\":\"${primary_tag}\"}"
       ;;
     global-proxy)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=global-proxy requires proxy or warp"
-      rules="{\"type\":\"field\",\"network\":\"tcp,udp\",\"outboundTag\":\"${primary_tag}\"}"
+      catch_all="{\"type\":\"field\",\"network\":\"tcp,udp\",\"outboundTag\":\"${primary_tag}\"}"
       ;;
     cn-direct)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=cn-direct requires proxy or warp"
-      rules="{\"type\":\"field\",\"domain\":[\"geosite:cn\"],\"outboundTag\":\"direct\"},{\"type\":\"field\",\"ip\":[\"geoip:cn\"],\"outboundTag\":\"direct\"},{\"type\":\"field\",\"network\":\"tcp,udp\",\"outboundTag\":\"${primary_tag}\"}"
+      rules="{\"type\":\"field\",\"domain\":[\"geosite:cn\"],\"outboundTag\":\"direct\"},{\"type\":\"field\",\"ip\":[\"geoip:cn\"],\"outboundTag\":\"direct\"}"
+      catch_all="{\"type\":\"field\",\"network\":\"tcp,udp\",\"outboundTag\":\"${primary_tag}\"}"
       ;;
     cn-proxy)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=cn-proxy requires proxy or warp"
-      rules="{\"type\":\"field\",\"domain\":[\"geosite:cn\"],\"outboundTag\":\"${primary_tag}\"},{\"type\":\"field\",\"ip\":[\"geoip:cn\"],\"outboundTag\":\"${primary_tag}\"},{\"type\":\"field\",\"network\":\"tcp,udp\",\"outboundTag\":\"direct\"}"
+      rules="{\"type\":\"field\",\"domain\":[\"geosite:cn\"],\"outboundTag\":\"${primary_tag}\"},{\"type\":\"field\",\"ip\":[\"geoip:cn\"],\"outboundTag\":\"${primary_tag}\"}"
+      catch_all='{"type":"field","network":"tcp,udp","outboundTag":"direct"}'
       ;;
   esac
 
+  udp_rule="$(build_xray_proxy_udp_rule)"
+  [[ -n "$udp_rule" ]] && rules="${udp_rule}${rules:+,${rules}}"
   custom="$(build_custom_domain_rules_xray "$primary_tag")"
   [[ -n "$custom" ]] && rules+="${rules:+,}${custom}"
+  [[ -n "$catch_all" ]] && rules+="${rules:+,}${catch_all}"
   [[ -n "$rules" ]] || return 0
 
   cat <<EOF
 ,
-  "routing": {"domainStrategy": "${ds}", "rules": [${rules}]}
+  "routing": {"domainStrategy": "AsIs", "rules": [${rules}]}
 EOF
 }

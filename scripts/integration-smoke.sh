@@ -79,8 +79,10 @@ run_step "install baseline (${engine})" \
 
 run_step "apply runtime" "$main_script" apply --runtime
 
-run_step "set egress socks(127.0.0.1:1080)" \
-  "$main_script" set-egress --mode socks --host 127.0.0.1 --port 1080
+# This smoke step validates configuration generation/restart only. It does not
+# claim proxy connectivity because no SOCKS service is started by this script.
+run_step "configure egress socks(127.0.0.1:1080; no connectivity assertion)" \
+  "$main_script" set-egress --mode socks --host 127.0.0.1 --port 1080 --udp direct
 
 run_step "set route global-proxy" "$main_script" set-route global-proxy
 run_step "set route direct" "$main_script" set-route direct

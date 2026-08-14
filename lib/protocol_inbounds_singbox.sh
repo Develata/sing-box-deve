@@ -32,7 +32,7 @@ singbox_fragment_vless_reality() {
         "server_name": ${server_name_json},
         "reality": {
           "enabled": true,
-          "handshake": {"server": ${server_name_json}, "server_port": ${reality_port}},
+          "handshake": {"server": ${server_name_json}, "server_port": ${reality_port}, "domain_resolver": "dns-local"},
           "private_key": ${private_key_json},
           "short_id": [${short_id_json}]
         }

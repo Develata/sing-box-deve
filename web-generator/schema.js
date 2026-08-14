@@ -100,5 +100,10 @@ window.SBD_WEB_SCHEMA = {
     "socks",
     "http",
     "https"
+  ],
+  "outboundProxyUdpModes": [
+    "proxy",
+    "direct",
+    "block"
   ]
 };

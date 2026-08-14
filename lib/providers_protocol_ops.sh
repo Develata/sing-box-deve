@@ -112,7 +112,7 @@ provider_cfg_protocol_sync_argo_service() {
 
   if [[ "${ARGO_MODE:-off}" == "off" ]]; then
     sbd_service_stop "sing-box-deve-argo"
-    rm -f "$SBD_ARGO_SERVICE_FILE" "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
+    rm -f "$SBD_ARGO_SERVICE_FILE" "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode" "$SBD_ARGO_TOKEN_FILE" "$SBD_ARGO_EXEC_FILE"
     sbd_service_daemon_reload
     return 0
   fi

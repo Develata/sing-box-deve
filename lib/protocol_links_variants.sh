@@ -33,7 +33,7 @@ append_multi_real_port_variants() {
       [[ "$line" == *"$marker"* ]] || continue
       host="$(extract_link_host "$line")"
       [[ -n "$host" ]] || continue
-      rewritten="$(rewrite_link_with_endpoint "$line" "${host}:${port}" "mport" 2>/dev/null || true)"
+      rewritten="$(rewrite_link_with_endpoint "$line" "$(uri_authority_host "$host"):${port}" "mport" 2>/dev/null || true)"
       [[ -n "$rewritten" ]] && echo "$rewritten" >> "$out_file"
     done < "$input_file"
   done < <(multi_ports_store_records)

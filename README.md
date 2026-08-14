@@ -32,7 +32,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 - Serv00 provider 与 VPS provider 的依赖/防火墙边界；
 - self-update/rollback 的 checksum manifest 完整性校验。
 
-最近一轮本地验证覆盖：shell syntax、Node syntax、CLI smoke、firewall records、web schema drift、version compare、module size、update authority、clash ruleset、shellcheck、checksum verify、`git diff --check`，并经过 Codex blocker-only review：`PASS — no blockers found`。
+当前回归除 shell/Node syntax、shellcheck、CLI/firewall/web schema/checksum 外，还会下载并校验当前 stable sing-box 与 Xray，对 server 配置矩阵和 sing-box client 执行真实 core validation；Clash 产物会断言真实 `proxies` 与 proxy-group 引用。
 
 仍需谨慎看待的边界：
 
@@ -146,10 +146,53 @@ sb restart --core
 
 ```bash
 ./sing-box-deve.sh set-egress --mode direct
-./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo
+./sing-box-deve.sh set-egress --mode socks --host 1.2.3.4 --port 1080 --user demo --pass demo --udp direct
 ./sing-box-deve.sh set-route cn-direct
 ./sing-box-deve.sh split3 show
 ./sing-box-deve.sh split3 set cn.example.com,qq.com google.com,youtube.com ads.example.com
+```
+
+上游代理的 UDP 策略通过 `OUTBOUND_PROXY_UDP_MODE=proxy|direct|block`（默认 `proxy`）独立控制：
+
+- `proxy`：UDP 与 TCP 都按现有路由进入 `proxy-out`；SOCKS5 上游必须支持 UDP ASSOCIATE。
+- `direct`：需要走上游代理的 TCP 仍进入 `proxy-out`，UDP 在更高优先级路由中改为 `direct`。
+- `block`：需要走上游代理的 TCP 仍进入 `proxy-out`；sing-box 通过高优先级 `action: reject` 拒绝 UDP，Xray 继续路由到 `blackhole`。
+
+HTTP/HTTPS 上游不能承载 UDP，因此配置为 `http`/`https` 时必须显式选择 `--udp direct` 或 `--udp block`；`--udp proxy` 会在生成配置前报错。`set-egress` 未指定 `--udp` 时仍默认 `proxy`，保持 SOCKS 的既有行为。
+
+路由模式的基础语义为：`direct` 未命中显式 domain-split 的流量直连；`global-proxy` 全局使用主出站；`cn-direct` 国内直连、其他使用主出站；`cn-proxy` 国内使用主出站、其他直连。UDP override 位于 CN 与 domain-split 规则之前。
+
+WARP 与 SOCKS/HTTP/HTTPS 上游目前不做隐式链式组合；只要 `WARP_MODE!=off` 且启用了上游代理，配置阶段就会 fail fast，避免生成未被任何 route 引用的 WARP endpoint。
+
+例如，将 SOCKS 上游仅用于 TCP：
+
+```bash
+sb set-egress \
+  --mode socks \
+  --host 1.2.3.4 \
+  --port 1080 \
+  --user demo \
+  --pass demo \
+  --udp direct
+
+sb set-route global-proxy
+```
+
+对应 sing-box 路由核心为：
+
+```json
+{
+  "outbounds": [
+    {"type": "direct", "tag": "direct"},
+    {"type": "socks", "tag": "proxy-out", "server": "1.2.3.4", "server_port": 1080, "username": "demo", "password": "demo"}
+  ],
+  "route": {
+    "rules": [
+      {"network": "udp", "outbound": "direct"}
+    ],
+    "final": "proxy-out"
+  }
+}
 ```
 
 ## 配置变更中心
@@ -205,6 +248,8 @@ sb restart --core
 - clash-meta 客户端配置：`/opt/sing-box-deve/data/clash_meta_client.yaml`
 - SFA/SFI 客户端配置：`/opt/sing-box-deve/data/sfa_client.json`, `sfi_client.json`
 
+节点参数先写入 `nodes-model.json`，再分别渲染分享 URI、sing-box outbound 与 Clash `proxies`。sing-box selector/urltest 和 Clash proxy-groups 都引用真实节点；Xray 专有且目标客户端无法表达的协议会被明确排除，不再伪装成只有 `DIRECT` 的客户端配置。
+
 ## 防火墙
 
 ```bash
@@ -256,11 +301,13 @@ sb update --rollback
 更新语义：
 
 - `update` / `update --script`：只刷新脚本与模块文件，不更新 sing-box/xray core；
-- `update --core`：只更新已安装 core，需要已有 runtime；
+- `update --core`：只更新已安装 core，需要已有 runtime；新 core 与根据 runtime 重建的候选配置先在临时目录完成真实 config check，之后才原子替换 binary/config 并重启；健康检查失败会同时回滚 binary 与 config；
 - `update --all`：先刷新脚本，再用刷新后的脚本继续更新 core；
 - `update --rollback`：回滚上一轮脚本更新快照。
 
 更新路径会校验 manifest 与 `checksums.txt`。如果 checksum manifest 缺失或校验失败，安装完整性验证会失败，不再静默跳过。`sb` launcher 也会在脚本更新后重新写入并校验，避免快捷入口指向旧脚本。
+
+固定 Cloudflare Tunnel 的 token 存放在权限为 `0600` 的 `${SBD_DATA_DIR}/argo-token`；systemd/OpenRC/nohup 启动命令只使用 `--token-file`，不会把 token 写入 unit 的 `ExecStart` 或进程 argv。
 
 ## 真实主机 smoke test 建议
 

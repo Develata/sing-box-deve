@@ -18,6 +18,7 @@ provider_cfg_load_runtime_exports() {
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
+  export OUTBOUND_PROXY_UDP_MODE="${outbound_proxy_udp_mode:-proxy}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"
   export OUTBOUND_PROXY_PORT="${outbound_proxy_port:-}"
   export OUTBOUND_PROXY_USER="${outbound_proxy_user:-}"
@@ -109,7 +110,7 @@ provider_cfg_set_argo() {
   if [[ "$mode" == "off" ]]; then
     sbd_service_stop "sing-box-deve-argo"
     rm -f "$SBD_ARGO_SERVICE_FILE"
-    rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
+    rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode" "$SBD_ARGO_TOKEN_FILE" "$SBD_ARGO_EXEC_FILE"
     sbd_service_daemon_reload
   else
     configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"

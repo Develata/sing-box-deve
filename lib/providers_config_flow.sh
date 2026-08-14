@@ -222,7 +222,7 @@ provider_cfg_rollback_unlocked() {
   if [[ "${argo_mode:-off}" == "off" ]]; then
     sbd_service_stop "sing-box-deve-argo"
     rm -f "$SBD_ARGO_SERVICE_FILE"
-    rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode"
+    rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode" "$SBD_ARGO_TOKEN_FILE" "$SBD_ARGO_EXEC_FILE"
     sbd_service_daemon_reload
   else
     configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"

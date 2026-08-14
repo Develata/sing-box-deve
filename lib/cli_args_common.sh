@@ -101,6 +101,7 @@ parse_set_port_args() {
 
 parse_set_egress_args() {
   SET_EGRESS_MODE="direct"
+  SET_EGRESS_UDP_MODE="proxy"
   SET_EGRESS_HOST=""
   SET_EGRESS_PORT=""
   SET_EGRESS_USER=""
@@ -130,6 +131,11 @@ parse_set_egress_args() {
       --pass)
         require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_PASS="$2"
+        shift 2
+        ;;
+      --udp)
+        require_option_value "$1" "$#" "${2-}"
+        SET_EGRESS_UDP_MODE="$2"
         shift 2
         ;;
       *) die "Unknown set-egress argument: $1" ;;

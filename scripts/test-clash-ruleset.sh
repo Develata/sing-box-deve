@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090,SC1091
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_ROOT="$ROOT_DIR"
 
 source "${PROJECT_ROOT}/lib/common.sh"
+source "${PROJECT_ROOT}/lib/providers_params.sh"
+source "${PROJECT_ROOT}/lib/protocol_links_common.sh"
+source "${PROJECT_ROOT}/lib/protocol_links_direct.sh"
+source "${PROJECT_ROOT}/lib/providers_node_model.sh"
 source "${PROJECT_ROOT}/lib/providers_clash_rulesets.sh"
+source "${PROJECT_ROOT}/lib/providers_client_renderers.sh"
 source "${PROJECT_ROOT}/lib/providers_client_templates.sh"
 
 TEST_ROOT="$(mktemp -d /tmp/sbd-clash-test-XXXXXX)"
@@ -16,12 +22,17 @@ SBD_DATA_DIR="${SBD_INSTALL_DIR}/data"
 SBD_CONFIG_DIR="${TEST_ROOT}/etc"
 SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
 SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
+SBD_NODE_MODEL_FILE="${SBD_DATA_DIR}/nodes-model.json"
 
 mkdir -p "$SBD_DATA_DIR" "$SBD_CONFIG_DIR"
 cat > "$SBD_NODES_FILE" <<'EOF'
 vless://11111111-1111-1111-1111-111111111111@example.com:443?encryption=none&security=reality&type=tcp#demo-node
 EOF
 base64 -w 0 < "$SBD_NODES_FILE" > "$SBD_SUB_FILE"
+node_model_init
+node_model_add_vless_reality \
+  11111111-1111-1111-1111-111111111111 example.com 443 www.microsoft.com chrome \
+  jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0 0123456789abcdef
 
 cat > "${SBD_CONFIG_DIR}/clash_custom_rules.list" <<'EOF'
 # custom rules

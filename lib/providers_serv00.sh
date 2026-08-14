@@ -35,6 +35,7 @@ protocols=${protocols_csv}
 argo_mode=${ARGO_MODE:-off}
 warp_mode=${WARP_MODE:-off}
 outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
+outbound_proxy_udp_mode=${OUTBOUND_PROXY_UDP_MODE:-proxy}
 outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
 outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
 generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")

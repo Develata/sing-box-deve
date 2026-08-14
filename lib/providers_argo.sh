@@ -26,6 +26,71 @@ install_cloudflared_binary() {
   verify_sha256_expected "$bin_out" "$expected"
 }
 
+argo_write_token_file() {
+  local token="$1"
+  [[ -n "$token" ]] || die "Argo fixed mode requires a non-empty token"
+  mkdir -p "$(dirname "$SBD_ARGO_TOKEN_FILE")"
+  (umask 077; printf '%s\n' "$token" > "$SBD_ARGO_TOKEN_FILE")
+  chmod 0600 "$SBD_ARGO_TOKEN_FILE"
+}
+
+argo_fixed_exec_command() {
+  printf '%s tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token-file %s' \
+    "${SBD_BIN_DIR}/cloudflared" "$SBD_ARGO_TOKEN_FILE"
+}
+
+argo_ensure_fixed_token_file() {
+  local token="${ARGO_TOKEN:-}" legacy_token_file="${SBD_DATA_DIR}/argo_token"
+  if [[ -s "$SBD_ARGO_TOKEN_FILE" ]]; then
+    chmod 0600 "$SBD_ARGO_TOKEN_FILE"
+    return 0
+  fi
+  if [[ -s "$legacy_token_file" ]]; then
+    (umask 077; cp "$legacy_token_file" "$SBD_ARGO_TOKEN_FILE")
+    chmod 0600 "$SBD_ARGO_TOKEN_FILE"
+    return 0
+  fi
+  [[ -n "$token" ]] || die "Argo fixed mode token is unavailable for nohup migration"
+  argo_write_token_file "$token"
+}
+
+argo_build_exec_command() {
+  local protocols_csv="$1" engine="${2:-sing-box}" target_port
+  local protocols=()
+  protocols_to_array "$protocols_csv" protocols
+  protocol_enabled "vless-ws" "${protocols[@]}" || die "Argo requires vless-ws protocol"
+  case "${ARGO_MODE:-off}" in
+    fixed)
+      argo_ensure_fixed_token_file
+      argo_fixed_exec_command
+      ;;
+    temp)
+      target_port="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
+      printf '%s tunnel --url http://127.0.0.1:%s --edge-ip-version auto --no-autoupdate --protocol http2' \
+        "${SBD_BIN_DIR}/cloudflared" "$target_port"
+      ;;
+    *)
+      die "Cannot build Argo command for ARGO_MODE=${ARGO_MODE:-off}"
+      ;;
+  esac
+}
+
+argo_write_exec_command() {
+  local exec_cmd="$1"
+  mkdir -p "$(dirname "$SBD_ARGO_EXEC_FILE")"
+  (umask 077; printf '%s\n' "$exec_cmd" > "$SBD_ARGO_EXEC_FILE")
+  chmod 0600 "$SBD_ARGO_EXEC_FILE"
+}
+
+argo_restore_nohup_exec_command() {
+  provider_cfg_load_runtime_exports
+  [[ "${ARGO_MODE:-off}" != "off" ]] || die "Argo is disabled in runtime state"
+  local exec_cmd
+  exec_cmd="$(argo_build_exec_command "${protocols:-vless-ws}" "${engine:-sing-box}")"
+  argo_write_exec_command "$exec_cmd"
+  printf '%s\n' "$exec_cmd"
+}
+
 configure_argo_tunnel() {
   local protocols_csv="$1"
   local engine="${2:-sing-box}"
@@ -41,9 +106,6 @@ configure_argo_tunnel() {
 
   install_cloudflared_binary
 
-  local target_port
-  target_port="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
-
   local mode="${ARGO_MODE:-temp}"
   local token="${ARGO_TOKEN:-}"
   local domain="${ARGO_DOMAIN:-}"
@@ -55,12 +117,15 @@ configure_argo_tunnel() {
 
   local exec_cmd
   if [[ "$mode" == "fixed" ]]; then
-    exec_cmd="${SBD_BIN_DIR}/cloudflared tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token ${token}"
+    argo_write_token_file "$token"
+    exec_cmd="$(argo_build_exec_command "$protocols_csv" "$engine")"
   else
     mode="temp"
+    rm -f "$SBD_ARGO_TOKEN_FILE"
     : > "$argo_log"
-    exec_cmd="${SBD_BIN_DIR}/cloudflared tunnel --url http://127.0.0.1:${target_port} --edge-ip-version auto --no-autoupdate --protocol http2"
+    exec_cmd="$(argo_build_exec_command "$protocols_csv" "$engine")"
   fi
+  argo_write_exec_command "$exec_cmd"
 
   cat > "$SBD_ARGO_SERVICE_FILE" <<EOF
 [Unit]

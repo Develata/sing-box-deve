@@ -40,6 +40,9 @@ append_argo_cdn_templates() {
     else
       continue
     fi
+    host="${host#[}"
+    host="${host%]}"
+    host="$(uri_authority_host "$host")"
     if [[ "$vl" == "true" ]]; then
       if [[ "$tls" == "tls" ]]; then
         echo "vless://$uuid@$host:$port?encryption=$enc&security=tls&sni=$vl_host&type=ws&host=$vl_host&path=${vl_path}#sbd-vless-argo-cdn-$port" >> "$file"

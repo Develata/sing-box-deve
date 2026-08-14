@@ -222,6 +222,14 @@
           <input id="outboundProxyPort" type="number" placeholder="1080 或 8080">
         </div>
         <div class="row">
+          <label for="outboundProxyUdpMode">OUTBOUND_PROXY_UDP_MODE</label>
+          <select id="outboundProxyUdpMode">
+            <option value="proxy">proxy（SOCKS5 UDP ASSOCIATE）</option>
+            <option value="direct">direct（UDP 直连）</option>
+            <option value="block">block（阻断 UDP）</option>
+          </select>
+        </div>
+        <div class="row">
           <label for="outboundProxyUser">OUTBOUND_PROXY_USER</label>
           <input id="outboundProxyUser" type="text" placeholder="可选用户名">
         </div>

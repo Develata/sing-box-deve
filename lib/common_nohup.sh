@@ -8,8 +8,8 @@ nohup_start_service() {
 
   mkdir -p "$SBD_RUNTIME_DIR" "$SBD_DATA_DIR" 2>/dev/null || true
 
+  local old_pid=""
   if [[ -f "$pid_file" ]]; then
-    local old_pid
     old_pid="$(cat "$pid_file" 2>/dev/null || true)"
     if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
       kill "$old_pid" 2>/dev/null || true
@@ -24,7 +24,23 @@ nohup_start_service() {
   local new_pid=$!
   echo "$new_pid" > "$pid_file"
 
-  nohup_register_crontab "$svc_name" "$exec_cmd" "$log_file"
+  sleep 1
+  if ! kill -0 "$new_pid" 2>/dev/null; then
+    rm -f "$pid_file"
+    log_error "nohup service failed to start: ${svc_name}; see ${log_file}"
+    return 1
+  fi
+  if [[ -n "$old_pid" && "$new_pid" == "$old_pid" ]]; then
+    log_error "nohup service PID did not change: ${svc_name}"
+    return 1
+  fi
+
+  if ! nohup_register_crontab "$svc_name" "$exec_cmd" "$log_file"; then
+    kill "$new_pid" 2>/dev/null || true
+    rm -f "$pid_file"
+    log_error "Unable to register nohup service at boot: ${svc_name}"
+    return 1
+  fi
 
   log_info "$(msg "已通过 nohup 启动 ${svc_name} (PID: ${new_pid})" \
                "Started ${svc_name} via nohup (PID: ${new_pid})")"

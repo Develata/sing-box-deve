@@ -155,6 +155,7 @@ wizard() {
   printf '%s\n' "$(msg "出站代理用于让所有入站流量通过上游 socks/http/https 代理转发。" "Outbound proxy lets inbound traffic egress through upstream socks/http/https.")"
   if prompt_yes_no "$(msg "保持默认直连出站（direct）吗？" "Keep default direct outbound mode?")" "Y"; then
     OUTBOUND_PROXY_MODE="direct"
+    OUTBOUND_PROXY_UDP_MODE="proxy"
   else
     prompt_with_default "$(msg "选择出站代理模式 [direct/socks/http/https]" "Choose outbound proxy mode [direct/socks/http/https]")" "direct" OUTBOUND_PROXY_MODE
     if [[ "$OUTBOUND_PROXY_MODE" != "direct" ]]; then
@@ -162,6 +163,11 @@ wizard() {
       prompt_with_default "$(msg "输入上游代理端口" "Input upstream proxy port")" "1080" OUTBOUND_PROXY_PORT
       prompt_with_default "$(msg "输入上游代理用户名（可选）" "Input upstream proxy username (optional)")" "" OUTBOUND_PROXY_USER
       prompt_with_default "$(msg "输入上游代理密码（可选）" "Input upstream proxy password (optional)")" "" OUTBOUND_PROXY_PASS
+      if [[ "$OUTBOUND_PROXY_MODE" == "socks" ]]; then
+        prompt_with_default "$(msg "UDP 策略 [proxy/direct/block]" "UDP policy [proxy/direct/block]")" "proxy" OUTBOUND_PROXY_UDP_MODE
+      else
+        prompt_with_default "$(msg "HTTP(S) 不承载 UDP；选择 UDP 策略 [direct/block]" "HTTP(S) cannot carry UDP; choose UDP policy [direct/block]")" "direct" OUTBOUND_PROXY_UDP_MODE
+      fi
     fi
   fi
 

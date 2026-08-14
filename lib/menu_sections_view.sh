@@ -223,7 +223,7 @@ menu_egress() {
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1)
-        provider_set_egress direct "" "" "" ""
+        provider_set_egress direct "" "" "" "" proxy
         menu_pause
         ;;
       2)
@@ -232,7 +232,10 @@ menu_egress() {
         read -r -p "$(msg "端口" "port"): " p
         read -r -p "$(msg "用户(可选)" "user(optional)"): " u
         read -r -p "$(msg "密码(可选)" "pass(optional)"): " pw
-        provider_set_egress "$m" "$h" "$p" "$u" "$pw"
+        local udp_default="proxy" udp_mode=""
+        [[ "$m" == "http" || "$m" == "https" ]] && udp_default="direct"
+        read -r -p "$(msg "UDP 策略[proxy/direct/block]" "UDP policy[proxy/direct/block]") [${udp_default}]: " udp_mode
+        provider_set_egress "$m" "$h" "$p" "$u" "$pw" "${udp_mode:-$udp_default}"
         menu_pause
         ;;
       3)

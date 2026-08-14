@@ -75,7 +75,7 @@ restart_engine() {
 # ── Check and restart cloudflared ─────────────────────────────────
 
 restart_argo() {
-  local cf_bin argo_log
+  local cf_bin argo_log token_file legacy_token_file
 
   if [[ -x "${LOGS_DIR}/cloudflared" ]]; then
     cf_bin="${LOGS_DIR}/cloudflared"
@@ -94,19 +94,26 @@ restart_argo() {
   fi
 
   # Read argo config
-  local argo_mode="temp" argo_token="" target_port="8080"
+  local argo_mode="temp" target_port="8080"
 
   if [[ -f "${DATA_DIR}/argo_mode" ]]; then
     argo_mode="$(cat "${DATA_DIR}/argo_mode" 2>/dev/null)"
   fi
 
-  if [[ -f "${DATA_DIR}/argo_token" ]]; then
-    argo_token="$(cat "${DATA_DIR}/argo_token" 2>/dev/null)"
+  token_file="${DATA_DIR}/argo-token"
+  legacy_token_file="${DATA_DIR}/argo_token"
+  if [[ ! -s "$token_file" && -s "$legacy_token_file" ]]; then
+    (umask 077; cp "$legacy_token_file" "$token_file")
+    chmod 0600 "$token_file"
   fi
 
   log "RESTART: Cloudflared (mode=${argo_mode})"
-  if [[ "$argo_mode" == "fixed" && -n "$argo_token" ]]; then
-    nohup "$cf_bin" tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token "$argo_token" >> "$argo_log" 2>&1 &
+  if [[ "$argo_mode" == "fixed" ]]; then
+    if [[ ! -s "$token_file" ]]; then
+      log "FAIL: Fixed tunnel token file missing: ${token_file}"
+      return 1
+    fi
+    nohup "$cf_bin" tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token-file "$token_file" >> "$argo_log" 2>&1 &
   else
     nohup "$cf_bin" tunnel --url "http://127.0.0.1:${target_port}" --edge-ip-version auto --no-autoupdate --protocol http2 >> "$argo_log" 2>&1 &
   fi

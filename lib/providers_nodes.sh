@@ -6,13 +6,13 @@ build_aggregate_subscription() {
 }
 
 write_nodes_output() {
-  local engine="$1" protocols_csv="$2" ip uuid
+  local engine="$1" protocols_csv="$2" ip uuid tls_insecure
   ip="$(detect_public_ip)"
   uuid="$(ensure_uuid)"
-  : > "$SBD_NODES_BASE_FILE"
+  node_model_init
 
-  local reality_sni reality_fp tls_sni vless_ws_path vless_ws_path_uri
-  local xhttp_path xhttp_path_uri xhttp_mode enc_vless
+  local reality_sni reality_fp tls_sni vless_ws_path
+  local xhttp_path xhttp_mode enc_vless
   local ip_vless_ws ip_xhttp public_key short_id tls_host
   local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic ss2022_password hy2_obfs_mode hy2_obfs_password
   local protocols=()
@@ -22,10 +22,10 @@ write_nodes_output() {
   tls_sni="$(sbd_tls_server_name)"
   tls_host="$tls_sni"
   [[ -n "$tls_host" ]] || tls_host="$ip"
+  tls_insecure="false"
+  [[ "${TLS_MODE:-${tls_mode:-self-signed}}" == "self-signed" ]] && tls_insecure="true"
   vless_ws_path="$(sbd_vless_ws_path)"
-  vless_ws_path_uri="$(uri_encode "$vless_ws_path")"
   xhttp_path="$(sbd_vless_xhttp_path "$uuid")"
-  xhttp_path_uri="$(uri_encode "$xhttp_path")"
   xhttp_mode="$(sbd_vless_xhttp_mode)"
   ip_vless_ws="$(sbd_proxyip_vless_ws "$ip")"
   ip_xhttp="$(sbd_proxyip_vless_xhttp "$ip")"
@@ -55,21 +55,21 @@ write_nodes_output() {
   p_tuic="$(resolve_protocol_port_for_engine "$engine" "tuic")"
 
   if protocol_enabled "vless-reality" "${protocols[@]}"; then
-    node_link_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id"
   fi
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
-    node_link_vless_ws "$uuid" "$ip_vless_ws" "$p_vless_ws" "$enc_vless" "$vless_ws_path_uri" "$(sbd_cdn_host_vless_ws)" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_vless_ws "$uuid" "$ip_vless_ws" "$p_vless_ws" "$enc_vless" "$vless_ws_path" "$(sbd_cdn_host_vless_ws)" "sbd-vless-ws" false ""
   fi
   if [[ "$engine" == "xray" ]] && protocol_enabled "vless-xhttp" "${protocols[@]}"; then
-    node_link_vless_xhttp "$uuid" "$ip_xhttp" "$p_xhttp" "$enc_vless" "$reality_sni" "$reality_fp" "$public_key" "$short_id" "$xhttp_path_uri" "$xhttp_mode" "$(sbd_cdn_host_vless_xhttp)" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_vless_xhttp "$uuid" "$ip_xhttp" "$p_xhttp" "$enc_vless" "$reality_sni" "$reality_fp" "$public_key" "$short_id" "$xhttp_path" "$xhttp_mode" "$(sbd_cdn_host_vless_xhttp)"
   fi
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
     ss2022_password="$(ensure_ss2022_password)"
-    node_link_ss2022 "$ss2022_password" "$ip" "$p_ss" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_ss2022 "$ss2022_password" "$ip" "$p_ss"
   fi
   if [[ "$engine" == "sing-box" ]] && protocol_enabled "naive" "${protocols[@]}"; then
-    node_link_naive "$uuid" "$tls_host" "$p_naive" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_naive "$uuid" "$tls_host" "$p_naive" "$tls_sni" "$tls_insecure"
   fi
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
     hy2_obfs_mode="$(sbd_hy2_obfs_mode)"
@@ -77,17 +77,29 @@ write_nodes_output() {
     if [[ "$hy2_obfs_mode" != "off" ]]; then
       hy2_obfs_password="$(sbd_hy2_obfs_password)"
     fi
-    node_link_hysteria2 "$uuid" "$tls_host" "$p_hy2" "$tls_sni" "$hy2_obfs_mode" "$hy2_obfs_password" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_hysteria2 "$uuid" "$tls_host" "$p_hy2" "$tls_sni" "$tls_insecure" "$hy2_obfs_mode" "$hy2_obfs_password"
   fi
   if protocol_enabled "tuic" "${protocols[@]}"; then
-    node_link_tuic "$uuid" "$tls_host" "$p_tuic" "$tls_sni" >> "$SBD_NODES_BASE_FILE"
-  fi
-  if [[ "${WARP_MODE:-${warp_mode:-off}}" != "off" ]]; then
-    node_link_warp_mode "${WARP_MODE:-${warp_mode:-off}}" >> "$SBD_NODES_BASE_FILE"
+    node_model_add_tuic "$uuid" "$tls_host" "$p_tuic" "$tls_sni" "$tls_insecure"
   fi
 
   if [[ "${ARGO_MODE:-${argo_mode:-off}}" != "off" && -f "${SBD_DATA_DIR}/argo_domain" ]]; then
-    append_argo_primary_links "$SBD_NODES_BASE_FILE" "$protocols_csv" "$uuid" "$(<"${SBD_DATA_DIR}/argo_domain")" "$enc_vless"
+    local argo_domain argo_host
+    argo_domain="$(<"${SBD_DATA_DIR}/argo_domain")"
+    argo_host="$(sbd_cdn_host_vless_ws)"
+    [[ -n "$argo_host" ]] || argo_host="$argo_domain"
+    if protocol_enabled "vless-ws" "${protocols[@]}"; then
+      node_model_add_vless_ws "$uuid" "$argo_domain" 443 "$enc_vless" "$vless_ws_path" "$argo_host" "sbd-vless-argo" true "$argo_host"
+    fi
+  fi
+
+  node_model_render_uri_file "$SBD_NODES_BASE_FILE"
+  if [[ "${WARP_MODE:-${warp_mode:-off}}" != "off" ]]; then
+    node_link_warp_mode "${WARP_MODE:-${warp_mode:-off}}" >> "$SBD_NODES_BASE_FILE"
+  fi
+  if [[ "${ARGO_MODE:-${argo_mode:-off}}" != "off" && -f "${SBD_DATA_DIR}/argo_domain" ]]; then
+    append_argo_cdn_templates "$SBD_NODES_BASE_FILE" "$uuid" "$(<"${SBD_DATA_DIR}/argo_domain")" \
+      "$(protocol_csv_has "$protocols_csv" "vless-ws" && printf true || printf false)" "$enc_vless"
   fi
 
   cp "$SBD_NODES_BASE_FILE" "$SBD_NODES_FILE"

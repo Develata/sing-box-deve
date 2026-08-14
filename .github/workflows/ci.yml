@@ -19,7 +19,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck
+          sudo apt-get install -y shellcheck python3-yaml
 
       - name: Bash syntax
         run: |
@@ -56,6 +56,20 @@ jobs:
       - name: CLI smoke checks
         run: |
           bash scripts/test-cli-smoke.sh
+
+      - name: State, service, and transaction regression checks
+        run: |
+          bash scripts/test-egress-udp.sh
+          bash scripts/test-client-artifacts.sh
+          bash scripts/test-runtime-env-codec.sh
+          bash scripts/test-config-lock.sh
+          bash scripts/test-argo-token-file.sh
+          bash scripts/test-service-restart.sh
+          bash scripts/test-core-update-transaction.sh
+
+      - name: Validate generated configs with current stable cores
+        run: |
+          bash scripts/test-current-core-suite.sh
 
       - name: Non-root dry-run
         run: |

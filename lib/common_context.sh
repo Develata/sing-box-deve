@@ -40,6 +40,7 @@ create_install_context() {
   local domain_split_proxy="${DOMAIN_SPLIT_PROXY:-}"
   local domain_split_block="${DOMAIN_SPLIT_BLOCK:-}"
   local outbound_proxy_mode="${OUTBOUND_PROXY_MODE:-direct}"
+  local outbound_proxy_udp_mode="${OUTBOUND_PROXY_UDP_MODE:-proxy}"
   local outbound_proxy_host="${OUTBOUND_PROXY_HOST:-}"
   local outbound_proxy_port="${OUTBOUND_PROXY_PORT:-}"
   local outbound_proxy_user="${OUTBOUND_PROXY_USER:-}"
@@ -91,6 +92,7 @@ domain_split_direct=${domain_split_direct}
 domain_split_proxy=${domain_split_proxy}
 domain_split_block=${domain_split_block}
 outbound_proxy_mode=${outbound_proxy_mode}
+outbound_proxy_udp_mode=${outbound_proxy_udp_mode}
 outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
 outbound_proxy_user_set=$([[ -n "${outbound_proxy_user}" ]] && echo true || echo false)
@@ -159,6 +161,7 @@ features:
   domain_split_proxy: ${domain_split_proxy:-""}
   domain_split_block: ${domain_split_block:-""}
   outbound_proxy_mode: ${outbound_proxy_mode:-direct}
+  outbound_proxy_udp_mode: ${outbound_proxy_udp_mode:-proxy}
   outbound_proxy_host: ${outbound_proxy_host:-""}
   outbound_proxy_port: ${outbound_proxy_port:-""}
   outbound_proxy_user_set: ${outbound_proxy_user_set:-false}

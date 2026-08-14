@@ -27,7 +27,7 @@ provider_restart() {
   local target="${1:-all}"
 
   if [[ "$target" == "core" || "$target" == "all" ]]; then
-    if [[ -f "$SBD_SERVICE_FILE" ]]; then
+    if [[ -f "$SBD_SERVICE_FILE" ]] || sbd_service_unit_exists "sing-box-deve"; then
       safe_service_restart
       log_success "$(msg "sing-box-deve 服务已重启" "sing-box-deve service restarted")"
     else
@@ -36,8 +36,23 @@ provider_restart() {
   fi
 
   if [[ "$target" == "argo" || "$target" == "all" ]]; then
-    if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-      sbd_service_restart "sing-box-deve-argo"
+    if [[ -f "$SBD_ARGO_SERVICE_FILE" ]] || sbd_service_unit_exists "sing-box-deve-argo"; then
+      local argo_exec=""
+      if [[ -f "$SBD_ARGO_EXEC_FILE" ]]; then
+        argo_exec="$(<"$SBD_ARGO_EXEC_FILE")"
+      fi
+      detect_init_system
+      if [[ "$SBD_INIT_SYSTEM" == "nohup" && -z "$argo_exec" ]]; then
+        if ! argo_exec="$(argo_restore_nohup_exec_command)"; then
+          log_error "$(msg "无法从 runtime.env 迁移旧版 Argo nohup 启动命令" \
+            "Unable to migrate legacy Argo nohup command from runtime.env")"
+          return 1
+        fi
+        log_info "$(msg "已从 runtime.env 迁移旧版 Argo nohup 启动命令" \
+          "Migrated legacy Argo nohup command from runtime.env")"
+      fi
+      sbd_service_restart "sing-box-deve-argo" "$argo_exec"
+      sbd_service_wait_active "sing-box-deve-argo" 10
       log_success "$(msg "sing-box-deve argo 服务已重启" "sing-box-deve argo service restarted")"
     else
       log_warn "$(msg "未找到 Argo 服务文件" "Argo service file not found")"
@@ -77,107 +92,6 @@ provider_regen_nodes() {
   local runtime_protocols="${protocols:-vless-reality}"
   write_nodes_output "$runtime_engine" "$runtime_protocols"
   log_success "$(msg "节点已重生成: $SBD_NODES_FILE" "Nodes regenerated: $SBD_NODES_FILE")"
-}
-
-provider_core_backup_prepare() {
-  local target_engine="$1"
-  local engine_bin="${SBD_BIN_DIR}/${target_engine}"
-  local engine_version_file="${SBD_DATA_DIR}/engine-version"
-  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
-  mkdir -p "$rollback_dir"
-  rm -f "${rollback_dir}/install-reused-existing"
-  if [[ -x "$engine_bin" ]]; then
-    cp -p "$engine_bin" "${rollback_dir}/${target_engine}.bak"
-  else
-    rm -f "${rollback_dir}/${target_engine}.bak"
-  fi
-  if [[ -f "$engine_version_file" ]]; then
-    cp -p "$engine_version_file" "${rollback_dir}/engine-version.bak"
-  else
-    rm -f "${rollback_dir}/engine-version.bak"
-  fi
-}
-
-provider_core_backup_restore() {
-  local target_engine="$1"
-  local engine_bin="${SBD_BIN_DIR}/${target_engine}"
-  local engine_version_file="${SBD_DATA_DIR}/engine-version"
-  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
-  if [[ -f "${rollback_dir}/${target_engine}.bak" ]]; then
-    install -m 0755 "${rollback_dir}/${target_engine}.bak" "$engine_bin"
-  else
-    rm -f "$engine_bin"
-  fi
-  if [[ -f "${rollback_dir}/engine-version.bak" ]]; then
-    install -m 0644 "${rollback_dir}/engine-version.bak" "$engine_version_file"
-  else
-    rm -f "$engine_version_file"
-  fi
-}
-
-provider_install_engine_safely() {
-  local target_engine="$1" target_tag="${2:-latest}"
-  local rollback_dir="${SBD_STATE_DIR:-/var/lib/sing-box-deve}/core-update-rollback"
-  local install_reused_file="${rollback_dir}/install-reused-existing"
-
-  provider_core_backup_prepare "$target_engine"
-  if ! ( export SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE="$install_reused_file"; install_engine_binary "$target_engine" "$target_tag" ); then
-    log_warn "$(msg "核心安装失败，正在恢复更新前内核" "Engine install failed; restoring previous engine binary")"
-    provider_core_backup_restore "$target_engine"
-    return 1
-  fi
-  if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" || -f "$install_reused_file" ]]; then
-    return 2
-  fi
-  return 0
-}
-
-provider_update() {
-  ensure_root
-  if [[ ! -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
-    die "$(msg "未检测到已安装运行时" "No installed runtime found")"
-  fi
-
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
-  local install_rc=0
-  provider_install_engine_safely "$engine" || install_rc=$?
-  if (( install_rc == 1 )); then
-    safe_service_restart >/dev/null 2>&1 || true
-    die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
-  fi
-  if (( install_rc == 2 )); then
-    die "$(msg "核心下载失败，已保留本地旧内核；未执行更新" "Core download failed; existing local engine was kept and no update was applied")"
-  fi
-  if ! safe_service_restart; then
-    log_warn "$(msg "核心服务重启失败，正在恢复更新前内核" "Core service restart failed; restoring previous engine binary")"
-    provider_core_backup_restore "$engine"
-    safe_service_restart >/dev/null 2>&1 || true
-    die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
-  fi
-
-  if [[ -f "$SBD_SERVICE_FILE" ]]; then
-    local wait_count=0
-    while ! sbd_service_is_active "sing-box-deve" && (( wait_count < 15 )); do
-      sleep 1
-      ((wait_count += 1))
-    done
-    if (( wait_count >= 15 )); then
-      log_warn "$(msg "核心服务启动超时，正在恢复更新前内核" "Core service start timeout; restoring previous engine binary")"
-      provider_core_backup_restore "$engine"
-      safe_service_restart >/dev/null 2>&1 || true
-      die "$(msg "核心更新失败，已尝试恢复旧内核" "Core update failed; previous engine restore attempted")"
-    else
-      log_info "$(msg "核心服务已就绪" "Core service ready")"
-    fi
-  fi
-
-  if [[ -f "$SBD_ARGO_SERVICE_FILE" ]]; then
-    if ! sbd_service_restart "sing-box-deve-argo"; then
-      log_warn "$(msg "Argo 边车重启失败；核心更新已完成，可稍后执行 restart --argo 或查看 logs --argo" "Argo sidecar restart failed; core update completed. Run restart --argo or logs --argo later")"
-    fi
-  fi
-  log_success "$(msg "内核已更新并重启服务" "Engine updated and service restarted")"
-  provider_panel
 }
 
 provider_kernel_show() {

@@ -7,6 +7,17 @@ protocol_csv_has() {
   protocol_enabled "$needle" "${protocol_items[@]}"
 }
 
+uri_authority_host() {
+  local host="$1"
+  if [[ "$host" == \[*\] ]]; then
+    printf '%s' "$host"
+  elif [[ "$host" == *:* ]]; then
+    printf '[%s]' "$host"
+  else
+    printf '%s' "$host"
+  fi
+}
+
 rewrite_link_with_endpoint() {
   local link="$1" endpoint="$2" host port
   shift 2 || true
@@ -32,14 +43,17 @@ rewrite_link_with_endpoint() {
 }
 
 extract_link_host() {
-  local link="$1"
+  local link="$1" host
   case "$link" in
     *)
-      if [[ "$link" =~ ^[^:]+://[^@]+@([^:/?]+) ]]; then
-        echo "${BASH_REMATCH[1]}"
-      elif [[ "$link" =~ ^[^:]+://([^:/?]+) ]]; then
-        echo "${BASH_REMATCH[1]}"
+      if [[ "$link" =~ ^[^:]+://[^@]+@(\[[^]]+\]|[^:/?]+) ]]; then
+        host="${BASH_REMATCH[1]}"
+      elif [[ "$link" =~ ^[^:]+://(\[[^]]+\]|[^:/?]+) ]]; then
+        host="${BASH_REMATCH[1]}"
       fi
+      host="${host#[}"
+      host="${host%]}"
+      [[ -n "$host" ]] && printf '%s\n' "$host"
       ;;
   esac
 }

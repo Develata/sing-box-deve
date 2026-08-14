@@ -49,6 +49,7 @@ parse_install_args() {
   DOMAIN_SPLIT_PROXY="${DOMAIN_SPLIT_PROXY:-}"
   DOMAIN_SPLIT_BLOCK="${DOMAIN_SPLIT_BLOCK:-}"
   OUTBOUND_PROXY_MODE="${OUTBOUND_PROXY_MODE:-direct}"
+  OUTBOUND_PROXY_UDP_MODE="${OUTBOUND_PROXY_UDP_MODE:-proxy}"
   OUTBOUND_PROXY_HOST="${OUTBOUND_PROXY_HOST:-}"
   OUTBOUND_PROXY_PORT="${OUTBOUND_PROXY_PORT:-}"
   OUTBOUND_PROXY_USER="${OUTBOUND_PROXY_USER:-}"
@@ -64,7 +65,7 @@ parse_install_args() {
       --dry-run) DRY_RUN="true"; shift ;;
       --random-main-port) RANDOM_MAIN_PORT="true"; shift ;;
       --yes|-y) AUTO_YES="true"; shift ;;
-      --provider|--profile|--engine|--protocols|--preset|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--web-front|--hy2-obfs|--hy2-obfs-password|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
+      --provider|--profile|--engine|--protocols|--preset|--uuid|--port-mode|--port-map|--main-port|--argo|--argo-domain|--argo-token|--cdn-endpoints|--warp-mode|--route-mode|--ip-preference|--cdn-host|--tls-mode|--acme-cert-path|--acme-key-path|--acme-domain|--acme-email|--web-front|--hy2-obfs|--hy2-obfs-password|--reality-sni|--reality-fp|--reality-port|--tls-sni|--vless-ws-path|--vless-xhttp-path|--vless-xhttp-mode|--xray-vless-enc|--xray-xhttp-reality|--cdn-host-vless-ws|--cdn-host-vless-xhttp|--proxyip-vless-ws|--proxyip-vless-xhttp|--domain-direct|--domain-proxy|--domain-block|--outbound-proxy-mode|--outbound-proxy-udp-mode|--outbound-proxy-host|--outbound-proxy-port|--outbound-proxy-user|--outbound-proxy-pass)
         require_option_value "$1" "$#" "${2-}"
         case "$1" in
           --provider) PROVIDER="$2" ;;
@@ -110,6 +111,7 @@ parse_install_args() {
           --domain-proxy) DOMAIN_SPLIT_PROXY="$2" ;;
           --domain-block) DOMAIN_SPLIT_BLOCK="$2" ;;
           --outbound-proxy-mode) OUTBOUND_PROXY_MODE="$2" ;;
+          --outbound-proxy-udp-mode) OUTBOUND_PROXY_UDP_MODE="$2" ;;
           --outbound-proxy-host) OUTBOUND_PROXY_HOST="$2" ;;
           --outbound-proxy-port) OUTBOUND_PROXY_PORT="$2" ;;
           --outbound-proxy-user) OUTBOUND_PROXY_USER="$2" ;;

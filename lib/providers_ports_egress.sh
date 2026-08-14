@@ -2,10 +2,14 @@
 
 provider_set_egress() {
   ensure_root
-  local mode="$1" host="$2" port="$3" user="$4" pass="$5"
+  local mode="$1" host="$2" port="$3" user="$4" pass="$5" udp_mode="${6:-proxy}"
   case "$mode" in
     direct|socks|http|https) ;;
     *) die "Unsupported egress mode: $mode" ;;
+  esac
+  case "$udp_mode" in
+    proxy|direct|block) ;;
+    *) die "Invalid OUTBOUND_PROXY_UDP_MODE: ${udp_mode}" ;;
   esac
   if [[ "$mode" != "direct" ]]; then
     [[ -n "$host" && -n "$port" ]] || die "host and port are required when mode != direct"
@@ -16,6 +20,7 @@ provider_set_egress() {
   local runtime_provider="${provider:-vps}" runtime_profile="${profile:-lite}"
   local runtime_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
   export OUTBOUND_PROXY_MODE="$mode"
+  export OUTBOUND_PROXY_UDP_MODE="$udp_mode"
   export OUTBOUND_PROXY_HOST="$host"
   export OUTBOUND_PROXY_PORT="$port"
   export OUTBOUND_PROXY_USER="$user"
@@ -30,7 +35,7 @@ provider_set_egress() {
   provider_commit_domain_web_front "$runtime_protocols"
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider_restart core
-  log_success "$(msg "出站模式已更新: ${mode}" "Egress mode updated: ${mode}")"
+  log_success "$(msg "出站模式已更新: ${mode}，UDP=${udp_mode}" "Egress mode updated: ${mode}, UDP=${udp_mode}")"
 }
 
 provider_set_route() {

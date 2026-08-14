@@ -37,6 +37,9 @@ init_user_mode_paths() {
   SBD_NODES_FILE="${SBD_DATA_DIR}/nodes.txt"
   SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
   SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
+  SBD_NODE_MODEL_FILE="${SBD_DATA_DIR}/nodes-model.json"
+  SBD_ARGO_TOKEN_FILE="${SBD_DATA_DIR}/argo-token"
+  SBD_ARGO_EXEC_FILE="${SBD_DATA_DIR}/argo-exec"
 
   # Service files — set but not necessarily used in nohup mode
   SBD_SERVICE_FILE="${base}/service/sing-box-deve.service"
@@ -116,8 +119,9 @@ EOF
   chmod +x "$svc_file"
 
   if [[ "$SBD_USER_MODE" == "false" ]]; then
-    rc-update add "$svc_name" default 2>/dev/null || true
-    rc-service "$svc_name" restart 2>/dev/null || true
+    rc-update add "$svc_name" default >/dev/null
+    rc-service "$svc_name" restart
+    sbd_service_wait_active "$svc_name" 10
   fi
 }
 
@@ -174,16 +178,30 @@ sbd_service_restart() {
       systemctl restart "${svc_name}.service"
       ;;
     openrc)
-      rc-service "$svc_name" restart 2>/dev/null || true
+      rc-service "$svc_name" restart
       ;;
     nohup)
       if [[ -n "$exec_cmd" ]]; then
         nohup_start_service "$svc_name" "$exec_cmd"
       else
-        log_warn "$(msg "nohup 模式下重启需要完整命令" "nohup mode restart requires full command")"
+        log_error "$(msg "nohup 模式下重启需要完整命令" "nohup mode restart requires full command")"
+        return 1
       fi
       ;;
   esac
+}
+
+sbd_service_wait_active() {
+  local svc_name="$1" timeout_seconds="${2:-10}" waited=0
+  while (( waited < timeout_seconds )); do
+    if sbd_service_is_active "$svc_name"; then
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  log_error "Service failed health check: ${svc_name}"
+  return 1
 }
 
 sbd_service_is_active() {

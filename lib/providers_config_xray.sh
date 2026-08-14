@@ -77,10 +77,11 @@ build_xray_config() {
       "$(xray_fragment_vless_xhttp "$uuid" "$port_vless_xhttp" "$vless_decryption" "$xhttp_path" "$xhttp_mode" "$xhttp_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
   fi
 
-  local xray_outbounds xray_routing primary_tag available_outbounds
+  local xray_outbounds xray_routing primary_tag available_outbounds target_strategy
   primary_tag="direct"
   available_outbounds="direct"
-  xray_outbounds=$'    {"protocol": "freedom", "tag": "direct"},\n'
+  target_strategy="$(xray_target_strategy_fragment)"
+  xray_outbounds="    {\"protocol\": \"freedom\", \"tag\": \"direct\"${target_strategy}},"$'\n'
   xray_outbounds+=$'    {"protocol": "blackhole", "tag": "block"}'
   xray_routing=""
   if [[ "$has_warp" == "true" ]]; then

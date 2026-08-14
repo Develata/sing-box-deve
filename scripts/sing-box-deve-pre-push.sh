@@ -35,6 +35,14 @@ run bash scripts/test-firewall-records.sh
 run bash scripts/test-web-schema-sync.sh
 run bash scripts/test-menu-consistency.sh
 run bash scripts/test-cli-smoke.sh
+run bash scripts/test-egress-udp.sh
+run bash scripts/test-client-artifacts.sh
+run bash scripts/test-runtime-env-codec.sh
+run bash scripts/test-config-lock.sh
+run bash scripts/test-argo-token-file.sh
+run bash scripts/test-service-restart.sh
+run bash scripts/test-core-update-transaction.sh
+run bash scripts/test-current-core-suite.sh
 
 checksum_before="$(mktemp)"
 cp checksums.txt "$checksum_before"
