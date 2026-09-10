@@ -13,7 +13,7 @@ PREFIX = "sing-box-deve-runtime"
 LIMIT_BYTES = 64 * 1024 * 1024
 LIMIT_FILES = 2048
 ROOT_FILES = {"sing-box-deve.sh", "version", "LICENSE", "runtime-files.txt", "checksums.txt"}
-RUNTIME_SCRIPTS = {"scripts/runtime-archive.py", "scripts/nohup-run.sh", "scripts/bounded-log.py"}
+RUNTIME_SCRIPTS = {"scripts/runtime-archive.py", "scripts/nohup-run.sh", "scripts/bounded-log.py", "scripts/egress-link.py"}
 
 
 def allowed(name):

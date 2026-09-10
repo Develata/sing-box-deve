@@ -40,6 +40,10 @@ singbox_domain_resolver_fragment() {
 }
 
 build_upstream_outbound_singbox() {
+  if [[ -n "${OUTBOUND_PROXY_LINK:-}" ]]; then
+    sbd_egress_link_parse "$OUTBOUND_PROXY_LINK" sing-box
+    return $?
+  fi
   local mode="${OUTBOUND_PROXY_MODE:-direct}"
   [[ "$mode" != "direct" ]] || return 0
 
@@ -74,6 +78,7 @@ EOF
     {"type": "http", "tag": "proxy-out", "server": ${host_json}, "server_port": ${port}${auth}${resolver}, "tls": {"enabled": true, "server_name": ${host_json}}}
 EOF
       ;;
+    *) log_error "Protocol egress requires a node link"; return 1 ;;
   esac
 }
 
@@ -86,6 +91,16 @@ xray_target_strategy_fragment() {
 }
 
 build_upstream_outbound_xray() {
+  if [[ -n "${OUTBOUND_PROXY_LINK:-}" ]]; then
+    local outbound
+    outbound="$(sbd_egress_link_parse "$OUTBOUND_PROXY_LINK" xray)" || return 1
+    case "${IP_PREFERENCE:-auto}" in
+      v4) jq '.targetStrategy = "UseIPv4"' <<< "$outbound" ;;
+      v6) jq '.targetStrategy = "UseIPv6"' <<< "$outbound" ;;
+      *) printf '%s\n' "$outbound" ;;
+    esac
+    return $?
+  fi
   local mode="${OUTBOUND_PROXY_MODE:-direct}"
   [[ "$mode" != "direct" ]] || return 0
 
@@ -116,6 +131,7 @@ build_upstream_outbound_xray() {
       protocol="http"
       stream_tls=",\"streamSettings\":{\"security\":\"tls\"}"
       ;;
+    *) log_error "Protocol egress requires a node link"; return 1 ;;
   esac
   target_strategy="$(xray_target_strategy_fragment)"
 

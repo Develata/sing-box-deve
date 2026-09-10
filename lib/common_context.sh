@@ -97,6 +97,7 @@ outbound_proxy_host=${outbound_proxy_host}
 outbound_proxy_port=${outbound_proxy_port}
 outbound_proxy_user_set=$([[ -n "${outbound_proxy_user}" ]] && echo true || echo false)
 outbound_proxy_pass_set=$([[ -n "${outbound_proxy_pass}" ]] && echo true || echo false)
+outbound_proxy_link_set=$([[ -n "${OUTBOUND_PROXY_LINK:-}" ]] && echo true || echo false)
 EOF
 }
 
@@ -166,6 +167,7 @@ features:
   outbound_proxy_port: ${outbound_proxy_port:-""}
   outbound_proxy_user_set: ${outbound_proxy_user_set:-false}
   outbound_proxy_pass_set: ${outbound_proxy_pass_set:-false}
+  outbound_proxy_link_set: ${outbound_proxy_link_set:-false}
 resources:
   default_profile: ${profile}
 EOF

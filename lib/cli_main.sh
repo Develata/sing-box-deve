@@ -64,8 +64,8 @@ main() {
       ;;
     set-egress)
       shift
-      parse_set_egress_args "$@"
-      provider_set_egress "$SET_EGRESS_MODE" "$SET_EGRESS_HOST" "$SET_EGRESS_PORT" "$SET_EGRESS_USER" "$SET_EGRESS_PASS" "$SET_EGRESS_UDP_MODE"
+      parse_set_egress_args "$@" || return 1
+      provider_set_egress "$SET_EGRESS_MODE" "$SET_EGRESS_HOST" "$SET_EGRESS_PORT" "$SET_EGRESS_USER" "$SET_EGRESS_PASS" "$SET_EGRESS_UDP_MODE" "$SET_EGRESS_LINK"
       ;;
     set-route)
       shift

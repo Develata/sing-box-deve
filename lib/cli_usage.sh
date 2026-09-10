@@ -5,7 +5,7 @@ usage() {
 Usage:
   sing-box-deve.sh wizard
   sing-box-deve.sh menu
-  sing-box-deve.sh install [--provider vps|serv00] [--profile lite|full] [--engine sing-box|xray] [--preset reality-only|reality-plus-domain|full] [--protocols p1,p2] [--uuid UUID] [--port-mode random|manual] [--port-map proto:port[,proto:port...]] [--main-port PORT|--random-main-port] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--cdn-endpoints HOST:PORT:TLS,...] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-udp-mode proxy|direct|block] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--tls-mode self-signed|acme|acme-auto] [--acme-domain DOMAIN] [--acme-email EMAIL] [--web-front auto|off|nginx|openresty] [--hy2-obfs off|salamander] [--hy2-obfs-password PASSWORD] [--reality-sni SNI] [--reality-fp FP] [--tls-sni SNI] [--vless-ws-path PATH] [--vless-xhttp-path PATH] [--vless-xhttp-mode MODE] [--xray-vless-enc true|false] [--xray-xhttp-reality true|false] [--cdn-host-vless-ws HOST] [--cdn-host-vless-xhttp HOST] [--proxyip-vless-ws IP] [--proxyip-vless-xhttp IP] [--yes]
+  sing-box-deve.sh install [--provider vps|serv00] [--profile lite|full] [--engine sing-box|xray] [--preset reality-only|reality-plus-domain|full] [--protocols p1,p2] [--uuid UUID] [--port-mode random|manual] [--port-map proto:port[,proto:port...]] [--main-port PORT|--random-main-port] [--argo off|temp|fixed] [--argo-domain DOMAIN] [--argo-token TOKEN] [--cdn-endpoints HOST:PORT:TLS,...] [--warp-mode off|global|s|s4|s6|x|x4|x6|...] [--route-mode direct|global-proxy|cn-direct|cn-proxy] [--outbound-proxy-link LINK|--outbound-proxy-link-file FILE] [--outbound-proxy-mode direct|socks|http|https] [--outbound-proxy-udp-mode proxy|direct|block] [--outbound-proxy-host HOST] [--outbound-proxy-port PORT] [--outbound-proxy-user USER] [--outbound-proxy-pass PASS] [--tls-mode self-signed|acme|acme-auto] [--acme-domain DOMAIN] [--acme-email EMAIL] [--web-front auto|off|nginx|openresty] [--hy2-obfs off|salamander] [--hy2-obfs-password PASSWORD] [--reality-sni SNI] [--reality-fp FP] [--tls-sni SNI] [--vless-ws-path PATH] [--vless-xhttp-path PATH] [--vless-xhttp-mode MODE] [--xray-vless-enc true|false] [--xray-xhttp-reality true|false] [--cdn-host-vless-ws HOST] [--cdn-host-vless-xhttp HOST] [--proxyip-vless-ws IP] [--proxyip-vless-xhttp IP] [--yes]
   sing-box-deve.sh apply -f config.env
   sing-box-deve.sh apply --runtime
   sing-box-deve.sh list [--runtime|--nodes|--settings|--all]
@@ -15,6 +15,7 @@ Usage:
   sing-box-deve.sh set-port --list
   sing-box-deve.sh set-port --protocol <name> --port <1-65535>
   sing-box-deve.sh set-egress --mode direct|socks|http|https [--host HOST] [--port PORT] [--user USER] [--pass PASS] [--udp proxy|direct|block]
+  sing-box-deve.sh set-egress --link LINK|--link-file FILE [--udp proxy|direct|block]
   sing-box-deve.sh set-route <direct|global-proxy|cn-direct|cn-proxy>
   sing-box-deve.sh split3 show
   sing-box-deve.sh split3 set <direct_csv> <proxy_csv> <block_csv>

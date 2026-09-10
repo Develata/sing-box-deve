@@ -157,6 +157,7 @@ persist_runtime_state() {
     sbd_write_env_kv domain_split_direct "${DOMAIN_SPLIT_DIRECT:-}" || exit 1
     sbd_write_env_kv domain_split_proxy "${DOMAIN_SPLIT_PROXY:-}" || exit 1
     sbd_write_env_kv domain_split_block "${DOMAIN_SPLIT_BLOCK:-}" || exit 1
+    if [[ -n "${OUTBOUND_PROXY_LINK:-}" ]]; then sbd_write_env_kv outbound_proxy_link "$OUTBOUND_PROXY_LINK" || exit 1; fi
     sbd_write_env_kv outbound_proxy_mode "${OUTBOUND_PROXY_MODE:-direct}" || exit 1
     sbd_write_env_kv outbound_proxy_udp_mode "${OUTBOUND_PROXY_UDP_MODE:-proxy}" || exit 1
     sbd_write_env_kv outbound_proxy_host "${OUTBOUND_PROXY_HOST:-}" || exit 1

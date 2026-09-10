@@ -11,6 +11,7 @@ run_install() {
   validate_profile_protocols "$profile" "$protocols_csv"
   if [[ "$dry_run" == true ]]; then prepare_initial_install_ports "$protocols_csv" || return 1; fi
   validate_feature_modes || return 1
+  sbd_egress_validate_engine "$engine" || return 1
   if [[ "$dry_run" == "true" ]] && protocols_require_domain_cert "$protocols_csv"; then
     local dry_domain="${TLS_SERVER_NAME:-${ACME_DOMAIN:-}}"
     [[ -n "$dry_domain" ]] || die "Dry-run: selected protocols require --tls-sni or --acme-domain"
@@ -53,7 +54,7 @@ run_install_committed() {
   prepare_initial_install_ports "$protocols_csv" || return 1
   init_runtime_layout || return 1
 
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER WEB_FRONT_MODE HY2_OBFS_MODE HY2_OBFS_PASSWORD REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE XRAY_VLESS_ENC XRAY_XHTTP_REALITY CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK OUTBOUND_PROXY_MODE OUTBOUND_PROXY_UDP_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS SBD_UUID UUID
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER WEB_FRONT_MODE HY2_OBFS_MODE HY2_OBFS_PASSWORD REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE XRAY_VLESS_ENC XRAY_XHTTP_REALITY CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK OUTBOUND_PROXY_LINK OUTBOUND_PROXY_MODE OUTBOUND_PROXY_UDP_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS SBD_UUID UUID
 
   create_install_context "$provider" "$profile" "$engine" "$protocols_csv" || return 1
   auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE" || return 1
@@ -134,6 +135,7 @@ apply_config() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-${DOMAIN_SPLIT_DIRECT:-}}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-${DOMAIN_SPLIT_PROXY:-}}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-${DOMAIN_SPLIT_BLOCK:-}}"
+  export OUTBOUND_PROXY_LINK="${outbound_proxy_link-${OUTBOUND_PROXY_LINK:-}}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-${OUTBOUND_PROXY_MODE:-direct}}"
   export OUTBOUND_PROXY_UDP_MODE="${outbound_proxy_udp_mode:-${OUTBOUND_PROXY_UDP_MODE:-proxy}}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-${OUTBOUND_PROXY_HOST:-}}"
@@ -186,6 +188,7 @@ apply_runtime_unlocked() {
   export DOMAIN_SPLIT_DIRECT="${domain_split_direct:-}"
   export DOMAIN_SPLIT_PROXY="${domain_split_proxy:-}"
   export DOMAIN_SPLIT_BLOCK="${domain_split_block:-}"
+  export OUTBOUND_PROXY_LINK="${outbound_proxy_link:-}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
   export OUTBOUND_PROXY_UDP_MODE="${outbound_proxy_udp_mode:-proxy}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"

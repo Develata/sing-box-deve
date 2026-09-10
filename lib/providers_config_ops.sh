@@ -17,6 +17,7 @@ provider_cfg_load_runtime_exports() {
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-}"
   export WARP_MODE="${warp_mode:-off}"
   export ROUTE_MODE="${route_mode:-direct}"
+  export OUTBOUND_PROXY_LINK="${outbound_proxy_link:-}"
   export OUTBOUND_PROXY_MODE="${outbound_proxy_mode:-direct}"
   export OUTBOUND_PROXY_UDP_MODE="${outbound_proxy_udp_mode:-proxy}"
   export OUTBOUND_PROXY_HOST="${outbound_proxy_host:-}"

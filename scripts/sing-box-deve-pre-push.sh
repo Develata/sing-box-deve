@@ -37,6 +37,8 @@ run bash scripts/test-web-schema-sync.sh
 run bash scripts/test-menu-consistency.sh
 run bash scripts/test-cli-smoke.sh
 run bash scripts/test-egress-udp.sh
+run python3 scripts/test-egress-link.py
+run bash scripts/test-egress-protocols.sh
 run bash scripts/test-client-artifacts.sh
 run bash scripts/test-runtime-env-codec.sh
 run bash scripts/test-config-lock.sh

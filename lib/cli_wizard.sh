@@ -152,13 +152,16 @@ wizard() {
   fi
 
   echo
-  printf '%s\n' "$(msg "出站代理用于让所有入站流量通过上游 socks/http/https 代理转发。" "Outbound proxy lets inbound traffic egress through upstream socks/http/https.")"
+  printf '%s\n' "$(msg "可使用 SOCKS/HTTP(S) 或导入 Reality、HY2 等节点作为出口。" "Use SOCKS/HTTP(S), or import a Reality, HY2 or other node as egress.")"
+  OUTBOUND_PROXY_LINK=""
   if prompt_yes_no "$(msg "保持默认直连出站（direct）吗？" "Keep default direct outbound mode?")" "Y"; then
     OUTBOUND_PROXY_MODE="direct"
     OUTBOUND_PROXY_UDP_MODE="proxy"
   else
-    prompt_with_default "$(msg "选择出站代理模式 [direct/socks/http/https]" "Choose outbound proxy mode [direct/socks/http/https]")" "direct" OUTBOUND_PROXY_MODE
-    if [[ "$OUTBOUND_PROXY_MODE" != "direct" ]]; then
+    prompt_with_default "$(msg "出站模式 [direct/socks/http/https/link]，link 导入分享链接" "Outbound mode [direct/socks/http/https/link]; link imports a share link")" "direct" OUTBOUND_PROXY_MODE
+    if [[ "$OUTBOUND_PROXY_MODE" == link ]]; then
+      sbd_egress_prompt_link || return 1
+    elif [[ "$OUTBOUND_PROXY_MODE" != "direct" ]]; then
       prompt_with_default "$(msg "输入上游代理主机" "Input upstream proxy host")" "" OUTBOUND_PROXY_HOST
       prompt_with_default "$(msg "输入上游代理端口" "Input upstream proxy port")" "1080" OUTBOUND_PROXY_PORT
       prompt_with_default "$(msg "输入上游代理用户名（可选）" "Input upstream proxy username (optional)")" "" OUTBOUND_PROXY_USER

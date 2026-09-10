@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 validate_feature_modes() {
+  if [[ -n "${OUTBOUND_PROXY_LINK:-}" ]]; then sbd_egress_link_load || return 1; fi
   local key value
   for key in \
     ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS \
@@ -32,6 +33,8 @@ validate_feature_modes() {
 
   case "${OUTBOUND_PROXY_MODE:-direct}" in
     direct|socks|http|https) ;;
+    vless-reality|vless-ws|vless-xhttp|hysteria2|tuic|shadowsocks-2022|naive)
+      [[ -n "${OUTBOUND_PROXY_LINK:-}" ]] || die "This egress protocol requires --link or OUTBOUND_PROXY_LINK" ;;
     *) die "Invalid OUTBOUND_PROXY_MODE: ${OUTBOUND_PROXY_MODE}" ;;
   esac
 

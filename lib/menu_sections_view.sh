@@ -219,6 +219,7 @@ menu_egress() {
     echo "1) $(msg "切换为直连出站（set-egress direct）" "Set direct egress (set-egress direct)")"
     echo "2) $(msg "配置上游代理出站（set-egress socks/http/https）" "Set upstream proxy egress (set-egress socks/http/https)")"
     echo "3) $(msg "设置分流路由模式（set-route ...）" "Set route mode (set-route ...)")"
+    echo "4) $(msg "导入协议节点分享链接（Reality/HY2/TUIC/SS/Naive/XHTTP）" "Import protocol node link (Reality/HY2/TUIC/SS/Naive/XHTTP)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -241,6 +242,12 @@ menu_egress() {
       3)
         read -r -p "$(msg "路由模式[direct/global-proxy/cn-direct/cn-proxy]" "route mode[direct/global-proxy/cn-direct/cn-proxy]"): " rm
         provider_set_route "$rm"
+        menu_pause
+        ;;
+      4)
+        if sbd_egress_prompt_link; then
+          provider_set_egress direct "" "" "" "" "$OUTBOUND_PROXY_UDP_MODE" "$OUTBOUND_PROXY_LINK"
+        fi
         menu_pause
         ;;
       0) return 0 ;;

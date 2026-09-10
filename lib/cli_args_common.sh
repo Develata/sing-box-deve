@@ -108,29 +108,36 @@ parse_set_egress_args() {
   SET_EGRESS_PORT=""
   SET_EGRESS_USER=""
   SET_EGRESS_PASS=""
+  SET_EGRESS_LINK=""
+  local link_seen=false legacy_seen=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --mode)
+        legacy_seen=true
         require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_MODE="$2"
         shift 2
         ;;
       --host)
+        legacy_seen=true
         require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_HOST="$2"
         shift 2
         ;;
       --port)
+        legacy_seen=true
         require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_PORT="$2"
         shift 2
         ;;
       --user)
+        legacy_seen=true
         require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_USER="$2"
         shift 2
         ;;
       --pass)
+        legacy_seen=true
         require_option_value "$1" "$#" "${2-}"
         SET_EGRESS_PASS="$2"
         shift 2
@@ -140,7 +147,17 @@ parse_set_egress_args() {
         SET_EGRESS_UDP_MODE="$2"
         shift 2
         ;;
+      --link|--link-file)
+        require_option_value "$1" "$#" "${2-}"
+        [[ "$link_seen" == false ]] || die "Specify one node link"
+        link_seen=true
+        if [[ "$1" == --link-file ]]; then SET_EGRESS_LINK="$(sbd_egress_read_link_file "$2")" || return 1
+        else SET_EGRESS_LINK="$2"; fi
+        shift 2
+        ;;
       *) die "Unknown set-egress argument: $1" ;;
     esac
   done
+  [[ "$link_seen" == false || "$legacy_seen" == false ]] || die "Do not combine --link/--link-file with --mode/--host/--port/--user/--pass"
+  if [[ "$link_seen" == true ]]; then sbd_egress_link_parse "$SET_EGRESS_LINK" >/dev/null || return 1; fi
 }
