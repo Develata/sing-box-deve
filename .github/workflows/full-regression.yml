@@ -9,16 +9,14 @@ permissions:
 jobs:
   full-regression:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Acceptance matrix snapshot
+      - uses: actions/checkout@v6
+      - name: Install verification tools
         run: |
-          bash scripts/acceptance-matrix.sh > /tmp/acceptance-matrix.md
-          sed -n '1,80p' /tmp/acceptance-matrix.md
-
-      - name: Clash ruleset generation checks
-        run: |
-          chmod +x scripts/test-clash-ruleset.sh
-          bash scripts/test-clash-ruleset.sh
+          sudo timeout -k 5s 300s apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=15
+          sudo timeout -k 5s 300s apt-get install -y shellcheck python3-yaml
+      - name: Run all local regression and current-core checks
+        run: bash scripts/sing-box-deve-pre-push.sh
+      - name: Check committed checksum inventory
+        run: git diff --exit-code checksums.txt

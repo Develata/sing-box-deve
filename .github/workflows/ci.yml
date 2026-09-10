@@ -3,79 +3,23 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  shell-checks:
+  checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Install tools
+      - uses: actions/checkout@v6
+      - name: Install verification tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck python3-yaml
-
-      - name: Bash syntax
-        run: |
-          bash -n sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh
-
-      - name: JavaScript syntax
-        run: |
-          node --check web-generator/app.js
-
-      - name: Enforce max 400 lines per shell file
-        run: |
-          bash scripts/test-module-size.sh
-
-      - name: Shellcheck
-        run: |
-          shellcheck sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh
-
-      - name: JSON examples validation
-        run: |
-          node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('examples/serv00-accounts.json','utf8'));"
-
-      - name: Clash ruleset generation checks
-        run: |
-          bash scripts/test-clash-ruleset.sh
-
-      - name: Version comparison checks
-        run: |
-          bash scripts/test-version-compare.sh
-
-      - name: Update authority checks
-        run: |
-          bash scripts/test-update-authority.sh
-
-      - name: CLI smoke checks
-        run: |
-          bash scripts/test-cli-smoke.sh
-
-      - name: State, service, and transaction regression checks
-        run: |
-          bash scripts/test-egress-udp.sh
-          bash scripts/test-client-artifacts.sh
-          bash scripts/test-runtime-env-codec.sh
-          bash scripts/test-config-lock.sh
-          bash scripts/test-argo-token-file.sh
-          bash scripts/test-service-restart.sh
-          bash scripts/test-core-update-transaction.sh
-
-      - name: Validate generated configs with current stable cores
-        run: |
-          bash scripts/test-current-core-suite.sh
-
-      - name: Non-root dry-run
-        run: |
-          HOME="$RUNNER_TEMP/sbd-home" ./sing-box-deve.sh install --dry-run --provider vps --profile lite --engine sing-box --protocols vless-reality --uuid 11111111-1111-4111-8111-111111111111 --yes
-
-      - name: Verify checksums manifest
-        run: |
-          ./scripts/update-checksums.sh
-          git diff --exit-code checksums.txt
+          sudo timeout -k 5s 300s apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=15
+          sudo timeout -k 5s 300s apt-get install -y shellcheck python3-yaml
+      - name: Run the repository pre-push suite
+        run: bash scripts/sing-box-deve-pre-push.sh
+      - name: Check committed checksum inventory
+        run: git diff --exit-code checksums.txt

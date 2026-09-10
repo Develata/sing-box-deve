@@ -1,0 +1,35 @@
+name: Primary VPS Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_disposable:
+        description: Authorize installation, replacement and uninstall on fresh disposable Ubuntu/Debian runners
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    if: ${{ inputs.confirm_disposable }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [ubuntu, debian]
+    runs-on: [self-hosted, Linux, sbd-disposable, '${{ matrix.distro }}']
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run real lifecycle and proxy traffic checks
+        run: sudo env SBD_DISPOSABLE_ACCEPTANCE=yes SBD_EXPECT_DISTRO=${{ matrix.distro }} bash scripts/primary-vps-acceptance.sh "$RUNNER_TEMP/sbd-acceptance"
+      - name: Upload sanitized acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: primary-vps-${{ matrix.distro }}
+          path: ${{ runner.temp }}/sbd-acceptance
+          if-no-files-found: error
+          retention-days: 30
