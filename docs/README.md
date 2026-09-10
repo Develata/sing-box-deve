@@ -4,6 +4,7 @@
 - `ACCEPTANCE-MATRIX.md`：验收矩阵与实机测试建议。
 - `REAL-WORLD-VALIDATION.md`：实机验收执行单。
 - `Serv00.md`：Serv00/Hostuno 受限环境部署说明。
+- [EGRESS.md](EGRESS.md)：出口分享链接、内核兼容范围与 UDP 策略。
 - `CONVENTIONS.md`：项目约定。
 - `PANEL-TEMPLATE.md`：面板输出模板。
 

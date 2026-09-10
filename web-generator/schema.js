@@ -4,7 +4,8 @@ window.SBD_WEB_SCHEMA = {
     "lib/protocols.sh",
     "lib/providers_base_protocol.sh",
     "lib/cli_args.sh",
-    "lib/providers_base_runtime.sh"
+    "lib/providers_base_runtime.sh",
+    "scripts/egress-link.py"
   ],
   "providers": [
     "vps",
@@ -99,8 +100,36 @@ window.SBD_WEB_SCHEMA = {
     "direct",
     "socks",
     "http",
-    "https"
+    "https",
+    "link"
   ],
+  "outboundLinkCapabilities": {
+    "schemes": {
+      "vless": "vless",
+      "hy2": "hysteria2",
+      "hysteria2": "hysteria2",
+      "tuic": "tuic",
+      "ss": "shadowsocks-2022",
+      "naive+https": "naive"
+    },
+    "engines": {
+      "sing-box": [
+        "vless-reality",
+        "vless-ws",
+        "hysteria2",
+        "tuic",
+        "shadowsocks-2022",
+        "naive"
+      ],
+      "xray": [
+        "vless-reality",
+        "vless-ws",
+        "vless-xhttp",
+        "hysteria2",
+        "shadowsocks-2022"
+      ]
+    }
+  },
   "outboundProxyUdpModes": [
     "proxy",
     "direct",

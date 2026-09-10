@@ -56,5 +56,5 @@ The project manages six objects: host, runtime, public inbounds, outbounds, gene
 - WARP outbound implemented for sing-box/xray routing modes
 - Artifact checksum verification implemented for `sing-box`, `xray`, and `cloudflared`
 - Serv00 provider supports environment-driven executable deployment flow
-- Outbound upstream proxy implemented (`direct/socks/http/https`)
+- Outbound upstream proxy implemented (`direct/socks/http/https`) plus protocol share-link import (Reality, WS, HY2, TUIC, SS2022, Naive, XHTTP); engine constraints and UDP behavior are defined in [EGRESS.md](EGRESS.md)
 - CI checks include syntax, shellcheck, examples JSON, checksum manifest consistency, CLI smoke, and firewall record tests

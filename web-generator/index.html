@@ -210,7 +210,15 @@
           <option value="socks">socks</option>
           <option value="http">http</option>
           <option value="https">https</option>
+          <option value="link">节点分享链接（Reality / HY2 等）</option>
         </select>
+      </div>
+      <div id="outboundLinkFields" class="hidden">
+        <div class="row">
+          <label for="outboundProxyLink">出口节点分享链接</label>
+          <input id="outboundProxyLink" type="password" autocomplete="off" spellcheck="false" placeholder="vless://、hy2://、tuic://、ss://、naive+https://">
+        </div>
+        <p class="hint">支持范围随内核变化：TUIC / Naive 需要 sing-box，XHTTP 需要 Xray。Naive 未启用 uot 时请选择 UDP 直连或阻断。</p>
       </div>
       <div id="outboundProxyFields" class="hidden">
         <div class="row">
@@ -222,20 +230,31 @@
           <input id="outboundProxyPort" type="number" placeholder="1080 或 8080">
         </div>
         <div class="row">
-          <label for="outboundProxyUdpMode">OUTBOUND_PROXY_UDP_MODE</label>
-          <select id="outboundProxyUdpMode">
-            <option value="proxy">proxy（SOCKS5 UDP ASSOCIATE）</option>
-            <option value="direct">direct（UDP 直连）</option>
-            <option value="block">block（阻断 UDP）</option>
-          </select>
-        </div>
-        <div class="row">
           <label for="outboundProxyUser">OUTBOUND_PROXY_USER</label>
           <input id="outboundProxyUser" type="text" placeholder="可选用户名">
         </div>
         <div class="row">
           <label for="outboundProxyPass">OUTBOUND_PROXY_PASS</label>
           <input id="outboundProxyPass" type="text" placeholder="可选密码">
+        </div>
+      </div>
+      <div id="outboundUdpFields" class="hidden">
+        <div class="row">
+          <label for="outboundRouteMode">出口使用范围</label>
+          <select id="outboundRouteMode">
+            <option value="global-proxy">全局使用出口</option>
+            <option value="cn-direct">中国流量直连，其余使用出口</option>
+            <option value="cn-proxy">中国流量使用出口，其余直连</option>
+            <option value="direct">仅保存出口，暂不使用</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="outboundProxyUdpMode">UDP 策略</label>
+          <select id="outboundProxyUdpMode">
+            <option value="proxy">proxy（UDP 通过出口节点）</option>
+            <option value="direct">direct（UDP 直连）</option>
+            <option value="block">block（阻断 UDP）</option>
+          </select>
         </div>
       </div>
     </div>

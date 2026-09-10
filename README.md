@@ -166,7 +166,16 @@ HTTP/HTTPS 上游不能承载 UDP，因此配置为 `http`/`https` 时必须显�
 
 路由模式的基础语义为：`direct` 未命中显式 domain-split 的流量直连；`global-proxy` 全局使用主出站；`cn-direct` 国内直连、其他使用主出站；`cn-proxy` 国内使用主出站、其他直连。UDP override 位于 CN 与 domain-split 规则之前。
 
-WARP 与 SOCKS/HTTP/HTTPS 上游目前不做隐式链式组合；只要 `WARP_MODE!=off` 且启用了上游代理，配置阶段就会 fail fast，避免生成未被任何 route 引用的 WARP endpoint。
+WARP 与所有上游出口目前不做隐式链式组合；只要 `WARP_MODE!=off` 且启用了上游代理，配置阶段就会 fail fast，避免生成未被任何 route 引用的 WARP endpoint。
+
+出口也支持导入本项目生成的节点分享链接，包括 VLESS+Reality、VLESS-WS、HY2、TUIC、SS2022、Naive 和 VLESS-XHTTP。具体内核限制、UDP 策略和链接格式见 [出口节点说明](docs/EGRESS.md)。
+
+```bash
+# 已安装主机：从仅自己可读的文件导入出口，然后选择使用出口的路由
+sb set-egress --link-file /root/egress.link --udp proxy
+sb set-route --mode global-proxy
+# 也可在 sb menu → 出口设置中粘贴链接（输入不回显）
+```
 
 例如，将 SOCKS 上游仅用于 TCP：
 

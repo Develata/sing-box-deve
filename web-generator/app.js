@@ -77,7 +77,7 @@ function initSchemaSelects() {
     salamander: "salamander（高级 opt-in）"
   });
   fillSelect("outboundProxyUdpMode", schema.outboundProxyUdpModes || ["proxy", "direct", "block"], {
-    proxy: "proxy（SOCKS5 UDP ASSOCIATE）",
+    proxy: "proxy（UDP 通过出口节点）",
     direct: "direct（UDP 直连）",
     block: "block（阻断 UDP）"
   });
@@ -172,7 +172,9 @@ function toggleAdvancedFields() {
   byId("argoFixed").classList.toggle("hidden", argoMode !== "fixed");
   byId("warpKeys").classList.toggle("hidden", warpMode !== "global");
   byId("serv00Fields").classList.toggle("hidden", provider !== "serv00");
-  byId("outboundProxyFields").classList.toggle("hidden", outboundProxyMode === "direct");
+  byId("outboundProxyFields").classList.toggle("hidden", outboundProxyMode === "direct" || outboundProxyMode === "link");
+  byId("outboundLinkFields").classList.toggle("hidden", outboundProxyMode !== "link");
+  byId("outboundUdpFields").classList.toggle("hidden", outboundProxyMode === "direct");
   if ((outboundProxyMode === "http" || outboundProxyMode === "https") && outboundProxyUdpMode === "proxy") {
     byId("outboundProxyUdpMode").value = "direct";
   }
@@ -181,6 +183,26 @@ function toggleAdvancedFields() {
   byId("tlsAcmePaths").classList.toggle("hidden", tlsMode !== "acme");
   byId("tlsAcmeAuto").classList.toggle("hidden", tlsMode !== "acme-auto");
   byId("hy2ObfsPasswordRow").classList.toggle("hidden", hy2ObfsMode === "off");
+}
+
+function validateOutboundLink(engine, udpMode) {
+  var link = fieldValue("outboundProxyLink");
+  if (!link || /\s/.test(link) || new TextEncoder().encode(link).length > 16384) return "请填写有效的节点分享链接（空格须编码）";
+  var caps = schema.outboundLinkCapabilities || {};
+  try {
+    var url = new URL(link);
+    var scheme = url.protocol.slice(0, -1);
+    var kind = (caps.schemes || {})[scheme];
+    if (kind === "vless") {
+      var type = url.searchParams.get("type") || url.searchParams.get("network") || "tcp";
+      kind = type === "tcp" || type === "raw" ? "vless-reality" : "vless-" + type;
+      if (engine === "sing-box" && (url.searchParams.get("encryption") || "none") !== "none") return "VLESS encryption 出口需要 Xray";
+    }
+    if (((caps.engines || {})[engine] || []).indexOf(kind) < 0) return engine + " 不支持此出口节点协议";
+    if (engine === "xray" && /^(true|1)$/i.test(url.searchParams.get("insecure") || url.searchParams.get("allowInsecure") || url.searchParams.get("allow_insecure") || "")) return "当前 Xray 要求验证 TLS，不支持 insecure 链接";
+    if (kind === "naive" && !/^(true|1)$/i.test(url.searchParams.get("uot") || "") && udpMode === "proxy") return "Naive 未启用 uot，请选择 UDP direct 或 block";
+  } catch (_e) { return "节点分享链接格式无效"; }
+  return "";
 }
 
 function validateForm() {
@@ -223,7 +245,11 @@ function validateForm() {
   if (argoMode === "fixed" && !argoToken) return "Argo fixed 模式必须填写 token";
   if (warpMode === "global" && outMode !== "direct") return "WARP global 与上游出站代理不能同时启用";
   if (warpMode === "global" && (!warpPK || !warpPub)) return "WARP global 模式必须填写两项 key";
-  if (outMode !== "direct" && (!outHost || !outPort)) return "出站代理启用时必须填写 host 和 port";
+  if (outMode === "link") {
+    var linkError = validateOutboundLink(engine, outUdpMode);
+    if (linkError) return linkError;
+  }
+  if (outMode !== "direct" && outMode !== "link" && (!outHost || !outPort)) return "出站代理启用时必须填写 host 和 port";
   if ((outMode === "http" || outMode === "https") && outUdpMode === "proxy") return "HTTP/HTTPS 不支持 UDP proxy，请选择 direct 或 block";
   if (provider === "serv00" && (!fieldValue("serv00Host") || !fieldValue("serv00User"))) return "serv00 场景建议填写 SERV00_HOST 和 SERV00_USER";
   return "";
@@ -250,6 +276,8 @@ function collectValues() {
     argoToken: fieldValue("argoToken"),
     warpMode: byId("warpMode").value,
     outMode: byId("outboundProxyMode").value,
+    outLink: fieldValue("outboundProxyLink"),
+    outRoute: byId("outboundRouteMode").value,
     outUdpMode: byId("outboundProxyUdpMode").value,
     outHost: fieldValue("outboundProxyHost"),
     outPort: fieldValue("outboundProxyPort"),
@@ -289,14 +317,16 @@ function buildCommand() {
   }
   pushArg(args, "--argo", v.argoMode);
   pushArg(args, "--warp-mode", v.warpMode);
-  pushArg(args, "--outbound-proxy-mode", v.outMode);
+  pushArg(args, "--outbound-proxy-mode", v.outMode === "link" ? "direct" : v.outMode);
   pushArg(args, "--outbound-proxy-udp-mode", v.outUdpMode);
+  if (v.outMode !== "direct") pushArg(args, "--route-mode", v.outRoute);
   if (v.uuid) pushArg(args, "--uuid", v.uuid);
   appendDomainArgs(args, v);
   if (v.argoDomain) pushArg(args, "--argo-domain", v.argoDomain);
   if (v.argoToken) pushArg(args, "--argo-token", v.argoToken);
   if (v.cdnEps) pushArg(args, "--cdn-endpoints", v.cdnEps);
-  if (v.outMode !== "direct") {
+  if (v.outMode === "link") pushArg(args, "--outbound-proxy-link", v.outLink);
+  if (v.outMode !== "direct" && v.outMode !== "link") {
     pushArg(args, "--outbound-proxy-host", v.outHost);
     pushArg(args, "--outbound-proxy-port", v.outPort);
     if (v.outUser) pushArg(args, "--outbound-proxy-user", v.outUser);
@@ -320,10 +350,12 @@ function buildEnvTemplate() {
     "web_front_mode=" + v.webFrontMode, "hy2_obfs_mode=" + v.hy2ObfsMode, "hy2_obfs_password=" + v.hy2ObfsPassword, "",
     "# Argo", "argo_mode=" + v.argoMode, "argo_domain=" + v.argoDomain, "argo_token=" + v.argoToken,
     "ARGO_CDN_ENDPOINTS=" + v.cdnEps, "", "# WARP", "warp_mode=" + v.warpMode,
-    "", "# Outbound proxy", "outbound_proxy_mode=" + v.outMode, "outbound_proxy_udp_mode=" + v.outUdpMode,
+    "", "# Outbound proxy", "outbound_proxy_mode=" + (v.outMode === "link" ? "direct" : v.outMode), "outbound_proxy_udp_mode=" + v.outUdpMode,
     "outbound_proxy_host=" + v.outHost,
     "outbound_proxy_port=" + v.outPort, "outbound_proxy_user=" + v.outUser, "outbound_proxy_pass=" + v.outPass
   ];
+  if (v.outMode !== "direct") lines.push("route_mode=" + v.outRoute);
+  if (v.outMode === "link") lines.push("outbound_proxy_link=" + JSON.stringify(v.outLink));
   if (v.provider === "serv00") {
     lines.push("", "# Serv00", "SERV00_HOST=" + fieldValue("serv00Host"), "SERV00_USER=" + fieldValue("serv00User"));
   }
@@ -356,7 +388,7 @@ byId("themeToggle").addEventListener("click", toggleTheme);
 byId("genUUID").addEventListener("click", function () { byId("uuid").value = generateUUID(); showToast("✅ UUID 已生成"); });
 byId("preset").addEventListener("change", applyPresetToForm);
 byId("profile").addEventListener("change", refreshProtocolHint);
-byId("engine").addEventListener("change", refreshProtocolHint);
+byId("engine").addEventListener("change", function () { byId("preset").value = "custom"; refreshProtocolHint(); toggleAdvancedFields(); });
 byId("provider").addEventListener("change", toggleAdvancedFields);
 byId("argoMode").addEventListener("change", toggleAdvancedFields);
 byId("warpMode").addEventListener("change", toggleAdvancedFields);

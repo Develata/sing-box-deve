@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -83,6 +85,7 @@ def main() -> None:
             "lib/providers_base_protocol.sh",
             "lib/cli_args.sh",
             "lib/providers_base_runtime.sh",
+            "scripts/egress-link.py",
         ],
         "providers": ["vps", "serv00"],
         "profiles": ["lite", "full"],
@@ -98,7 +101,9 @@ def main() -> None:
         "webFrontModes": parse_case_modes(base_runtime, "WEB_FRONT_MODE"),
         "hy2ObfsModes": [m for m in parse_case_modes(base_runtime, "HY2_OBFS_MODE") if m != "gecko"],
         "routeModes": ["direct", "global-proxy", "cn-direct", "cn-proxy"],
-        "outboundProxyModes": ["direct", "socks", "http", "https"],
+        "outboundProxyModes": ["direct", "socks", "http", "https", "link"],
+        "outboundLinkCapabilities": json.loads(subprocess.check_output(
+            [sys.executable, str(ROOT / "scripts/egress-link.py"), "capabilities"], text=True)),
         "outboundProxyUdpModes": parse_case_modes(base_runtime, "OUTBOUND_PROXY_UDP_MODE"),
     }
 
