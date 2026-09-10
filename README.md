@@ -30,7 +30,7 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 - Hysteria2 `salamander` obfs 作为高级 opt-in；
 - 非 root user-mode 下的 state/config/snapshot 路径同步；
 - Serv00 provider 与 VPS provider 的依赖/防火墙边界；
-- self-update/rollback 的 checksum manifest 完整性校验。
+- 发行 archive 完整性校验、不可变 runtime 版本切换与恢复。
 
 当前回归除 shell/Node syntax、shellcheck、CLI/firewall/web schema/checksum 外，还会下载并校验当前 stable sing-box 与 Xray，对 server 配置矩阵和 sing-box client 执行真实 core validation；Clash 产物会断言真实 `proxies` 与 proxy-group 引用。
 
@@ -47,7 +47,10 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 - **Best-effort support**：Alpine Linux（OpenRC）、FreeBSD 系 Serv00/Hostuno、以及无 root/受限 shell 环境（自动回退到 nohup+crontab）。
 - 未经实机验证的发行版会以“非主支持系统”继续尝试运行；生产环境建议先执行 `install --dry-run` 与目标主机 smoke test。
 
-## 一键安装
+## 安装
+
+主运行环境需要 Bash 4.3+、Python 3.8+、curl、jq 和 GNU coreutils/util-linux。优先从完整 checkout 安装；以下 raw bootstrap 需要项目已发布带摘要的 runtime Release 资产。
+
 
 ```bash
 sudo bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) wizard
@@ -78,7 +81,7 @@ sb list --nodes
 sb restart --core
 ```
 
-`install` 成功后会写入 `/usr/local/bin/sb`。`sb` 是固定快捷入口：它优先读取已安装运行时的 `script_root`，通常指向 `/opt/sing-box-deve/script` 或当前安装绑定的 Git checkout；不会因为你刚好在另一个源码 checkout 目录里执行 `sb` 就切换目标。调试源码 checkout 时请直接运行 `./sing-box-deve.sh ...`。
+`install` 成功后会写入 `/usr/local/bin/sb`（用户模式为 `~/.local/bin/sb`）。`sb` 是固定快捷入口：它优先读取已安装运行时的 `script_root`，新安装指向 `/opt/sing-box-deve/current`（用户模式为 `~/sing-box-deve/current`）；不会因为你刚好在另一个源码 checkout 目录里执行 `sb` 就切换目标。调试源码 checkout 时请直接运行 `./sing-box-deve.sh ...`。
 
 ## 自动化安装示例
 
@@ -94,7 +97,8 @@ sb restart --core
   --acme-key-path /path/privkey.pem \
   --yes
 
-# 自动签发证书：要求域名 A/AAAA 已指向本机；脚本通过 nginx/OpenResty webroot 完成 HTTP-01
+# 自动签发证书：域名 A/AAAA 指向本机，并预装 acme.sh 或配置可信 installer URL/SHA256
+# 通过 nginx/OpenResty webroot 完成 HTTP-01
 ./sing-box-deve.sh install --preset full \
   --tls-sni example.com \
   --tls-mode acme-auto \
@@ -303,7 +307,9 @@ sb update --rollback
 - `update` / `update --script`：只刷新脚本与模块文件，不更新 sing-box/xray core；
 - `update --core`：只更新已安装 core，需要已有 runtime；新 core 与根据 runtime 重建的候选配置先在临时目录完成真实 config check，之后才原子替换 binary/config 并重启；健康检查失败会同时回滚 binary 与 config；
 - `update --all`：先刷新脚本，再用刷新后的脚本继续更新 core；
-- `update --rollback`：回滚上一轮脚本更新快照。
+- `update --rollback`：切回经过完整校验的上一代 runtime。
+
+恢复、迁移、等待预算、保留策略、外部 bootstrap 和实机发布门禁见 [可靠性与恢复边界](docs/RELIABILITY.md)。
 
 更新路径会校验 manifest 与 `checksums.txt`。如果 checksum manifest 缺失或校验失败，安装完整性验证会失败，不再静默跳过。`sb` launcher 也会在脚本更新后重新写入并校验，避免快捷入口指向旧脚本。
 

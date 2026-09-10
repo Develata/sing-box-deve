@@ -1,6 +1,14 @@
 # 实机验收执行单
 
-目标：覆盖 `VPS/Serv00 × Lite/Full × Argo/WARP/上游代理` 的关键组合。
+自动化主路径：在全新的 disposable Ubuntu/Debian systemd VM 上运行：
+
+```bash
+sudo SBD_DISPOSABLE_ACCEPTANCE=yes bash scripts/primary-vps-acceptance.sh /tmp/sbd-acceptance
+```
+
+也可手动触发 `Primary VPS Acceptance` workflow。它使用独立目标机，执行真实生命周期及客户端流量检查；本地 mock 或 current-core 配置测试不能替代其 receipt。配置与运行边界见 [RELIABILITY.md](RELIABILITY.md)。当前尚未取得本轮两套目标机执行结果。
+
+以下是补充人工验收项。目标：覆盖 `VPS/Serv00 × Lite/Full × Argo/WARP/上游代理` 的关键组合。
 
 ## 0) 基线准备
 

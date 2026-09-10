@@ -29,4 +29,6 @@ sudo ./sing-box-deve.sh panel --full
 ## 4) 自动化辅助
 
 - 生成矩阵报告：`bash scripts/acceptance-matrix.sh`
-- CI 校验：`.github/workflows/ci.yml`
+- CI 和 Full Regression：统一执行 `scripts/sing-box-deve-pre-push.sh`
+- 实机流量/生命周期：`scripts/primary-vps-acceptance.sh` / `Primary VPS Acceptance` workflow
+- Release gate：核对同一 source SHA 的 Ubuntu 与 Debian 实机 job 成功；本轮状态仍为待目标机执行。

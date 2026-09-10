@@ -173,6 +173,7 @@ UPDATE_MANIFEST_FILES=(
   ".github/workflows/ssh-keepalive.yml"
   ".github/workflows/primary-vps-acceptance.yml"
   ".github/workflows/release.yml"
+  "docs/RELIABILITY.md"
   "lib/common_io.sh"
   "lib/common_lock.sh"
   "lib/common_ownership.sh"
