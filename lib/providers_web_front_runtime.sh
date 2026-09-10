@@ -3,7 +3,7 @@
 sbd_systemd_unit_exists() {
   local service="$1"
   command -v systemctl >/dev/null 2>&1 || return 1
-  systemctl list-unit-files --type=service --no-legend "${service}.service" 2>/dev/null | awk -v svc="${service}.service" '$1 == svc { found = 1 } END { exit(found ? 0 : 1) }'
+  sbd_service_op systemctl list-unit-files --type=service --no-legend "${service}.service" 2>/dev/null | awk -v svc="${service}.service" '$1 == svc { found = 1 } END { exit(found ? 0 : 1) }'
 }
 
 sbd_web_front_reload() {
@@ -12,12 +12,13 @@ sbd_web_front_reload() {
     log_warn "$(msg "用户模式下跳过 web front reload" "User mode: skip web front reload")"
     return 0
   fi
-  "$bin" -t >/dev/null
+  sbd_web_front_capture_service "$bin" "$service" || return 1
+  sbd_run_deadline 30 "$bin" -t >/dev/null || return 1
   if sbd_systemd_unit_exists "$service"; then
-    systemctl enable "$service" >/dev/null 2>&1 || true
-    systemctl reload "$service" >/dev/null 2>&1 || systemctl restart "$service" >/dev/null || die "Failed to reload/restart ${service} via systemd"
+    sbd_service_op systemctl enable "$service" >/dev/null 2>&1 || return 1
+    sbd_service_op systemctl reload "$service" >/dev/null 2>&1 || sbd_service_op systemctl restart "$service" >/dev/null || die "Failed to reload/restart ${service} via systemd"
   else
-    "$bin" -s reload >/dev/null 2>&1 || die "Failed to reload ${engine}; no systemd unit found and binary reload failed"
+    sbd_run_deadline 30 "$bin" -s reload >/dev/null 2>&1 || die "Failed to reload ${engine}; no systemd unit found and binary reload failed"
   fi
   log_success "$(msg "Web front 已启用: ${engine}" "Web front enabled: ${engine}")"
 }
@@ -30,7 +31,7 @@ sbd_web_front_open_firewall() {
       return 0
     fi
   fi
-  fw_apply_rule tcp 80 web-front
+  fw_apply_rule tcp 80 web-front || return 1
   fw_apply_rule tcp 443 web-front
 }
 
@@ -38,8 +39,8 @@ sbd_write_web_front_conf_staged() {
   local conf_file="$1" bin="$2" domain="$3" cert="$4" key="$5" site_dir="$6"
   local conf_dir tmp_conf backup="" dump=""
   conf_dir="$(dirname "$conf_file")"
-  mkdir -p "$conf_dir"
-  tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")"
+  mkdir -p "$conf_dir" || return 1
+  tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")" || return 1
   cat > "$tmp_conf" <<EOF
 server {
     listen 80;
@@ -71,8 +72,8 @@ EOF
     backup="$(mktemp "${conf_file}.bak.XXXXXX")"
     cp -f "$conf_file" "$backup"
   fi
-  mv -f "$tmp_conf" "$conf_file"
-  if ! "$bin" -t >/dev/null; then
+  sbd_host_file_publish "$conf_file" "$tmp_conf" || return 1
+  if ! sbd_run_deadline 30 "$bin" -t >/dev/null; then
     if [[ -n "$backup" ]]; then
       mv -f "$backup" "$conf_file"
     else
@@ -81,7 +82,7 @@ EOF
     die "Web front generated config failed syntax test: ${conf_file}"
   fi
   if [[ "${SBD_USER_MODE:-false}" != "true" ]]; then
-    dump="$($bin -T 2>&1 || true)"
+    dump="$(sbd_run_deadline 30 "$bin" -T 2>&1)" || return 1
     if ! grep -Fq "$conf_file" <<<"$dump" && ! grep -Fq "server_name ${domain};" <<<"$dump"; then
       if [[ -n "$backup" ]]; then
         mv -f "$backup" "$conf_file"
@@ -98,8 +99,8 @@ sbd_write_web_front_http_conf_staged() {
   local conf_file="$1" bin="$2" domain="$3" site_dir="$4"
   local conf_dir tmp_conf backup="" dump=""
   conf_dir="$(dirname "$conf_file")"
-  mkdir -p "$conf_dir"
-  tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")"
+  mkdir -p "$conf_dir" || return 1
+  tmp_conf="$(mktemp "${conf_file}.tmp.XXXXXX")" || return 1
   cat > "$tmp_conf" <<EOF
 server {
     listen 80;
@@ -119,8 +120,8 @@ EOF
     backup="$(mktemp "${conf_file}.bak.XXXXXX")"
     cp -f "$conf_file" "$backup"
   fi
-  mv -f "$tmp_conf" "$conf_file"
-  if ! "$bin" -t >/dev/null; then
+  sbd_host_file_publish "$conf_file" "$tmp_conf" || return 1
+  if ! sbd_run_deadline 30 "$bin" -t >/dev/null; then
     if [[ -n "$backup" ]]; then
       mv -f "$backup" "$conf_file"
     else
@@ -129,7 +130,7 @@ EOF
     die "Web front HTTP config failed syntax test: ${conf_file}"
   fi
   if [[ "${SBD_USER_MODE:-false}" != "true" ]]; then
-    dump="$($bin -T 2>&1 || true)"
+    dump="$(sbd_run_deadline 30 "$bin" -T 2>&1)" || return 1
     if ! grep -Fq "$conf_file" <<<"$dump" && ! grep -Fq "server_name ${domain};" <<<"$dump"; then
       if [[ -n "$backup" ]]; then
         mv -f "$backup" "$conf_file"
@@ -140,4 +141,48 @@ EOF
     fi
   fi
   [[ -z "$backup" ]] || rm -f "$backup"
+}
+
+# Capture before the first reload, including a web server installed in staging.
+sbd_web_front_capture_service() {
+  local bin="$1" service="$2" file output active enabled
+  [[ -n "${SBD_ACTIVE_TRANSACTION:-}" ]] || return 0
+  file="$SBD_ACTIVE_TRANSACTION/web-service"
+  [[ ! -f "$file" ]] || return 0
+  if sbd_systemd_unit_exists "$service"; then
+    output="$(sbd_service_op systemctl show -p ActiveState -p UnitFileState "$service.service")" || return 1
+    active="$(sed -n 's/^ActiveState=//p' <<< "$output")"
+    enabled="$(sed -n 's/^UnitFileState=//p' <<< "$output")"
+    case "$active" in active|inactive|failed) ;; *) return 1 ;; esac
+    case "$enabled" in enabled|disabled) ;; *) return 1 ;; esac
+  else active=binary; enabled=disabled; fi
+  printf '%s\n' "$bin" "$service" "$active" "$enabled" > "$file" || return 1
+  sha256sum "$file" > "$file.sha256" || return 1
+  sbd_sync_directory "$SBD_ACTIVE_TRANSACTION"
+}
+
+sbd_web_front_restore_service() {
+  local file="$1/web-service" bin service active enabled
+  local -a values
+  [[ -f "$file" ]] || return 0
+  [[ ! -L "$file" && -f "$file.sha256" ]] || return 1
+  [[ "$(sha256sum "$file")" == "$(cat "$file.sha256")" ]] || return 1
+  mapfile -t values < "$file"
+  [[ "${#values[@]}" == 4 ]] || return 1
+  bin="${values[0]}"; service="${values[1]}"; active="${values[2]}"; enabled="${values[3]}"
+  [[ "$service" == nginx || "$service" == openresty ]] || return 1
+  sbd_run_deadline 30 "$bin" -t >/dev/null || return 1
+  case "$active" in
+    active) sbd_service_op systemctl reload "$service.service" || sbd_service_op systemctl restart "$service.service" || return 1 ;;
+    inactive|failed) sbd_service_op systemctl stop "$service.service" || return 1 ;;
+    binary) sbd_run_deadline 30 "$bin" -s reload || return 1 ;;
+    *) return 1 ;;
+  esac
+  if [[ "$active" != binary ]]; then
+    case "$enabled" in
+      enabled) sbd_service_op systemctl enable "$service.service" >/dev/null || return 1 ;;
+      disabled) sbd_service_op systemctl disable "$service.service" >/dev/null || return 1 ;;
+      *) return 1 ;;
+    esac
+  fi
 }

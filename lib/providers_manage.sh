@@ -24,6 +24,10 @@ provider_list() {
 }
 
 provider_restart() {
+  sbd_with_mutation_lock provider_restart_unlocked "$@"
+}
+
+provider_restart_unlocked() {
   local target="${1:-all}"
 
   if [[ "$target" == "core" || "$target" == "all" ]]; then
@@ -87,7 +91,7 @@ provider_logs() {
 provider_regen_nodes() {
   ensure_root
   [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
   local runtime_engine="${engine:-sing-box}"
   local runtime_protocols="${protocols:-vless-reality}"
   write_nodes_output "$runtime_engine" "$runtime_protocols"
@@ -113,48 +117,38 @@ provider_kernel_show() {
 }
 
 provider_kernel_set() {
+  sbd_with_mutation_lock sbd_transaction_run kernel-set provider_kernel_set_unlocked "$@"
+}
+
+provider_kernel_set_unlocked() {
   ensure_root
-  local target_engine="$1" target_tag="${2:-latest}"
-  validate_engine "$target_engine"
-
-  local has_runtime="false"
-  if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
-    has_runtime="true"
-    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  local target_engine="$1" target_tag="${2:-latest}" has_runtime=false runtime_protocols=""
+  local candidate_root="$SBD_ACTIVE_TRANSACTION/candidate"
+  validate_engine "$target_engine" || return 1
+  if [[ -f "$SBD_CONFIG_DIR/runtime.env" ]]; then
+    has_runtime=true
+    provider_cfg_load_runtime_exports || return 1
+    runtime_protocols="$protocols"
+    assert_engine_protocol_compatibility "$target_engine" "$runtime_protocols" || return 1
+    sbd_export_protocol_ports_from_engine "$engine" "$runtime_protocols" || return 1
   fi
-
-  local install_rc=0
-  provider_install_engine_safely "$target_engine" "$target_tag" || install_rc=$?
-  if (( install_rc == 1 )); then
-    die "$(msg "核心设置失败，已尝试恢复旧内核" "Kernel set failed; previous engine restore attempted")"
+  init_runtime_layout || return 1
+  provider_core_candidate_install "$target_engine" "$candidate_root" "$target_tag" || return 1
+  if [[ "$has_runtime" == true ]]; then
+    provider_core_candidate_build "$target_engine" "$runtime_protocols" "$candidate_root" || return 1
   fi
-  if (( install_rc == 2 )); then
-    die "$(msg "核心下载失败，已保留本地旧内核；未执行切换" "Core download failed; existing local engine was kept and kernel switch was not applied")"
+  sbd_transaction_phase "$SBD_ACTIVE_TRANSACTION" committing || return 1
+  provider_core_candidate_binary_commit "$target_engine" "$candidate_root" || return 1
+  if [[ "$has_runtime" == true ]]; then
+    provider_core_candidate_data_commit "$candidate_root" || return 1
+    provider_core_candidate_commit "$target_engine" "$candidate_root" || return 1
+    write_systemd_service "$target_engine" || return 1
+    provider_core_health_check "$target_engine" "" || return 1
+    configure_argo_tunnel "$runtime_protocols" "$target_engine" || return 1
+    write_nodes_output "$target_engine" "$runtime_protocols" || return 1
+    persist_runtime_state "${provider:?Runtime provider missing}" "${profile:?Runtime profile missing}" "$target_engine" "$runtime_protocols" || return 1
   fi
-
-  if [[ "$has_runtime" == "true" ]]; then
-    if ! (
-      provider_cfg_load_runtime_exports
-      local source_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
-      assert_engine_protocol_compatibility "$target_engine" "$runtime_protocols"
-      sbd_export_protocol_ports_from_engine "$source_engine" "$runtime_protocols"
-      provider_prepare_domain_runtime_artifacts "$runtime_protocols"
-      case "$target_engine" in
-        sing-box) build_sing_box_config "$runtime_protocols" ;;
-        xray) build_xray_config "$runtime_protocols" ;;
-      esac
-      validate_generated_config "$target_engine" "true"
-      provider_commit_domain_web_front "$runtime_protocols"
-      write_systemd_service "$target_engine"
-      write_nodes_output "$target_engine" "$runtime_protocols"
-      persist_runtime_state "${provider:-vps}" "${profile:-lite}" "$target_engine" "$runtime_protocols"
-    ); then
-      provider_core_backup_restore "$target_engine"
-      die "$(msg "内核已下载，但运行配置重建失败；已尝试恢复旧内核" "Engine downloaded, but runtime rebuild failed; previous engine restore attempted")"
-    fi
-  fi
-
-  log_success "$(msg "内核已设置: engine=${target_engine} tag=${target_tag}" "Kernel set: engine=${target_engine} tag=${target_tag}")"
+  log_success "Kernel set: engine=${target_engine} tag=${target_tag}"
 }
 
 provider_warp_status() {
@@ -165,45 +159,34 @@ provider_warp_status() {
 }
 
 provider_warp_register() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_warp_register_unlocked
+}
+
+provider_warp_register_unlocked() {
+  provider_warp_register_account || return 1
+  provider_warp_rebuild_runtime_from_account "auto" || return 1
+}
+
+provider_warp_register_account() {
   ensure_root
-  local keypair private_key public_key response client_id reserved_hex reserved_dec
+  local keypair encoded private_key public_key response client_id reserved_dec
   local local_v4 local_v6
-  keypair="$(openssl genpkey -algorithm X25519 | openssl pkey -text -noout)"
-  private_key="$(echo "$keypair" | awk '/priv:/{flag=1;next}/pub:/{flag=0}flag' | tr -d '[:space:]' | xxd -r -p | base64)"
-  public_key="$(echo "$keypair" | awk '/pub:/{flag=1}flag' | tr -d '[:space:]' | xxd -r -p | base64)"
-  response="$(curl -fsSL --tlsv1.3 -X POST 'https://api.cloudflareclient.com/v0a2158/reg' -H 'CF-Client-Version: a-7.21-0721' -H 'Content-Type: application/json' -d '{"key":"'"$public_key"'","tos":"'"$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"'"}')"
-  client_id="$(echo "$response" | jq -r '.config.client_id // empty')"
-  local_v4="$(echo "$response" | jq -r '.config.interface.addresses.v4 // empty')"
-  local_v6="$(echo "$response" | jq -r '.config.interface.addresses.v6 // empty')"
-  reserved_hex="$(echo "$client_id" | base64 -d 2>/dev/null | xxd -p -c 256 || true)"
-  if [[ "$reserved_hex" =~ ^[0-9A-Fa-f]{6,} ]]; then
-    reserved_dec="[$((16#${reserved_hex:0:2})),$((16#${reserved_hex:2:2})),$((16#${reserved_hex:4:2}))]"
-  else
-    reserved_dec="[0,0,0]"
-  fi
-  [[ -n "$local_v4" ]] || local_v4="172.16.0.2"
-  [[ -n "$local_v6" ]] || local_v6="2606:4700:110:876d:4d3c:4206:c90c:6bd0"
+  keypair="$(sbd_run_deadline 30 openssl genpkey -algorithm X25519 | sbd_run_deadline 30 openssl pkey -text -noout)" || return 1
+  encoded="$(printf '%s' "$keypair" | python3 -c '
+import base64, sys
+parts = sys.stdin.read().split("priv:", 1)[1].split("pub:", 1)
+keys = [bytes.fromhex(p.replace(":", " ")) for p in parts]
+assert len(keys) == 2 and all(len(k) == 32 for k in keys)
+print(" ".join(base64.b64encode(k).decode() for k in keys))')" || return 1
+  read -r private_key public_key <<< "$encoded"
+  response="$(sbd_http_small --tlsv1.3 -X POST 'https://api.cloudflareclient.com/v0a2158/reg' -H 'CF-Client-Version: a-7.21-0721' -H 'Content-Type: application/json' -d '{"key":"'"$public_key"'","tos":"'"$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"'"}')" || return 1
+  client_id="$(echo "$response" | jq -er '.config.client_id | strings | select(length > 0)')" || return 1
+  local_v4="$(echo "$response" | jq -er '.config.interface.addresses.v4 | strings | select(length > 0)')" || return 1
+  local_v6="$(echo "$response" | jq -er '.config.interface.addresses.v6 | strings | select(length > 0)')" || return 1
+  reserved_dec="$(python3 -c 'import base64,json,sys; b=base64.b64decode(sys.argv[1],validate=True); assert len(b)==3; print(json.dumps(list(b)))' "$client_id")" || return 1
   [[ "$local_v4" == */* ]] || local_v4="${local_v4}/32"
   [[ "$local_v6" == */* ]] || local_v6="${local_v6}/128"
-  mkdir -p "$SBD_DATA_DIR"
-  cat > "${SBD_DATA_DIR}/warp-account.env" <<EOF
-WARP_PRIVATE_KEY=${private_key}
-WARP_PEER_PUBLIC_KEY=bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
-WARP_RESERVED=${reserved_dec:-[0,0,0]}
-WARP_CLIENT_ID=${client_id}
-WARP_LOCAL_V4=${local_v4}
-WARP_LOCAL_V6=${local_v6}
-EOF
-  if [[ -n "$client_id" ]]; then
-    printf '%s\n' "$client_id" > "${SBD_DATA_DIR}/warp-client-id"
-    chmod 600 "${SBD_DATA_DIR}/warp-client-id"
-  fi
-  chmod 600 "${SBD_DATA_DIR}/warp-account.env"
+  provider_warp_account_write "$private_key" 'bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=' "$reserved_dec" "$local_v4" "$local_v6" "$client_id" || return 1
   log_info "$(msg "WARP 地址 ipv4=${local_v4} ipv6=${local_v6}" "WARP addresses ipv4=${local_v4} ipv6=${local_v6}")"
   log_success "$(msg "WARP 账户已生成: ${SBD_DATA_DIR}/warp-account.env" "WARP account generated: ${SBD_DATA_DIR}/warp-account.env")"
-  if declare -F provider_warp_rebuild_runtime_from_account >/dev/null 2>&1; then
-    if ! ( provider_warp_rebuild_runtime_from_account "auto" ); then
-      log_warn "$(msg "WARP 账户已生成，但自动应用到运行时失败；可稍后执行 warp config 手动应用" "WARP account generated, but auto-apply to runtime failed; run warp config to apply manually later")"
-    fi
-  fi
 }

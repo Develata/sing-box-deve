@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
+# shellcheck source=/dev/null
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common_runtime_schema.sh"
+
+# This base is also sourced directly by the focused regression tests.
+# shellcheck source=/dev/null
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common_io.sh"
+# shellcheck source=/dev/null
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common_lock.sh"
+
 SBD_STATE_DIR="/var/lib/sing-box-deve"
 SBD_CONFIG_DIR="/etc/sing-box-deve"
 SBD_RUNTIME_DIR="/run/sing-box-deve"
@@ -22,6 +31,7 @@ SBD_ARGO_TOKEN_FILE="${SBD_DATA_DIR}/argo-token"
 SBD_ARGO_EXEC_FILE="${SBD_DATA_DIR}/argo-exec"
 SBD_SERVICE_FILE="/etc/systemd/system/sing-box-deve.service"
 SBD_ARGO_SERVICE_FILE="/etc/systemd/system/sing-box-deve-argo.service"
+SBD_WARP_SOCKS_SERVICE_FILE="/etc/systemd/system/sing-box-deve-warp-socks5.service"
 SBD_FW_REPLAY_SERVICE_FILE="/etc/systemd/system/sing-box-deve-fw-replay.service"
 
 log_info() { printf '[INFO] %s\n' "$*"; }
@@ -54,14 +64,19 @@ prompt_yes_no() {
     return 0
   fi
 
+  if [[ ! -t 0 ]]; then
+    log_error "Confirmation requires a terminal or explicit --yes: ${prompt}"
+    return 1
+  fi
+
   if [[ "$default_answer" == "Y" ]]; then
-    read -r -p "${prompt} [Y/n]: " answer
+    read -r -p "${prompt} [Y/n]: " answer || return 1
     answer="${answer:-Y}"
     [[ "$answer" =~ ^[Yy]$ ]]
     return $?
   fi
 
-  read -r -p "${prompt} [y/N]: " answer
+  read -r -p "${prompt} [y/N]: " answer || return 1
   answer="${answer:-N}"
   [[ "$answer" =~ ^[Yy]$ ]]
 }
@@ -71,7 +86,8 @@ prompt_with_default() {
   local default_value="$2"
   local out_var="$3"
   local answer
-  read -r -p "${prompt} (default: ${default_value}): " answer
+  [[ -t 0 ]] || { log_error "Input requires a terminal: ${prompt}"; return 1; }
+  read -r -p "${prompt} (default: ${default_value}): " answer || return 1
   answer="${answer:-$default_value}"
   printf -v "$out_var" '%s' "$answer"
 }
@@ -125,8 +141,8 @@ detect_os() {
 }
 
 init_runtime_layout() {
-  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR" "$(dirname "$SBD_SERVICE_FILE")"
-  touch "$SBD_RULES_FILE"
+  mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_RUNTIME_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR" "$(dirname "$SBD_SERVICE_FILE")" || return 1
+  touch "$SBD_RULES_FILE" || return 1
   chmod 700 "$SBD_DATA_DIR" 2>/dev/null || true
   chmod 700 "$SBD_STATE_DIR" 2>/dev/null || true
 }
@@ -140,39 +156,17 @@ get_arch() {
 }
 
 install_apt_dependencies() {
-  # FreeBSD (Serv00) — use pkg
-  if [[ "${OS_ID:-}" == "freebsd" ]]; then
-    if command -v pkg >/dev/null 2>&1; then
-      pkg install -y curl jq openssl ca_root_nss unzip 2>/dev/null || true
-    fi
-    return 0
-  fi
-
-  # Alpine — use apk
-  if [[ "${OS_ID:-}" == "alpine" ]]; then
-    apk update >/dev/null 2>&1 || true
-    apk add --no-cache curl jq tar openssl util-linux iproute2 ca-certificates unzip libqrencode-tools xxd >/dev/null 2>&1 || true
-    return 0
-  fi
-
-  if [[ "$OS_ID" != "ubuntu" && "$OS_ID" != "debian" ]]; then
-    log_warn "$(msg "在 ${OS_ID} 上跳过 apt 依赖安装" "Skipping apt dependency install on ${OS_ID}")"
-    return 0
-  fi
-
-  export DEBIAN_FRONTEND=noninteractive
-  local apt_opts=(
-    "-o" "Acquire::Retries=2"
-    "-o" "Acquire::http::Timeout=15"
-    "-o" "Acquire::https::Timeout=15"
-  )
-  if command -v timeout >/dev/null 2>&1; then
-    timeout 90s apt-get "${apt_opts[@]}" update -y >/dev/null || die "$(msg "apt-get update 超时或失败" "apt-get update timed out/failed")"
-    timeout 120s apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip qrencode xxd >/dev/null || die "$(msg "apt-get install 超时或失败" "apt-get install timed out/failed")"
-  else
-    apt-get "${apt_opts[@]}" update -y >/dev/null || die "$(msg "apt-get update 失败" "apt-get update failed")"
-    apt-get "${apt_opts[@]}" install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip qrencode xxd >/dev/null || die "$(msg "apt-get install 失败" "apt-get install failed")"
-  fi
+  case "${OS_ID:-}" in
+    freebsd)
+      sbd_package_op pkg install -y curl jq openssl ca_root_nss unzip coreutils python3 || return 1 ;;
+    alpine)
+      sbd_package_op apk update || return 1
+      sbd_package_op apk add --no-cache curl jq tar openssl util-linux coreutils iproute2 ca-certificates unzip libqrencode-tools xxd python3 || return 1 ;;
+    ubuntu|debian)
+      sbd_apt_get update -y || return 1
+      sbd_apt_get install -y curl jq tar openssl uuid-runtime iproute2 ca-certificates unzip qrencode xxd python3 coreutils util-linux || return 1 ;;
+    *) log_warn "Skipping dependency installation on unsupported OS: ${OS_ID:-unknown}" ;;
+  esac
 }
 
 download_file() {
@@ -181,25 +175,32 @@ download_file() {
   local attempts="${SBD_DOWNLOAD_RETRIES:-3}"
   local delay="${SBD_DOWNLOAD_RETRY_DELAY:-2}"
   local max_time="${SBD_DOWNLOAD_MAX_TIME:-300}"
-  local tmp err rc attempt
+  local budget="${SBD_DOWNLOAD_TOTAL_TIME:-$max_time}" deadline remaining tmp err rc attempt
+  sbd_positive_seconds "$attempts" && sbd_positive_seconds "$max_time" && sbd_positive_seconds "$budget" || return 2
+  [[ "$delay" =~ ^[0-9]+$ ]] || return 2
+  deadline=$((SECONDS + budget))
   tmp="${out}.tmp.$$"
   err="${out}.err.$$"
   mkdir -p "$(dirname "$out")"
   rm -f "$tmp" "$err" 2>/dev/null || true
 
   for ((attempt = 1; attempt <= attempts; attempt++)); do
-    if curl -fsSL --connect-timeout 15 --max-time "$max_time" "$url" -o "$tmp" 2>"$err"; then
-      mv -f "$tmp" "$out"
+    remaining=$((deadline - SECONDS))
+    (( remaining > 0 )) || break
+    (( remaining <= max_time )) || remaining="$max_time"
+    if curl -fsSL --connect-timeout 15 --max-time "$remaining" "$url" -o "$tmp" 2>"$err"; then
+      mv -f "$tmp" "$out" || { rm -f "$tmp" "$err"; return 1; }
       rm -f "$err" 2>/dev/null || true
       return 0
+    else
+      rc=$?
     fi
-    rc=$?
     log_warn "$(msg "下载失败(${attempt}/${attempts}, rc=${rc}): ${url}" "Download failed (${attempt}/${attempts}, rc=${rc}): ${url}")"
     if [[ -s "$err" ]]; then
       log_warn "$(tail -n 2 "$err" | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
     fi
     rm -f "$tmp" 2>/dev/null || true
-    (( attempt < attempts )) && sleep "$delay"
+    if (( attempt < attempts && SECONDS + delay < deadline )); then sleep "$delay"; fi
   done
 
   rm -f "$tmp" "$err" 2>/dev/null || true
@@ -210,11 +211,11 @@ systemd_reload_and_enable() {
   detect_init_system 2>/dev/null || true
   case "${SBD_INIT_SYSTEM:-systemd}" in
     systemd)
-      sbd_service_daemon_reload
-      systemctl enable sing-box-deve.service >/dev/null
+      sbd_service_daemon_reload || return 1
+      sbd_service_op systemctl enable sing-box-deve.service >/dev/null
       ;;
     openrc)
-      rc-update add sing-box-deve default 2>/dev/null || true
+      sbd_service_op rc-update add sing-box-deve default || return 1
       ;;
     nohup)
       log_info "$(msg "nohup 模式：跳过 daemon-reload" "nohup mode: skipping daemon-reload")"
@@ -282,7 +283,9 @@ sbd_env_quote() {
 sbd_write_env_kv() {
   local key="$1" value="${2:-}"
   [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "Invalid env key: ${key}"
-  printf '%s=%s\n' "$key" "$(sbd_env_quote "$value")"
+  local quoted
+  quoted="$(sbd_env_quote "$value")" || return 1
+  printf '%s=%s\n' "$key" "$quoted"
 }
 
 sbd_strip_inline_env_comment() {
@@ -332,36 +335,46 @@ sbd_strip_inline_env_comment() {
   printf '%s' "$out"
 }
 
-sbd_safe_load_env_file() {
-  local file="$1"
-  [[ -f "$file" ]] || return 1
-
-  local raw line key value lineno=0
-  while IFS= read -r raw || [[ -n "$raw" ]]; do
-    lineno=$((lineno + 1))
-    line="${raw%$'\r'}"
-    [[ -n "${line//[[:space:]]/}" ]] || continue
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue
-
-    line="$(sbd_trim_whitespace "$line")"
-    if [[ "$line" == export[[:space:]]* ]]; then
-      line="$(sbd_trim_whitespace "${line#export}")"
+sbd_parse_env_file() {
+  local _sbd_file="$1" _sbd_raw _sbd_line _sbd_key _sbd_value _sbd_first
+  local -n _sbd_result="$2"
+  [[ -f "$_sbd_file" && ! -L "$_sbd_file" ]] || return 1
+  while IFS= read -r _sbd_raw || [[ -n "$_sbd_raw" ]]; do
+    _sbd_line="$(sbd_trim_whitespace "${_sbd_raw%$'\r'}")"
+    [[ -n "$_sbd_line" && "$_sbd_line" != \#* ]] || continue
+    [[ "$_sbd_line" != export[[:space:]]* ]] || _sbd_line="$(sbd_trim_whitespace "${_sbd_line#export}")"
+    [[ "$_sbd_line" == *=* ]] || { log_error "Invalid env line"; return 1; }
+    _sbd_key="$(sbd_trim_whitespace "${_sbd_line%%=*}")"
+    [[ "$_sbd_key" =~ ^[A-Za-z][A-Za-z0-9_]*$ ]] || return 1
+    case "$_sbd_key" in PATH|HOME|SHELL|IFS|ENV|BASH*|LD_*|SBD_*|PROJECT_ROOT|SECONDS|RANDOM|UID|EUID) log_error "Reserved env key: $_sbd_key"; return 1 ;; esac
+    [[ ! -v '_sbd_result[$_sbd_key]' ]] || { log_error "Duplicate env key: $_sbd_key"; return 1; }
+    _sbd_value="$(sbd_strip_inline_env_comment "${_sbd_line#*=}")"
+    _sbd_value="$(sbd_trim_whitespace "$_sbd_value")"
+    _sbd_first="${_sbd_value:0:1}"
+    if [[ "$_sbd_first" == \" || "$_sbd_first" == \' ]]; then
+      [[ ${#_sbd_value} -ge 2 && "${_sbd_value: -1}" == "$_sbd_first" ]] || { log_error "Unterminated env quote"; return 1; }
     fi
-    [[ "$line" == *=* ]] || die "Invalid env line (${file}:${lineno}), expected key=value"
+    _sbd_result["$_sbd_key"]="$(sbd_unquote_env_value "$_sbd_value")" || return 1
+  done < "$_sbd_file"
+}
 
-    key="${line%%=*}"
-    value="${line#*=}"
-    key="$(sbd_trim_whitespace "$key")"
-    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "Invalid env key (${file}:${lineno}): ${key}"
-    value="$(sbd_strip_inline_env_comment "$value")"
-    value="$(sbd_trim_whitespace "$value")"
-    value="$(sbd_unquote_env_value "$value")"
-    printf -v "$key" '%s' "$value"
-  done < "$file"
+sbd_safe_load_env_file() {
+  local -A _sbd_values=()
+  local _sbd_name
+  sbd_parse_env_file "$1" _sbd_values || return 1
+  for _sbd_name in "${!_sbd_values[@]}"; do
+    printf -v "$_sbd_name" '%s' "${_sbd_values[$_sbd_name]}" || return 1
+  done
 }
 
 sbd_load_runtime_env() {
-  local runtime_file="${1:-${SBD_CONFIG_DIR}/runtime.env}"
-  [[ -f "$runtime_file" ]] || return 1
-  sbd_safe_load_env_file "$runtime_file"
+  local -A _sbd_values=()
+  local _sbd_name
+  sbd_verify_runtime_file "${1:-${SBD_CONFIG_DIR}/runtime.env}" || return 1
+  sbd_parse_env_file "${1:-${SBD_CONFIG_DIR}/runtime.env}" _sbd_values || return 1
+  sbd_validate_runtime_values _sbd_values || return 1
+  # Clear omitted optional fields to prevent state leaking from an earlier load.
+  while IFS= read -r _sbd_name; do
+    printf -v "$_sbd_name" '%s' "${_sbd_values[$_sbd_name]:-}" || return 1
+  done < <(sbd_runtime_keys)
 }

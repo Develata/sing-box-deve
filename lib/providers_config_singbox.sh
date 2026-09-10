@@ -3,29 +3,29 @@ build_sing_box_config() {
   local protocols_csv="$1"
   local config_file="${SBD_CONFIG_DIR}/config.json"
   local uuid
-  uuid="$(ensure_uuid)"
+  uuid="$(ensure_uuid)" || return 1
   local cert_file key_file
-  cert_file="$(get_tls_cert_path)"
-  key_file="$(get_tls_key_path)"
+  cert_file="$(get_tls_cert_path)" || return 1
+  key_file="$(get_tls_key_path)" || return 1
   local ss2022_password=""
-  generate_reality_keys
+  generate_reality_keys || return 1
   local private_key public_key short_id
-  private_key="$(<"${SBD_DATA_DIR}/reality_private.key")"
-  public_key="$(<"${SBD_DATA_DIR}/reality_public.key")"
-  short_id="$(<"${SBD_DATA_DIR}/reality_short_id")"
+  private_key="$(<"${SBD_DATA_DIR}/reality_private.key")" || return 1
+  public_key="$(<"${SBD_DATA_DIR}/reality_public.key")" || return 1
+  short_id="$(<"${SBD_DATA_DIR}/reality_short_id")" || return 1
   local reality_server_name reality_port tls_server_name ws_path_vless
-  reality_server_name="$(sbd_reality_server_name)"
-  reality_port="$(sbd_reality_handshake_port)"
-  tls_server_name="$(sbd_tls_server_name)"
-  ws_path_vless="$(sbd_vless_ws_path)"
+  reality_server_name="$(sbd_reality_server_name)" || return 1
+  reality_port="$(sbd_reality_handshake_port)" || return 1
+  tls_server_name="$(sbd_tls_server_name)" || return 1
+  ws_path_vless="$(sbd_vless_ws_path)" || return 1
   local port_vless_reality port_vless_ws port_ss2022 port_naive port_hysteria2
   local port_tuic
-  port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")"
-  port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")"
-  port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")"
-  port_naive="$(resolve_protocol_port_for_engine "sing-box" "naive")"
-  port_hysteria2="$(resolve_protocol_port_for_engine "sing-box" "hysteria2")"
-  port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")"
+  port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")" || return 1
+  port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")" || return 1
+  port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")" || return 1
+  port_naive="$(resolve_protocol_port_for_engine "sing-box" "naive")" || return 1
+  port_hysteria2="$(resolve_protocol_port_for_engine "sing-box" "hysteria2")" || return 1
+  port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")" || return 1
   local inbounds=""
   local inbound_map=""
   local protocols=()
@@ -33,7 +33,7 @@ build_sing_box_config() {
 
   if protocol_enabled "vless-reality" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "vless-reality" "$port_vless_reality" \
-      "$(singbox_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
+      "$(singbox_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")" || return 1
   fi
 
   local has_warp="false"
@@ -45,42 +45,42 @@ build_sing_box_config() {
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "vless-ws" "$port_vless_ws" \
-      "$(singbox_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless")"
+      "$(singbox_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless")" || return 1
   fi
 
   if protocol_enabled "shadowsocks-2022" "${protocols[@]}"; then
-    ss2022_password="$(ensure_ss2022_password)"
+    ss2022_password="$(ensure_ss2022_password)" || return 1
     sbd_inbounds_append inbounds inbound_map "ss-2022" "$port_ss2022" \
-      "$(singbox_fragment_ss2022 "$ss2022_password" "$port_ss2022")"
+      "$(singbox_fragment_ss2022 "$ss2022_password" "$port_ss2022")" || return 1
   fi
 
   if protocol_enabled "naive" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "naive" "$port_naive" \
-      "$(singbox_fragment_naive "$uuid" "$port_naive" "$tls_server_name" "$cert_file" "$key_file")"
+      "$(singbox_fragment_naive "$uuid" "$port_naive" "$tls_server_name" "$cert_file" "$key_file")" || return 1
   fi
 
   if protocol_enabled "hysteria2" "${protocols[@]}"; then
     local archive_site_dir="" hy2_obfs_mode="off" hy2_obfs_password=""
     if protocols_require_domain_cert "$protocols_csv"; then
-      archive_site_dir="$(sbd_archive_site_dir)"
+      archive_site_dir="$(sbd_archive_site_dir)" || return 1
     fi
-    hy2_obfs_mode="$(sbd_hy2_obfs_mode)"
+    hy2_obfs_mode="$(sbd_hy2_obfs_mode)" || return 1
     if [[ "$hy2_obfs_mode" != "off" ]]; then
-      hy2_obfs_password="$(sbd_hy2_obfs_password)"
+      hy2_obfs_password="$(sbd_hy2_obfs_password)" || return 1
     fi
     sbd_inbounds_append inbounds inbound_map "hy2" "$port_hysteria2" \
-      "$(singbox_fragment_hysteria2 "$uuid" "$port_hysteria2" "$tls_server_name" "$cert_file" "$key_file" "$archive_site_dir" "$hy2_obfs_mode" "$hy2_obfs_password")"
+      "$(singbox_fragment_hysteria2 "$uuid" "$port_hysteria2" "$tls_server_name" "$cert_file" "$key_file" "$archive_site_dir" "$hy2_obfs_mode" "$hy2_obfs_password")" || return 1
   fi
 
   if protocol_enabled "tuic" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "tuic" "$port_tuic" \
-      "$(singbox_fragment_tuic "$uuid" "$port_tuic" "$tls_server_name" "$cert_file" "$key_file")"
+      "$(singbox_fragment_tuic "$uuid" "$port_tuic" "$tls_server_name" "$cert_file" "$key_file")" || return 1
   fi
 
   local endpoints
   endpoints=""
   if [[ "$has_warp" == "true" ]]; then
-    endpoints="$(build_warp_endpoint_singbox)"
+    endpoints="$(build_warp_endpoint_singbox)" || return 1
   fi
 
   local outbounds final_tag upstream_mode available_outbounds
@@ -90,7 +90,7 @@ build_sing_box_config() {
   upstream_mode="${OUTBOUND_PROXY_MODE:-direct}"
   if [[ "$upstream_mode" != "direct" ]]; then
     outbounds+=$',\n'
-    outbounds+="$(build_upstream_outbound_singbox)"
+    outbounds+="$(build_upstream_outbound_singbox)" || return 1
     final_tag="proxy-out"
     available_outbounds+=",proxy-out"
   fi
@@ -109,11 +109,11 @@ build_sing_box_config() {
     endpoints_block+=$'\n  ],\n'
   fi
   local route_json
-  route_json="$(build_singbox_route_json "$final_tag" "$inbound_map" "$available_outbounds")"
+  route_json="$(build_singbox_route_json "$final_tag" "$inbound_map" "$available_outbounds")" || return 1
 
   local tmp_config
-  tmp_config="$(mktemp "${config_file}.tmp.XXXXXX")"
-  cat > "$tmp_config" <<EOF_JSON
+  tmp_config="$(mktemp "${config_file}.tmp.XXXXXX")" || return 1
+  cat > "$tmp_config" <<EOF_JSON || return 1
 {
   "log": {"level": "info"},
   "dns": {"servers": [{"type": "local", "tag": "dns-local"}]},
@@ -126,8 +126,8 @@ ${outbounds}
   "route": ${route_json}
 }
 EOF_JSON
-  sbd_commit_file_with_backups "$config_file" "$tmp_config" 600
+  sbd_commit_file_with_backups "$config_file" "$tmp_config" 600 || return 1
 
-  multi_ports_runtime_append_singbox "$protocols_csv"
-  echo "$public_key" > "${SBD_DATA_DIR}/reality_public.key"
+  multi_ports_runtime_append_singbox "$protocols_csv" || return 1
+  echo "$public_key" > "${SBD_DATA_DIR}/reality_public.key" || return 1
 }

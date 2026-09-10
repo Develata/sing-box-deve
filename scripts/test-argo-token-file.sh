@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 # shellcheck disable=SC1090,SC1091
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "${root_dir}/lib/common_base.sh"
-source "${root_dir}/lib/common_nohup.sh"
-source "${root_dir}/lib/common_init.sh"
-source "${root_dir}/lib/protocols.sh"
-source "${root_dir}/lib/providers_argo.sh"
-source "${root_dir}/lib/providers_config_ops.sh"
-source "${root_dir}/lib/providers_manage.sh"
+PROJECT_ROOT="$root_dir"
+source "$PROJECT_ROOT/lib/load.sh"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
+SBD_HOST_STATE_DIR="$tmp_dir/control"
+SBD_STATE_DIR="$tmp_dir/state"
+SBD_INSTALL_DIR="$tmp_dir/install"
 SBD_BIN_DIR="${tmp_dir}/bin"
 SBD_DATA_DIR="${tmp_dir}/data"
 SBD_CONFIG_DIR="${tmp_dir}/config"
@@ -63,9 +62,10 @@ rm -f "$SBD_ARGO_EXEC_FILE" "$SBD_ARGO_TOKEN_FILE"
 : > "$SBD_ARGO_SERVICE_FILE"
 SBD_INIT_SYSTEM="nohup"
 captured_restart_exec=""
-sbd_service_restart() { captured_restart_exec="$2"; }
+sbd_service_restart() { printf '%s\n' "$2" > "$tmp_dir/captured-restart"; }
 sbd_service_wait_active() { return 0; }
 provider_restart argo
+captured_restart_exec="$(cat "$tmp_dir/captured-restart")"
 [[ -s "$SBD_ARGO_EXEC_FILE" ]] || die "legacy nohup restart did not create argo-exec"
 [[ "$(stat -c %a "$SBD_ARGO_EXEC_FILE")" == "600" ]] || die "migrated argo-exec mode is not 0600"
 [[ -s "$SBD_ARGO_TOKEN_FILE" ]] || die "legacy fixed token was not migrated"
@@ -86,6 +86,7 @@ rm -f "$SBD_ARGO_EXEC_FILE" "$SBD_ARGO_TOKEN_FILE"
 resolve_protocol_port_for_engine() { printf '8444\n'; }
 captured_restart_exec=""
 provider_restart argo
+captured_restart_exec="$(cat "$tmp_dir/captured-restart")"
 [[ "$captured_restart_exec" == *"--url http://127.0.0.1:8444"* ]] || \
   die "legacy temp restart did not reconstruct the vless-ws target"
 

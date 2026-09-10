@@ -29,19 +29,19 @@ provider_doctor_check_runtime() {
     log_warn "$(msg "运行时状态文件缺失: ${SBD_CONFIG_DIR}/runtime.env" "Runtime state file missing: ${SBD_CONFIG_DIR}/runtime.env")"
     return 1
   fi
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
   log_success "$(msg "运行时状态已加载" "Runtime state loaded")"
 }
 
 provider_doctor_check_config() {
   if [[ "${engine:-}" == "sing-box" && -f "${SBD_CONFIG_DIR}/config.json" && -x "${SBD_BIN_DIR}/sing-box" ]]; then
-    if "${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/config.json" >/dev/null 2>&1; then
+    if sbd_run_deadline 30 "${SBD_BIN_DIR}/sing-box" check -c "${SBD_CONFIG_DIR}/config.json" >/dev/null 2>&1; then
       log_success "$(msg "sing-box 配置校验通过" "sing-box config check passed")"
     else
       log_warn "$(msg "sing-box 配置校验失败" "sing-box config check failed")"
     fi
   elif [[ "${engine:-}" == "xray" && -f "${SBD_CONFIG_DIR}/xray-config.json" && -x "${SBD_BIN_DIR}/xray" ]]; then
-    if "${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray-config.json" >/dev/null 2>&1; then
+    if sbd_run_deadline 30 "${SBD_BIN_DIR}/xray" run -test -config "${SBD_CONFIG_DIR}/xray-config.json" >/dev/null 2>&1; then
       log_success "$(msg "xray 配置校验通过" "xray config check passed")"
     else
       log_warn "$(msg "xray 配置校验失败" "xray config check failed")"

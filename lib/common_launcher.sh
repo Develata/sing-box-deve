@@ -54,17 +54,7 @@ sbd_script_version_ge() {
 
 sbd_runtime_env_files() {
   printf '%s\n' \
-    "/etc/sing-box-deve/runtime.env" \
-    "${HOME:-}/sing-box-deve/config/runtime.env"
-}
-
-sbd_unquote_env_value() {
-  local value="$1"
-  value="${value#\"}"
-  value="${value%\"}"
-  value="${value#\'}"
-  value="${value%\'}"
-  printf '%s\n' "$value"
+    "${SBD_CONFIG_DIR}/runtime.env"
 }
 
 sbd_read_runtime_script_root() {
@@ -94,13 +84,14 @@ sbd_update_runtime_script_root() {
     updated="false"
     while IFS= read -r line || [[ -n "$line" ]]; do
       if [[ "$line" == script_root=* ]]; then
-        printf 'script_root=%s\n' "$new_root" >> "$tmp"
+        sbd_write_env_kv script_root "$new_root" >> "$tmp" || return 1
         updated="true"
       else
         printf '%s\n' "$line" >> "$tmp"
       fi
     done < "$runtime_file"
-    [[ "$updated" == "true" ]] || printf 'script_root=%s\n' "$new_root" >> "$tmp"
+    [[ "$updated" == "true" ]] || sbd_write_env_kv script_root "$new_root" >> "$tmp" || return 1
+    sbd_seal_runtime_file "$tmp" || { rm -f "$tmp"; return 1; }
     if ! sbd_commit_file_with_backups "$runtime_file" "$tmp" 600; then
       rm -f "$tmp" 2>/dev/null || true
       log_warn "$(msg "无法写入运行时入口: ${runtime_file}" "Unable to write runtime entrypoint: ${runtime_file}")"
@@ -111,97 +102,41 @@ sbd_update_runtime_script_root() {
   (( seen == 0 || written > 0 ))
 }
 
-sbd_choose_authoritative_script_root() {
-  local current="${1:-${PROJECT_ROOT:-}}" runtime_root runtime_version current_version
-
-  if sbd_is_project_root "$current" && ! sbd_is_ephemeral_script_root "$current"; then
-    printf '%s\n' "$current"
-    return 0
-  fi
-
-  runtime_root="$(sbd_read_runtime_script_root 2>/dev/null || true)"
-  if sbd_is_project_root "$runtime_root"; then
-    printf '%s\n' "$runtime_root"
-    return 0
-  fi
-
-  if sbd_is_project_root "$current"; then
-    printf '%s\n' "$current"
-    return 0
-  fi
-
-  runtime_version="v0.0.0"
-  [[ -n "$runtime_root" ]] && runtime_version="$(sbd_read_script_version "$runtime_root")"
-  for current in "$PWD" "$PWD/sing-box-deve" "${HOME:-}/sing-box-deve" "/root/sing-box-deve" "/opt/sing-box-deve" "/opt/sing-box-deve/script" "/usr/local/src/sing-box-deve"; do
-    sbd_is_git_checkout_root "$current" || continue
-    current_version="$(sbd_read_script_version "$current")"
-    if sbd_script_version_ge "$current_version" "$runtime_version"; then
-      printf '%s\n' "$current"
-      return 0
-    fi
-  done
-}
-
-sbd_copy_script_tree() {
-  local source_dir="$1" target_dir="$2" rel copied=0
-  sbd_is_project_root "$source_dir" || return 1
-  [[ -n "$target_dir" ]] || return 1
-  mkdir -p "$target_dir"
-  # shellcheck source=lib/update_manifest.sh
-  source "${source_dir}/lib/update_manifest.sh"
-  for rel in "${UPDATE_MANIFEST_FILES[@]}"; do
-    [[ -f "${source_dir}/${rel}" ]] || continue
-    install -D -m 0644 "${source_dir}/${rel}" "${target_dir}/${rel}"
-    ((copied += 1))
-  done
-  [[ -f "${source_dir}/checksums.txt" ]] && install -D -m 0644 "${source_dir}/checksums.txt" "${target_dir}/checksums.txt"
-  for rel in "${UPDATE_MANIFEST_EXECUTABLES[@]}"; do
-    chmod +x "${target_dir}/${rel}" 2>/dev/null || true
-  done
-  printf '%s\n' "$copied"
-}
-
 sbd_persist_script_root_if_needed() {
-  local source_dir="${1:-${PROJECT_ROOT:-}}" persist_dir="${SBD_INSTALL_DIR:-/opt/sing-box-deve}/script"
-  local copied
+  local source_dir="${1:-${PROJECT_ROOT:-}}"
 
   sbd_is_project_root "$source_dir" || {
     log_warn "$(msg "无法找到完整脚本源，跳过脚本持久化" "Unable to find complete script source, skipping script persistence")"
     return 0
   }
 
-  if ! sbd_is_ephemeral_script_root "$source_dir"; then
-    PROJECT_ROOT="$source_dir"
-    sbd_update_runtime_script_root "$PROJECT_ROOT" 2>/dev/null || true
-    return 0
-  fi
+  sbd_release_install_tree "$source_dir" || return 1
+  PROJECT_ROOT="$(readlink -f "$SBD_INSTALL_DIR/current")" || return 1
 
-  log_info "$(msg "当前脚本位于临时目录，正在持久化到 ${persist_dir}" "Current script is in a temporary directory; persisting to ${persist_dir}")"
-  copied="$(sbd_copy_script_tree "$source_dir" "$persist_dir")"
-  PROJECT_ROOT="$persist_dir"
-  sbd_update_runtime_script_root "$PROJECT_ROOT" 2>/dev/null || true
-  log_success "$(msg "脚本已持久化到 ${persist_dir} (${copied} 个文件)" "Script persisted to ${persist_dir} (${copied} files)")"
 }
 
 write_sb_launcher() {
-  local launcher_path="${1:-/usr/local/bin/sb}"
-  cat > "$launcher_path" <<'SBEOF'
+  local launcher_path="${1:-${SBD_LAUNCHER_PATH:-/usr/local/bin/sb}}" launcher_tmp
+  if [[ $# == 0 && -z "${SBD_LAUNCHER_PATH:-}" && "${SBD_USER_MODE:-false}" == true ]]; then
+    launcher_path="${HOME}/.local/bin/sb"
+  fi
+  if [[ -e "$launcher_path" || -L "$launcher_path" ]]; then
+    sbd_managed_launcher "$launcher_path" || { log_error "Launcher path belongs to another program: $launcher_path"; return 1; }
+  fi
+  mkdir -p "$(dirname "$launcher_path")" || return 1
+  launcher_tmp="$(mktemp "${launcher_path}.tmp.XXXXXX")" || return 1
+  cat > "$launcher_tmp" <<'SBEOF'
 #!/usr/bin/env bash
 set -euo pipefail
+# Managed by sing-box-deve: launcher-v1
+SBEOF
+  declare -f sbd_unquote_env_value sbd_verify_runtime_file log_error >> "$launcher_tmp" || return 1
+  printf 'runtime_file=%q\n' "${SBD_CONFIG_DIR}/runtime.env" >> "$launcher_tmp" || return 1
+  cat >> "$launcher_tmp" <<'SBEOF'
 
 is_sbd_project_root() {
   local root="$1"
   [[ -x "$root/sing-box-deve.sh" && -f "$root/lib/common.sh" ]]
-}
-
-is_sbd_git_checkout() {
-  local root="$1" origin=""
-  is_sbd_project_root "$root" || return 1
-  [[ -d "$root/.git" ]] || return 1
-  if command -v git >/dev/null 2>&1; then
-    origin="$(git -C "$root" config --get remote.origin.url 2>/dev/null || true)"
-    [[ -z "$origin" || "$origin" == *sing-box-deve* ]] || return 1
-  fi
 }
 
 read_sbd_version() {
@@ -213,65 +148,23 @@ read_sbd_version() {
   fi
 }
 
-normalize_sbd_version() {
-  local raw="${1#v}" core major minor patch extra
-  core="${raw%%[-+]*}"
-  IFS=. read -r major minor patch extra <<< "$core"
-  [[ -z "${extra:-}" ]] || return 1
-  [[ "${major:-}" =~ ^[0-9]+$ ]] || return 1
-  [[ "${minor:-0}" =~ ^[0-9]+$ ]] || return 1
-  [[ "${patch:-0}" =~ ^[0-9]+$ ]] || return 1
-  printf '%d.%d.%d\n' "$major" "${minor:-0}" "${patch:-0}"
-}
-
-sbd_version_ge() {
-  local left right lm ln lp rm rn rp
-  left="$(normalize_sbd_version "${1:-}")" || return 1
-  right="$(normalize_sbd_version "${2:-}")" || return 1
-  IFS=. read -r lm ln lp <<< "$left"
-  IFS=. read -r rm rn rp <<< "$right"
-  (( lm > rm )) && return 0
-  (( lm < rm )) && return 1
-  (( ln > rn )) && return 0
-  (( ln < rn )) && return 1
-  (( lp >= rp ))
-}
-
-unquote_env_value() {
-  local value="$1"
-  value="${value#\"}"
-  value="${value%\"}"
-  value="${value#\'}"
-  value="${value%\'}"
-  printf '%s\n' "$value"
-}
-
 script_root=""
 
-for _p in "/etc/sing-box-deve/runtime.env" "${HOME:-}/sing-box-deve/config/runtime.env"; do
+for _p in "$runtime_file"; do
   if [[ -f "$_p" ]]; then
+    sbd_verify_runtime_file "$_p" || exit 1
     script_root="$(awk -F= '/^script_root=/{print substr($0, index($0, "=") + 1); exit}' "$_p" 2>/dev/null || true)"
-    script_root="$(unquote_env_value "$script_root")"
+    script_root="$(sbd_unquote_env_value "$script_root")"
     [[ -n "$script_root" ]] && break
   fi
 done
-
-if [[ -n "$script_root" && -x "$script_root/sing-box-deve.sh" ]]; then
-  :
-else
-  script_root=""
-  for candidate in "/opt/sing-box-deve/script" "/opt/sing-box-deve" "/usr/local/share/sing-box-deve" "$PWD/sing-box-deve"; do
-    if is_sbd_project_root "$candidate"; then
-      script_root="$candidate"
-      break
-    fi
-  done
-fi
 
 if [[ -z "$script_root" || ! -x "$script_root/sing-box-deve.sh" ]]; then
   echo "[ERROR] Unable to locate sing-box-deve.sh. Reinstall with: sudo bash ./sing-box-deve.sh install ..." >&2
   exit 1
 fi
+
+script_root="$(cd "$script_root" && pwd -P)"
 
 case "${1:-}" in
   --print-root)
@@ -290,5 +183,14 @@ fi
 
 exec "$script_root/sing-box-deve.sh" "$@"
 SBEOF
-  chmod +x "$launcher_path"
+  chmod 0755 "$launcher_tmp" || { rm -f "$launcher_tmp"; return 1; }
+  sbd_host_file_publish "$launcher_path" "$launcher_tmp" || { rm -f "$launcher_tmp"; return 1; }
+}
+
+sbd_managed_launcher() {
+  local file="$1"
+  [[ -f "$file" && ! -L "$file" ]] || return 1
+  grep -q '^# Managed by sing-box-deve: launcher-v1$' "$file" && return 0
+  # Legacy launcher migration: require project-specific structure, not its name.
+  grep -q '^is_sbd_project_root()' "$file" && grep -q 'sing-box-deve/runtime.env' "$file"
 }

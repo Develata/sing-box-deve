@@ -44,15 +44,15 @@ generate_reality_keys() {
     rm -f "$private_key_file" "$public_key_file" "$short_id_file"
   fi
 
-  out="$("${SBD_BIN_DIR}/sing-box" generate reality-keypair 2>/dev/null || true)"
+  out="$(sbd_run_deadline 30 "${SBD_BIN_DIR}/sing-box" generate reality-keypair 2>/dev/null || true)"
   private_key="$(sbd_parse_reality_keypair_output "$out" private)"
   public_key="$(sbd_parse_reality_keypair_output "$out" public)"
   sbd_is_valid_reality_key "$private_key" || die "Failed to generate valid reality private key"
   sbd_is_valid_reality_key "$public_key" || die "Failed to generate valid reality public key"
-  printf '%s\n' "$private_key" > "$private_key_file"
-  printf '%s\n' "$public_key" > "$public_key_file"
+  printf '%s\n' "$private_key" > "$private_key_file" || return 1
+  printf '%s\n' "$public_key" > "$public_key_file" || return 1
   if command -v openssl >/dev/null 2>&1; then
-    openssl rand -hex 4 > "$short_id_file"
+    openssl rand -hex 4 > "$short_id_file" || return 1
   else
     rand_hex_8 > "$short_id_file"
   fi
@@ -61,9 +61,9 @@ generate_reality_keys() {
 
   # Set restrictive permissions on sensitive key files
   # Private key and short_id should only be readable by root
-  chmod 600 "$private_key_file" "$short_id_file"
+  chmod 600 "$private_key_file" "$short_id_file" || return 1
   # Public key can be world-readable
-  chmod 644 "$public_key_file"
+  chmod 644 "$public_key_file" || return 1
 }
 
 sbd_is_valid_ss2022_password() {
@@ -99,13 +99,13 @@ ensure_ss2022_password() {
   fi
 
   if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
-    password="$("${SBD_BIN_DIR}/sing-box" generate rand --base64 16 2>/dev/null | head -n1 || true)"
+    password="$(sbd_run_deadline 30 "${SBD_BIN_DIR}/sing-box" generate rand --base64 16 2>/dev/null | head -n1 || true)"
   fi
   if ! sbd_is_valid_ss2022_password "$password" && command -v openssl >/dev/null 2>&1; then
     password="$(openssl rand -base64 16 | head -n1)"
   fi
   sbd_is_valid_ss2022_password "$password" || die "Failed to generate valid Shadowsocks-2022 password"
-  printf '%s\n' "$password" > "$password_file"
-  chmod 600 "$password_file"
+  printf '%s\n' "$password" > "$password_file" || return 1
+  chmod 600 "$password_file" || return 1
   printf '%s\n' "$password"
 }

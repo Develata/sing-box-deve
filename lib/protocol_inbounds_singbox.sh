@@ -2,6 +2,7 @@
 
 sbd_inbounds_append() {
   local in_var="$1" map_var="$2" tag="$3" port="$4" fragment="$5"
+  [[ -n "$fragment" ]] && jq -e 'type == "object"' <<< "$fragment" >/dev/null || return 1
   local -n in_ref="$in_var"
   local -n map_ref="$map_var"
   [[ -n "$in_ref" ]] && in_ref+=$',\n'

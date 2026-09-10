@@ -4,7 +4,7 @@
 provider_set_port_info() {
   ensure_root
   [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
   local whitelist cfg
   case "${engine:-sing-box}" in
     sing-box)
@@ -45,130 +45,56 @@ provider_set_port_info() {
 }
 
 provider_set_port() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_set_port_unlocked "$@"
+}
+
+provider_set_port_unlocked() {
   ensure_root
-  [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
-  local runtime_provider="${provider:-vps}"
-  local runtime_engine="${engine:-sing-box}"
-  validate_provider "$runtime_provider"
-  validate_engine "$runtime_engine"
-  [[ "$2" =~ ^[0-9]+$ ]] || die "Port must be numeric"
-  (( $2 >= 1 && $2 <= 65535 )) || die "Port must be between 1 and 65535"
-
-  local protocol="$1" new_port="$2" tag fw_proto
-  tag="$(protocol_inbound_tag "$protocol" || true)"
-  [[ -n "$tag" ]] || die "Unsupported protocol for set-port: $protocol"
-  fw_proto="$(protocol_port_map "$protocol")"
+  provider_cfg_load_runtime_exports || return 1
+  local protocol="$1" new_port="$2" tag fw_proto cfg tmp old_port old_records
+  local record_backend record_proto record_port record_tag answer
+  if [[ ! "$new_port" =~ ^[1-9][0-9]{0,4}$ ]] || (( new_port > 65535 )); then
+    log_error "Port must be between 1 and 65535"; return 1
+  fi
+  tag="$(protocol_inbound_tag "$protocol")" || return 1
+  fw_proto="$(protocol_port_map "$protocol")" || return 1
   fw_proto="${fw_proto%%:*}"
-
-  local cfg tmp_cfg old_port rollback_cfg rollback_runtime rollback_nodes
-  local old_tag old_records new_tag new_rule_preexisting
-  old_tag=""
-  new_tag=""
-  new_rule_preexisting="false"
-  rollback_runtime=""
-  rollback_nodes=""
-  if [[ "$runtime_engine" == "sing-box" ]]; then
-    cfg="${SBD_CONFIG_DIR}/config.json"
-    [[ -f "$cfg" ]] || die "Config file missing: $cfg"
-    old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | (.listen_port // .port)' "$cfg" | head -n1)"
-    [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
-    if [[ "$old_port" == "$new_port" ]]; then
-      log_info "$(msg "端口未变化: ${protocol}=${new_port}" "Port unchanged: ${protocol}=${new_port}")"
-      return 0
-    fi
-    provider_multi_ports_reject_conflict "$protocol" "$new_port"
-    rollback_cfg="${SBD_RUNTIME_DIR}/set-port.${tag}.bak.$$"
-    cp "$cfg" "$rollback_cfg"
-    tmp_cfg="${SBD_RUNTIME_DIR}/config.json.tmp"
-    jq --arg t "$tag" --argjson p "$new_port" \
-      '(.inbounds[] | select(.tag==$t) | .listen_port) = $p
-       | ((.inbounds[] | select(.tag==$t)) |= del(.port))' \
-      "$cfg" > "$tmp_cfg"
-    sbd_commit_file_with_backups "$cfg" "$tmp_cfg" 600
-    validate_generated_config "sing-box" "true"
+  case "$engine" in
+    sing-box) cfg="$SBD_CONFIG_DIR/config.json" ;;
+    xray) cfg="$SBD_CONFIG_DIR/xray-config.json" ;;
+    *) return 1 ;;
+  esac
+  old_port="$(jq -er --arg tag "$tag" '.inbounds[] | select(.tag == $tag) | (.listen_port // .port)' "$cfg")" || return 1
+  [[ "$old_port" != "$new_port" ]] || { log_info "Port unchanged: $protocol=$new_port"; return 0; }
+  provider_multi_ports_reject_conflict "$protocol" "$new_port" || return 1
+  tmp="$(mktemp "$SBD_CONFIG_DIR/.set-port.XXXXXX")" || return 1
+  if [[ "$engine" == sing-box ]]; then
+    jq --arg tag "$tag" --argjson port "$new_port" \
+      '(.inbounds[] | select(.tag == $tag)) |= (.listen_port=$port | del(.port))' "$cfg" > "$tmp" || { rm -f "$tmp"; return 1; }
   else
-    cfg="${SBD_CONFIG_DIR}/xray-config.json"
-    [[ -f "$cfg" ]] || die "Config file missing: $cfg"
-    old_port="$(jq -r --arg t "$tag" '.inbounds[] | select(.tag==$t) | .port' "$cfg" | head -n1)"
-    [[ -n "$old_port" ]] || die "Protocol tag not found in config: $tag"
-    if [[ "$old_port" == "$new_port" ]]; then
-      log_info "$(msg "端口未变化: ${protocol}=${new_port}" "Port unchanged: ${protocol}=${new_port}")"
-      return 0
+    jq --arg tag "$tag" --argjson port "$new_port" \
+      '(.inbounds[] | select(.tag == $tag) | .port)=$port' "$cfg" > "$tmp" || { rm -f "$tmp"; return 1; }
+  fi
+  sbd_commit_file_with_backups "$cfg" "$tmp" 600 || return 1
+  validate_generated_config "$engine" false || return 1
+  fw_detect_backend || return 1
+  load_install_context || create_install_context "${provider:?Runtime provider missing}" "${profile:?Runtime profile missing}" "$engine" "${protocols:?Runtime protocols missing}" || return 1
+  old_records="$(fw_records_for_endpoint "$FW_BACKEND" "$fw_proto" "$old_port" core)" || return 1
+  fw_apply_rule "$fw_proto" "$new_port" || return 1
+  provider_restart core || return 1
+  write_nodes_output "$engine" "$protocols" || return 1
+  if [[ -n "$old_records" ]]; then
+    answer=Y
+    if [[ "${AUTO_YES:-false}" != true ]]; then
+      read -r -p "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: " answer || answer=Y
     fi
-    provider_multi_ports_reject_conflict "$protocol" "$new_port"
-    rollback_cfg="${SBD_RUNTIME_DIR}/set-port.${tag}.bak.$$"
-    cp "$cfg" "$rollback_cfg"
-    tmp_cfg="${SBD_RUNTIME_DIR}/xray-config.json.tmp"
-    jq --arg t "$tag" --argjson p "$new_port" '(.inbounds[] | select(.tag==$t) | .port) = $p' "$cfg" > "$tmp_cfg"
-    sbd_commit_file_with_backups "$cfg" "$tmp_cfg" 600
-    validate_generated_config "xray" "true"
-  fi
-
-  fw_detect_backend
-  load_install_context || create_install_context "$runtime_provider" "${profile:-lite}" "$runtime_engine" "${protocols:-vless-reality}"
-  new_tag="$(fw_tag "core" "$fw_proto" "$new_port")"
-  if fw_rule_exists_record "$new_tag"; then
-    new_rule_preexisting="true"
-  fi
-  if [[ -n "$old_port" && "$old_port" != "$new_port" ]]; then
-    old_records="$(fw_records_for_endpoint "$FW_BACKEND" "$fw_proto" "$old_port" core 2>/dev/null || true)"
-    old_tag="$(printf '%s\n' "$old_records" | awk -F'|' 'NF>=4 {print $4; exit}')"
-    [[ -n "$old_tag" ]] || old_tag="$(fw_tag "core" "$fw_proto" "$old_port")"
-  fi
-
-  if ! ( fw_apply_rule "$fw_proto" "$new_port" ); then
-    cp -f "$rollback_cfg" "$cfg" 2>/dev/null || true
-    provider_restart core >/dev/null 2>&1 || true
-    rm -f "$rollback_cfg"
-    die "Failed to apply firewall rule for new port: ${protocol}:${new_port}"
-  fi
-
-
-  if ! ( provider_restart core ); then
-    cp -f "$rollback_cfg" "$cfg" 2>/dev/null || true
-    if [[ "$new_rule_preexisting" != "true" ]]; then
-      fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$new_port" "$new_tag"
-      awk -F'|' -v t="$new_tag" '$4 != t' "$SBD_RULES_FILE" > "${SBD_RULES_FILE}.tmp" 2>/dev/null || true
-      mv "${SBD_RULES_FILE}.tmp" "$SBD_RULES_FILE" 2>/dev/null || true
-    fi
-    provider_restart core >/dev/null 2>&1 || true
-    rm -f "$rollback_cfg"
-    die "Failed to restart core after set-port: ${protocol}:${new_port}"
-  fi
-  write_nodes_output "$runtime_engine" "${protocols:-vless-reality}"
-  if [[ -n "$old_tag" ]]; then
-    local answer
-    if fw_rule_exists_record "$old_tag"; then
-      if [[ "${AUTO_YES:-false}" == "true" ]]; then
-        answer="Y"
-      else
-        if ! read -r -p "$(msg "是否移除旧端口的防火墙规则 ${fw_proto}/${old_port}? [Y/n]: " "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: ")" answer; then
-          answer="Y"
-        else
-          answer="${answer:-Y}"
-        fi
-      fi
-      if [[ "$answer" =~ ^[Yy]$ ]]; then
-        local record_backend record_proto record_port record_tag
-        if [[ -n "${old_records:-}" ]]; then
-          while IFS='|' read -r record_backend record_proto record_port record_tag; do
-            [[ -n "$record_backend" && -n "$record_proto" && -n "$record_port" && -n "$record_tag" ]] || continue
-            fw_remove_rule_by_record "$record_backend" "$record_proto" "$record_port" "$record_tag"
-            fw_remove_record_by_tag "$record_tag"
-          done <<< "$old_records"
-        else
-          fw_remove_rule_by_record "$FW_BACKEND" "$fw_proto" "$old_port" "$old_tag"
-          fw_remove_record_by_tag "$old_tag"
-        fi
-        log_success "$(msg "已移除旧防火墙规则: ${fw_proto}/${old_port}" "Removed old firewall rule: ${fw_proto}/${old_port}")"
-      else
-        log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
-      fi
-    else
-      log_warn "$(msg "保留历史防火墙规则: ${fw_proto}/${old_port}" "Preserving historical firewall rule: ${fw_proto}/${old_port}")"
+    if [[ "${answer:-Y}" =~ ^[Yy]$ ]]; then
+      while IFS='|' read -r record_backend record_proto record_port record_tag; do
+        [[ -n "$record_tag" ]] || return 1
+        fw_remove_rule_by_record "$record_backend" "$record_proto" "$record_port" "$record_tag" || return 1
+        fw_remove_record_by_tag "$record_tag" || return 1
+      done <<< "$old_records"
     fi
   fi
-  rm -f "$rollback_cfg"
-  log_success "$(msg "协议端口已更新: ${protocol} -> ${new_port}" "Protocol port updated: ${protocol} -> ${new_port}")"
+  log_success "Protocol port updated: $protocol -> $new_port"
 }

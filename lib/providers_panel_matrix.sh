@@ -14,7 +14,7 @@ provider_protocol_matrix_show() {
   local runtime_outbound_mode="direct" runtime_proxy_port=""
 
   if [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]]; then
-    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+    sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
     runtime_engine="${engine:-sing-box}"
     runtime_protocols="${protocols:-}"
     runtime_warp_mode="${warp_mode:-off}"

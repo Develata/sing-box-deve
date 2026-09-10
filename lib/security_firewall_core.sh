@@ -126,10 +126,15 @@ fw_record_rule() {
 }
 
 fw_enable_replay_service() {
-  local script_cmd="/usr/local/bin/sb"
+  local script_cmd="${SBD_LAUNCHER_PATH:-/usr/local/bin/sb}"
+  [[ "${SBD_USER_MODE:-false}" != true || -n "${SBD_LAUNCHER_PATH:-}" ]] || script_cmd="$HOME/.local/bin/sb"
   detect_init_system
   if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
-    cat > "$SBD_FW_REPLAY_SERVICE_FILE" <<EOF
+    local service_tmp
+    mkdir -p "$(dirname "$SBD_FW_REPLAY_SERVICE_FILE")" || return 1
+    service_tmp="$(mktemp "$SBD_FW_REPLAY_SERVICE_FILE.tmp.XXXXXX")" || return 1
+    cat > "$service_tmp" <<EOF
+# Managed by sing-box-deve: service-v1
 [Unit]
 Description=sing-box-deve firewall replay
 After=network-online.target
@@ -142,6 +147,7 @@ ExecStart=${script_cmd} fw replay
 [Install]
 WantedBy=multi-user.target
 EOF
+    sbd_host_file_publish "$SBD_FW_REPLAY_SERVICE_FILE" "$service_tmp" || return 1
   fi
   sbd_service_enable_oneshot "sing-box-deve-fw-replay" "${script_cmd} fw replay"
 }

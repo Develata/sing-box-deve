@@ -10,8 +10,7 @@ load_settings() {
     legacy_lang="$(tr -d '[:space:]' < "${SBD_CONFIG_DIR}/lang" 2>/dev/null || true)"
     [[ "$legacy_lang" == "zh" || "$legacy_lang" == "en" ]] || legacy_lang="en"
     LANG_CODE="$legacy_lang"
-    save_settings
-    rm -f "${SBD_CONFIG_DIR}/lang"
+    # Migrate only on an explicit settings write.
   fi
 
   if [[ -f "$SBD_SETTINGS_FILE" ]]; then
@@ -37,15 +36,23 @@ load_settings() {
 }
 
 save_settings() {
-  mkdir -p "$SBD_CONFIG_DIR" >/dev/null 2>&1 || true
-  if [[ -w "$SBD_CONFIG_DIR" || "${EUID}" -eq 0 ]]; then
-    printf 'lang=%s;auto_yes=%s;update_channel=%s\n' "$LANG_CODE" "$AUTO_YES" "$UPDATE_CHANNEL" > "$SBD_SETTINGS_FILE"
-  fi
+  local tmp
+  mkdir -p "$SBD_CONFIG_DIR" || return 1
+  tmp="$(mktemp "$SBD_SETTINGS_FILE.tmp.XXXXXX")" || return 1
+  printf 'lang=%s;auto_yes=%s;update_channel=%s\n' "$LANG_CODE" "$AUTO_YES" "$UPDATE_CHANNEL" > "$tmp" || return 1
+  sbd_commit_file_with_backups "$SBD_SETTINGS_FILE" "$tmp" 600
 }
 
 set_setting() {
+  sbd_with_mutation_lock set_setting_unlocked "$@" || return 1
+  SETTINGS_INITIALIZED=false
+  load_settings
+}
+
+set_setting_unlocked() {
   local key="$1"
   local value="$2"
+  SETTINGS_INITIALIZED=false
   load_settings
   case "$key" in
     lang)
@@ -64,7 +71,7 @@ set_setting() {
       die "Unknown setting key: $key"
       ;;
   esac
-  save_settings
+  save_settings || return 1
 }
 
 show_settings() {
@@ -95,5 +102,5 @@ init_i18n() {
     *) LANG_CODE="zh" ;;
   esac
 
-  save_settings
+  # Session language choice is persisted only by the settings command.
 }

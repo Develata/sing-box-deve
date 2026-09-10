@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1090,SC1091
+# shellcheck disable=SC2034
 set -euo pipefail
-
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "${root_dir}/lib/common_base.sh"
-source "${root_dir}/lib/providers_config_lock.sh"
-
+source "$root_dir/lib/common_base.sh"
+source "$root_dir/lib/providers_config_lock.sh"
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
-SBD_STATE_DIR="${tmp_dir}/state"
-SBD_CFG_LOCK_FILE="${SBD_STATE_DIR}/cfg.lock"
-SBD_FORCE_MKDIR_LOCK=true
-mkdir -p "${SBD_CFG_LOCK_FILE}.d"
-printf '99999999\n' > "${SBD_CFG_LOCK_FILE}.d/pid"
-
-marker="${tmp_dir}/ran"
-provider_cfg_with_lock touch "$marker"
-[[ -f "$marker" ]] || die "fallback lock did not run protected command"
-[[ ! -e "${SBD_CFG_LOCK_FILE}.d" ]] || die "fallback lock was not cleaned"
-
-if provider_cfg_with_lock false; then
-  die "protected command failure was swallowed"
+trap 'rm -rf "$tmp_dir"' EXIT
+SBD_STATE_DIR="$tmp_dir/state"
+SBD_INSTALL_DIR="$tmp_dir/install"
+SBD_LOCK_TIMEOUT=1
+hold_lock() { touch "$tmp_dir/locked"; sleep 3; }
+provider_cfg_with_lock hold_lock &
+owner=$!
+for ((i=0; i<100; i++)); do [[ ! -e "$tmp_dir/locked" ]] || break; sleep 0.02; done
+[[ -e "$tmp_dir/locked" ]] || exit 1
+if provider_cfg_with_lock touch "$tmp_dir/overlap"; then
+  echo '[FAIL] concurrent mutation was allowed' >&2; exit 1
 fi
-[[ ! -e "${SBD_CFG_LOCK_FILE}.d" ]] || die "failed command left stale lock"
-
-printf '[OK] fallback config lock checks passed\n'
+[[ ! -e "$tmp_dir/overlap" ]]
+wait "$owner"
+provider_cfg_with_lock touch "$tmp_dir/after"
+[[ -e "$tmp_dir/after" ]]
+if provider_cfg_with_lock false; then exit 1; fi
+provider_cfg_with_lock provider_cfg_with_lock touch "$tmp_dir/nested"
+[[ -e "$tmp_dir/nested" ]]
+echo '[OK] mutation serialization, failure propagation and nesting checks passed'

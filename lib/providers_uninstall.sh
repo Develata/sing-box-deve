@@ -1,153 +1,130 @@
 #!/usr/bin/env bash
 
 uninstall_disable_unit() {
-  local unit="$1"
-  local svc_name="${unit%.service}"
-  sbd_service_disable_oneshot "$svc_name"
+  sbd_service_disable_oneshot "${1%.service}"
+}
+
+sbd_managed_unit_file() {
+  local file="$1" exec_cmd
+  [[ -f "$file" && ! -L "$file" ]] || return 1
+  if [[ -f "$(sbd_host_file_record "$file")/after.sha256" ]]; then sbd_host_file_unchanged "$file"; return $?; fi
+  grep -q '^# Managed by sing-box-deve: service-v1$' "$file" && return 0
+  exec_cmd="$(sed -n 's/^ExecStart=//p' "$file" | head -n1)"
+  [[ "$exec_cmd" == "$SBD_INSTALL_DIR/"* ]]
 }
 
 uninstall_remove_legacy_engine_units() {
-  local unit file exec_cmd exec_bin
-  for unit in "sing-box.service" "xray.service"; do
-    file="/etc/systemd/system/${unit}"
+  [[ "${SBD_USER_MODE:-false}" != true ]] || return 0
+  local unit file
+  for unit in sing-box.service xray.service; do
+    file="${SBD_SYSTEMD_DIR:-/etc/systemd/system}/${unit}"
     [[ -f "$file" ]] || continue
-    if grep -Eq '/opt/sing-box-deve|/usr/local/bin/(sing-box|xray)|sing-box-deve' "$file"; then
-      exec_cmd="$(awk -F= '/^ExecStart=/{print $2; exit}' "$file" | xargs || true)"
-      exec_bin="${exec_cmd%% *}"
-      if [[ "$exec_bin" == "/usr/local/bin/sing-box" || "$exec_bin" == "/usr/local/bin/xray" ]]; then
-        rm -f "$exec_bin"
-        log_info "$(msg "已移除旧托管二进制: ${exec_bin}" "Removed legacy managed binary: ${exec_bin}")"
-      fi
-      uninstall_disable_unit "$unit"
-      rm -f "$file"
-      log_info "$(msg "已移除旧托管服务单元: ${unit}" "Removed legacy managed unit: ${unit}")"
+    if sbd_managed_unit_file "$file"; then
+      uninstall_disable_unit "$unit" || return 1
+      rm -f -- "$file" || return 1
+    else
+      log_warn "Keeping service with unproven ownership: ${file}"
     fi
   done
 }
 
+
 uninstall_remove_managed_global_bins() {
-  local global_bin_dir="${SBD_GLOBAL_BIN_DIR:-/usr/local/bin}"
-  local p name real
-  if [[ "${SBD_USER_MODE:-false}" == "true" ]]; then
-    log_info "$(msg "非 root 模式：跳过全局命令入口清理: ${global_bin_dir}" "User mode: skipping global command cleanup: ${global_bin_dir}")"
-    return 0
-  fi
-  for p in "${global_bin_dir}/sb" "${global_bin_dir}/sing-box" "${global_bin_dir}/xray"; do
-    [[ -e "$p" ]] || continue
-    name="$(basename "$p")"
+  local global_bin_dir="${SBD_GLOBAL_BIN_DIR:-/usr/local/bin}" p real
+  [[ "${SBD_USER_MODE:-false}" != true ]] || global_bin_dir="${HOME}/.local/bin"
+  for p in "$global_bin_dir/sb" "$global_bin_dir/sing-box" "$global_bin_dir/xray"; do
+    [[ -e "$p" || -L "$p" ]] || continue
     real="$(readlink -f "$p" 2>/dev/null || true)"
-    case "$name" in
-      sb)
-        rm -f "$p"
-        log_info "$(msg "已移除命令入口: ${p}" "Removed command entry: ${p}")"
-        ;;
-      sing-box|xray)
-        if [[ "$real" == "${SBD_INSTALL_DIR}/"* ]]; then
-          rm -f "$p"
-          log_info "$(msg "已移除托管二进制链接: ${p}" "Removed managed binary link: ${p}")"
-        fi
-        ;;
-    esac
+    if [[ -L "$p" && "$real" == "$SBD_INSTALL_DIR/"* ]] || sbd_managed_launcher "$p"; then
+      rm -f -- "$p" || return 1
+      sbd_host_forget_file "$p" || return 1
+    else
+      log_warn "Keeping command with unproven ownership: ${p}"
+    fi
   done
 }
 
-provider_uninstall() {
-  local keep_settings="${1:-false}"
-  ensure_root
-  log_warn "$(msg "开始卸载：仅移除脚本托管的防火墙规则与 sing-box-deve 状态" "Uninstall requested; removing only managed firewall rules and sing-box-deve state")"
-  uninstall_disable_unit "sing-box-deve.service"
-  uninstall_disable_unit "sing-box-deve-argo.service"
-  uninstall_disable_unit "sing-box-deve-psiphon.service"
-  uninstall_disable_unit "sing-box-deve-jump.service"
-  uninstall_disable_unit "sing-box-deve-fw-replay.service"
-  uninstall_remove_legacy_engine_units
-  rm -f "$SBD_SERVICE_FILE"
-  rm -f "$SBD_ARGO_SERVICE_FILE"
-  rm -f /etc/systemd/system/sing-box-deve-psiphon.service
-  rm -f /etc/systemd/system/sing-box-deve-jump.service
-  rm -f /etc/systemd/system/sing-box-deve-fw-replay.service
-  uninstall_remove_managed_global_bins
-  sbd_service_daemon_reload
-  if fw_detect_backend_optional; then
-    fw_clear_legacy_iptables_core_rules
-    fw_clear_managed_rules
-  else
-    log_warn "$(msg "未检测到防火墙后端；跳过托管防火墙规则清理" "No firewall backend detected; skipping managed firewall cleanup")"
-    mkdir -p "$(dirname "$SBD_RULES_FILE")"
-    : > "$SBD_RULES_FILE" 2>/dev/null || true
-  fi
-  if [[ "$keep_settings" == "true" ]]; then
-    mkdir -p "${SBD_CONFIG_DIR}/backup"
-    [[ -f "$SBD_SETTINGS_FILE" ]] && cp "$SBD_SETTINGS_FILE" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/uuid" ]] && cp "${SBD_DATA_DIR}/uuid" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/reality_private.key" ]] && cp "${SBD_DATA_DIR}/reality_private.key" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/reality_public.key" ]] && cp "${SBD_DATA_DIR}/reality_public.key" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/reality_short_id" ]] && cp "${SBD_DATA_DIR}/reality_short_id" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/xray_private.key" ]] && cp "${SBD_DATA_DIR}/xray_private.key" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/xray_public.key" ]] && cp "${SBD_DATA_DIR}/xray_public.key" "${SBD_CONFIG_DIR}/backup/"
-    [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && cp "${SBD_DATA_DIR}/xray_short_id" "${SBD_CONFIG_DIR}/backup/"
-    # Priority 2.4: Set restrictive permissions on sensitive backup files (explicit list, no glob)
-    chmod 700 "${SBD_CONFIG_DIR}/backup"
-    local sensitive_file
-    for sensitive_file in uuid reality_private.key reality_short_id xray_private.key xray_short_id; do
-      [[ -f "${SBD_CONFIG_DIR}/backup/${sensitive_file}" ]] && chmod 600 "${SBD_CONFIG_DIR}/backup/${sensitive_file}"
-    done
-    rm -f "${SBD_CONFIG_DIR}/runtime.env" "${SBD_CONFIG_DIR}/config.yaml" "${SBD_CONFIG_DIR}/config.json" "${SBD_CONFIG_DIR}/xray-config.json"
-    rm -rf "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
-    find "${SBD_CONFIG_DIR}" -maxdepth 1 -type f -delete 2>/dev/null || true
-    log_info "$(msg "已保留备份: ${SBD_CONFIG_DIR}/backup/ (settings, uuid, keys)" "Backup preserved: ${SBD_CONFIG_DIR}/backup/ (settings, uuid, keys)")"
-  else
-    rm -rf "${SBD_CONFIG_DIR}" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"
-  fi
-  
-  # Priority 3.4: Verify uninstall completed successfully
-  if ! verify_uninstall; then
-    die "$(msg "卸载验证失败：仍有托管文件残留，请手动清理后重试" "Uninstall verification failed: managed files still remain, please clean up manually and retry")"
-  fi
-  
-  log_success "$(msg "卸载完成" "Uninstall complete")"
+sbd_uninstall_validate_roots() {
+  local root canonical host_state
+  host_state="$(sbd_host_state_dir)" || return 1
+  for root in "$SBD_CONFIG_DIR" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR"; do
+    [[ "$root" == /* && "$root" != *$'\n'* && "$root" != *'|'* && ! -L "$root" && "$root" != *'/../'* && "$root" != */.. ]] || return 1
+    canonical="$(realpath -m "$root")" || return 1
+    [[ "$canonical" == "${root%/}" && "$host_state" != "$canonical" && "$host_state" != "$canonical/"* ]] || return 1
+    case "$canonical" in /|/etc|/opt|/usr|/usr/local|/bin|/sbin|/lib|/tmp|/var|/var/tmp|/var/lib|/run|/home|/root|"${HOME%/}"|'') return 1 ;; esac
+  done
 }
 
-# Priority 3.4: Verify that uninstall removed critical files
-verify_uninstall() {
-  local remaining=()
-  local global_bin_dir="${SBD_GLOBAL_BIN_DIR:-/usr/local/bin}"
-  
-  # Check for remaining service files
-  [[ -f "$SBD_SERVICE_FILE" ]] && remaining+=("$SBD_SERVICE_FILE")
-  [[ -f "$SBD_ARGO_SERVICE_FILE" ]] && remaining+=("$SBD_ARGO_SERVICE_FILE")
-  [[ -f /etc/systemd/system/sing-box-deve-psiphon.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-psiphon.service")
-  [[ -f /etc/systemd/system/sing-box-deve-jump.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-jump.service")
-  [[ -f /etc/systemd/system/sing-box-deve-fw-replay.service ]] && remaining+=("/etc/systemd/system/sing-box-deve-fw-replay.service")
-  
-  # Check for remaining directories (only if not keeping settings)
-  [[ -d "$SBD_INSTALL_DIR" ]] && remaining+=("$SBD_INSTALL_DIR")
-  
-  # Check for persisted script directory
-  [[ -d "${SBD_INSTALL_DIR}/script" ]] && remaining+=("${SBD_INSTALL_DIR}/script")
-  
-  # Check for remaining binaries
-  if [[ "${SBD_USER_MODE:-false}" != "true" ]]; then
-    [[ -f "${global_bin_dir}/sb" ]] && remaining+=("${global_bin_dir}/sb")
+sbd_uninstall_backup() {
+  local destination="$1" root
+  [[ "$destination" == "$(realpath -m "$destination")" ]] || return 1
+  for root in "$SBD_CONFIG_DIR" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"; do
+    [[ "$destination" != "$root" && "$destination" != "$root/"* ]] || {
+      log_error "Backup is inside uninstall deletion set: ${destination}"; return 1;
+    }
+  done
+  sbd_state_capture "$destination" false || return 1
+  sbd_state_verify "$destination"
+}
+
+provider_uninstall() {
+  sbd_with_mutation_lock provider_uninstall_unlocked "$@"
+}
+
+provider_uninstall_unlocked() {
+  local keep_settings="${1:-false}" backup="" svc file
+  local -a service_files=("$SBD_SERVICE_FILE" "$SBD_ARGO_SERVICE_FILE" "$SBD_FW_REPLAY_SERVICE_FILE" "$SBD_WARP_SOCKS_SERVICE_FILE")
+  detect_init_system || return 1
+  if [[ "$SBD_INIT_SYSTEM" == openrc && "${SBD_USER_MODE:-false}" != true ]]; then
+    for svc in sing-box-deve sing-box-deve-argo sing-box-deve-fw-replay sing-box-deve-warp-socks5; do
+      service_files+=("${SBD_OPENRC_DIR:-/etc/init.d}/$svc")
+    done
   fi
-  
-  # Check if services are still active
-  if sbd_service_is_active "sing-box-deve" 2>/dev/null; then
-    remaining+=("sing-box-deve.service (still active)")
+  ensure_root
+  sbd_uninstall_validate_roots || { log_error "Unsafe uninstall roots"; return 1; }
+  if [[ "$keep_settings" == true ]]; then
+    backup="${SBD_INSTALL_DIR}.backup-$(date -u +%Y%m%dT%H%M%SZ)-$(rand_hex_8)"
+    sbd_uninstall_backup "$backup" || { log_error "Backup verification failed; uninstall aborted"; return 1; }
   fi
-  if sbd_service_is_active "sing-box-deve-psiphon" 2>/dev/null; then
-    remaining+=("sing-box-deve-psiphon.service (still active)")
-  fi
-  if sbd_service_is_active "sing-box-deve-jump" 2>/dev/null; then
-    remaining+=("sing-box-deve-jump.service (still active)")
-  fi
-  
-  if [[ ${#remaining[@]} -gt 0 ]]; then
-    log_warn "$(msg "以下项目未能完全移除:" "Following items were not fully removed:")"
-    printf '  - %s\n' "${remaining[@]}"
+  for file in "${service_files[@]}"; do
+    [[ ! -e "$file" ]] || sbd_managed_unit_file "$file" || {
+      log_error "Service ownership unproven; uninstall aborted: $file"; return 1;
+    }
+  done
+  log_warn "Uninstall requested; removing verified managed runtime resources"
+  for svc in sing-box-deve sing-box-deve-argo sing-box-deve-fw-replay sing-box-deve-warp-socks5; do
+    # Stop before deleting PID files; a stop failure must leave recovery state.
+    uninstall_disable_unit "${svc}.service" || return 1
+    if sbd_service_is_active "$svc"; then log_error "Service still active: ${svc}"; return 1; fi
+  done
+  uninstall_remove_legacy_engine_units || return 1
+  for file in "${service_files[@]}"; do
+    [[ ! -f "$file" ]] || rm -f -- "$file" || return 1
+    sbd_host_forget_file "$file" || return 1
+  done
+  uninstall_remove_managed_global_bins || return 1
+  sbd_service_daemon_reload || return 1
+  if fw_detect_backend_optional; then
+    fw_clear_managed_rules || return 1
+  elif [[ -s "$SBD_RULES_FILE" ]]; then
+    log_error "Firewall backend unavailable; keeping ownership records for recovery"
     return 1
   else
-    log_info "$(msg "卸载验证通过：所有托管文件已移除" "Uninstall verification passed: all managed files removed")"
-    return 0
+    log_warn "No firewall backend detected; no managed rules to remove"
   fi
+  if [[ "${PURGE_MANAGED_HOST_CHANGES:-false}" == true ]]; then
+    sbd_host_purge || return 1
+  fi
+  sbd_uninstall_validate_roots || return 1
+  rm -rf -- "$SBD_CONFIG_DIR" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR" || return 1
+  verify_uninstall || return 1
+  [[ -z "$backup" ]] || log_info "Backup preserved and verified: ${backup}"
+  log_success "Uninstall complete"
+}
+
+verify_uninstall() {
+  local path
+  for path in "$SBD_CONFIG_DIR" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR"; do
+    [[ ! -e "$path" && ! -L "$path" ]] || { log_error "Managed path remains: ${path}"; return 1; }
+  done
 }

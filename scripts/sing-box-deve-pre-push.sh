@@ -13,7 +13,8 @@ run() {
   "$@"
 }
 
-run bash -n sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh
+for shell_file in sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh; do bash -n "$shell_file"; done
+log "all shell files parsed"
 run node --check web-generator/app.js
 run node --check web-generator/schema.js
 run bash scripts/test-module-size.sh
@@ -42,6 +43,15 @@ run bash scripts/test-config-lock.sh
 run bash scripts/test-argo-token-file.sh
 run bash scripts/test-service-restart.sh
 run bash scripts/test-core-update-transaction.sh
+run bash scripts/test-web-front-smoke.sh
+run bash scripts/test-source-graph.sh
+run bash scripts/test-reliability.sh
+run bash scripts/test-review-recovery.sh
+run bash scripts/test-install-recovery.sh
+run bash scripts/test-io-deadlines.sh
+run python3 scripts/test-runtime-archive.py
+run bash scripts/test-runtime-release.sh
+run python3 scripts/test-bounded-log.py
 run bash scripts/test-current-core-suite.sh
 
 checksum_before="$(mktemp)"

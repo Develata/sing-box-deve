@@ -9,8 +9,8 @@ run_install() {
   validate_provider "$provider"
   validate_engine "$engine"
   validate_profile_protocols "$profile" "$protocols_csv"
-  prepare_initial_install_ports "$protocols_csv"
-  validate_feature_modes
+  if [[ "$dry_run" == true ]]; then prepare_initial_install_ports "$protocols_csv" || return 1; fi
+  validate_feature_modes || return 1
   if [[ "$dry_run" == "true" ]] && protocols_require_domain_cert "$protocols_csv"; then
     local dry_domain="${TLS_SERVER_NAME:-${ACME_DOMAIN:-}}"
     [[ -n "$dry_domain" ]] || die "Dry-run: selected protocols require --tls-sni or --acme-domain"
@@ -37,13 +37,6 @@ run_install() {
     return 0
   fi
 
-  init_runtime_layout
-
-  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER WEB_FRONT_MODE HY2_OBFS_MODE HY2_OBFS_PASSWORD REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE XRAY_VLESS_ENC XRAY_XHTTP_REALITY CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK OUTBOUND_PROXY_MODE OUTBOUND_PROXY_UDP_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS SBD_UUID UUID
-
-  create_install_context "$provider" "$profile" "$engine" "$protocols_csv"
-  auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE"
-
   if [[ "${AUTO_YES:-false}" != "true" ]]; then
     print_plan_summary "$provider" "$profile" "$engine" "$protocols_csv"
     if ! prompt_yes_no "$(msg "确认执行该安装计划吗？" "Apply this plan?")" "Y"; then
@@ -52,14 +45,27 @@ run_install() {
     fi
   fi
 
+  sbd_with_mutation_lock sbd_transaction_run install run_install_committed "$provider" "$profile" "$engine" "$protocols_csv"
+}
+
+run_install_committed() {
+  local provider="$1" profile="$2" engine="$3" protocols_csv="$4"
+  prepare_initial_install_ports "$protocols_csv" || return 1
+  init_runtime_layout || return 1
+
+  export ARGO_MODE ARGO_DOMAIN ARGO_TOKEN ARGO_CDN_ENDPOINTS WARP_MODE ROUTE_MODE IP_PREFERENCE CDN_TEMPLATE_HOST TLS_MODE ACME_CERT_PATH ACME_KEY_PATH ACME_DOMAIN ACME_EMAIL ACME_DNS_PROVIDER WEB_FRONT_MODE HY2_OBFS_MODE HY2_OBFS_PASSWORD REALITY_SERVER_NAME REALITY_FINGERPRINT REALITY_HANDSHAKE_PORT TLS_SERVER_NAME VLESS_WS_PATH VLESS_XHTTP_PATH VLESS_XHTTP_MODE XRAY_VLESS_ENC XRAY_XHTTP_REALITY CDN_HOST_VLESS_WS CDN_HOST_VLESS_XHTTP PROXYIP_VLESS_WS PROXYIP_VLESS_XHTTP DOMAIN_SPLIT_DIRECT DOMAIN_SPLIT_PROXY DOMAIN_SPLIT_BLOCK OUTBOUND_PROXY_MODE OUTBOUND_PROXY_UDP_MODE OUTBOUND_PROXY_HOST OUTBOUND_PROXY_PORT OUTBOUND_PROXY_USER OUTBOUND_PROXY_PASS SBD_UUID UUID
+
+  create_install_context "$provider" "$profile" "$engine" "$protocols_csv" || return 1
+  auto_generate_config_snapshot "$CONFIG_SNAPSHOT_FILE" || return 1
+
   local firewall_snapshot_enabled="false"
   if [[ "$provider" == "vps" ]]; then
-    fw_detect_backend
-    fw_snapshot_create
+    fw_detect_backend || return 1
+    fw_snapshot_create || return 1
     firewall_snapshot_enabled="true"
   fi
 
-  if ! provider_install "$provider" "$profile" "$engine" "$protocols_csv"; then
+  if ! (provider_install "$provider" "$profile" "$engine" "$protocols_csv"); then
     if [[ "$firewall_snapshot_enabled" == "true" ]]; then
       log_error "$(msg "安装失败，正在回滚防火墙变更" "Install failed; rolling back firewall changes")"
       fw_rollback
@@ -88,7 +94,6 @@ apply_config() {
   local config_file="$1"
   ensure_root
   detect_os
-  init_runtime_layout
 
   [[ -f "$config_file" ]] || die "Config file not found: $config_file"
 
@@ -141,10 +146,14 @@ apply_config() {
 }
 
 apply_runtime() {
+  sbd_with_mutation_lock apply_runtime_unlocked "$@"
+}
+
+apply_runtime_unlocked() {
   ensure_root
   [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found at ${SBD_CONFIG_DIR}/runtime.env"
 
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
   validate_runtime_required_fields
   export ARGO_MODE="${argo_mode:-off}"
   export ARGO_CDN_ENDPOINTS="${argo_cdn_endpoints:-}"

@@ -1,133 +1,102 @@
 #!/usr/bin/env bash
 
 validate_serv00_accounts_json() {
-  local json="$1"
-  echo "$json" | jq -e . >/dev/null 2>&1 || die "SERV00_ACCOUNTS_JSON is not valid JSON"
-  echo "$json" | jq -e 'type=="array"' >/dev/null 2>&1 || die "SERV00_ACCOUNTS_JSON must be a JSON array"
-  echo "$json" | jq -e 'length>0' >/dev/null 2>&1 || die "SERV00_ACCOUNTS_JSON array cannot be empty"
+  jq -e 'type == "array" and length > 0 and all(.[];
+    type == "object" and (.host|type == "string" and length > 0)
+    and (.user|type == "string" and length > 0)
+    and (.pass|type == "string" and length > 0)
+    and ((has("cmd")|not) or (.cmd|type == "string")))' \
+    <<< "$1" >/dev/null || { log_error "Invalid SERV00_ACCOUNTS_JSON account schema"; return 1; }
+}
 
-  local idx=0
-  while IFS= read -r item; do
-    idx=$((idx + 1))
-    [[ "$(echo "$item" | jq -r 'type')" == "object" ]] || die "SERV00_ACCOUNTS_JSON item #${idx} must be an object"
-    local required_key
-    for required_key in host user pass; do
-      if [[ -z "$(echo "$item" | jq -r --arg k "$required_key" '.[$k] // empty')" ]]; then
-        die "SERV00_ACCOUNTS_JSON item #${idx} missing required key '${required_key}'"
-      fi
-    done
-  done < <(echo "$json" | jq -c '.[]')
+serv00_remote_command() {
+  if [[ -n "${SERV00_BOOTSTRAP_CMD:-}" ]]; then
+    printf '%s\n' "$SERV00_BOOTSTRAP_CMD"
+    return 0
+  fi
+  local url="${SERV00_BOOTSTRAP_URL:-}" digest="${SERV00_BOOTSTRAP_SHA256:-}" quoted_url
+  [[ "$url" == https://* && "$digest" =~ ^[a-fA-F0-9]{64}$ ]] || {
+    log_error "Serv00 requires an explicitly trusted SERV00_BOOTSTRAP_URL + SHA256 or compatibility SERV00_BOOTSTRAP_CMD"
+    return 1
+  }
+  printf -v quoted_url '%q' "$url"
+  cat <<EOF
+set -eu
+runner=\$(command -v timeout || command -v gtimeout) || exit 127
+artifact=\$(mktemp)
+trap 'rm -f "\$artifact"' EXIT
+curl -fsSL --connect-timeout 10 --max-time 60 ${quoted_url} -o "\$artifact"
+if command -v sha256sum >/dev/null; then
+  actual=\$(sha256sum "\$artifact"); actual=\${actual%% *}
+else
+  actual=\$(sha256 -q "\$artifact")
+fi
+[ "\$actual" = "${digest,,}" ] || exit 1
+"\$runner" -k 5s 120s bash "\$artifact"
+EOF
+}
+
+serv00_deploy_account() {
+  local host="$1" user="$2" pass="$3" cmd="$4" attempt max_attempts
+  local retries="${SERV00_RETRY_COUNT:-1}"
+  [[ "$retries" =~ ^[0-9]+$ && "$retries" -le 5 ]] || { log_error "SERV00_RETRY_COUNT must be 0..5"; return 2; }
+  max_attempts=$((retries + 1))
+  for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+    if sbd_ssh_exec "$host" "$user" "$pass" "$cmd"; then return 0; fi
+    log_warn "Serv00 attempt ${attempt}/${max_attempts} failed: ${user}@${host}"
+    # A timed-out remote operation may still be running. Retrying arbitrary
+    # bootstrap commands is unsafe unless the backend explicitly guarantees it.
+    [[ "${SERV00_BOOTSTRAP_IDEMPOTENT:-false}" == true ]] || break
+  done
+  return 1
 }
 
 provider_serv00_install() {
-  local profile="$1"
-  local engine="$2"
-  local protocols_csv="$3"
-
-  reject_tls_auto_for_provider "serv00"
-  validate_feature_modes
-  provider_prepare_domain_runtime_artifacts "$protocols_csv"
-  mkdir -p "${SBD_CONFIG_DIR}"
-  cat > "${SBD_CONFIG_DIR}/serv00.env" <<EOF
-profile=${profile}
-engine=${engine}
-protocols=${protocols_csv}
-argo_mode=${ARGO_MODE:-off}
-warp_mode=${WARP_MODE:-off}
-outbound_proxy_mode=${OUTBOUND_PROXY_MODE:-direct}
-outbound_proxy_udp_mode=${OUTBOUND_PROXY_UDP_MODE:-proxy}
-outbound_proxy_host=${OUTBOUND_PROXY_HOST:-}
-outbound_proxy_port=${OUTBOUND_PROXY_PORT:-}
-generated_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-EOF
-  chmod 600 "${SBD_CONFIG_DIR}/serv00.env" 2>/dev/null || true
-
-  local needs_sshpass="false"
-  if [[ -n "${SERV00_ACCOUNTS_JSON:-}" ]]; then
-    needs_sshpass="true"
-  elif [[ -n "${SERV00_HOST:-}" && -n "${SERV00_USER:-}" && -n "${SERV00_PASS:-}" ]]; then
-    needs_sshpass="true"
-  fi
-  if [[ "$needs_sshpass" == "true" ]] && ! command -v sshpass >/dev/null 2>&1; then
-    if [[ "${SBD_USER_MODE:-false}" == "true" ]]; then
-      die "sshpass is required for Serv00 remote bootstrap; install it manually or omit SERV00 credentials to generate only the local bundle"
-    fi
-    install_apt_dependencies
-    if ! command -v sshpass >/dev/null 2>&1; then
-      apt-get update -y >/dev/null
-      apt-get install -y sshpass >/dev/null
-    fi
-  fi
-
-  local remote_cmd
-  remote_cmd="${SERV00_BOOTSTRAP_CMD:-bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/serv00.sh)}"
-
-  if [[ -n "${SERV00_ACCOUNTS_JSON:-}" ]]; then
-    if ! command -v jq >/dev/null 2>&1; then
-      die "jq is required for SERV00_ACCOUNTS_JSON"
-    fi
-    validate_serv00_accounts_json "$SERV00_ACCOUNTS_JSON"
-    local count=0 success=0 failed=0 skipped=0
-    local retries="${SERV00_RETRY_COUNT:-1}"
-    [[ "$retries" =~ ^[0-9]+$ ]] || retries=1
-    while IFS= read -r item; do
-      [[ -z "$item" ]] && continue
-      local host user pass cmd
-      host="$(echo "$item" | jq -r '.host // empty')"
-      user="$(echo "$item" | jq -r '.user // empty')"
-      pass="$(echo "$item" | jq -r '.pass // empty')"
-      cmd="$(echo "$item" | jq -r '.cmd // empty')"
-      [[ -n "$cmd" ]] || cmd="$remote_cmd"
-      count=$((count + 1))
-      log_info "$(msg "正在执行 Serv00 远程引导: 账号 #${count} (${user}@${host})" "Executing remote Serv00 bootstrap for account #${count} (${user}@${host})")"
-      if ! prompt_yes_no "$(msg "确认为 ${user}@${host} 执行远程 Serv00 引导吗？" "Confirm remote bootstrap for ${user}@${host}?")" "Y"; then
-        log_warn "$(msg "用户已跳过 ${user}@${host}" "Skipped ${user}@${host} by user choice")"
-        skipped=$((skipped + 1))
-        continue
-      fi
-      local attempt=0 ok=false
-      while (( attempt <= retries )); do
-        attempt=$((attempt + 1))
-        if sshpass -p "$pass" ssh -o StrictHostKeyChecking=no "${user}@${host}" "$cmd"; then
-          ok=true
-          break
-        fi
-        log_warn "$(msg "Serv00 远程引导重试失败 ${attempt}/${retries}: ${user}@${host}" "Serv00 bootstrap retry ${attempt}/${retries} failed for ${user}@${host}")"
+  local profile="$1" engine="$2" protocols_csv="$3" remote_cmd="" item host user pass cmd
+  local count=0 success=0 failed=0 skipped=0 accounts_fd
+  reject_tls_auto_for_provider serv00 || return 1
+  validate_feature_modes || return 1
+  if [[ -n "${SERV00_ACCOUNTS_JSON:-}" || -n "${SERV00_HOST:-}${SERV00_USER:-}${SERV00_PASS:-}" ]]; then
+    [[ "${AUTO_YES:-false}" == true || -t 0 ]] || { log_error "Remote bootstrap needs a terminal or explicit --yes"; return 1; }
+    command -v sshpass >/dev/null || { log_error "Install sshpass before remote bootstrap"; return 1; }
+    remote_cmd="$(serv00_remote_command)" || return 1
+    if [[ -n "${SERV00_ACCOUNTS_JSON:-}" ]]; then
+      validate_serv00_accounts_json "$SERV00_ACCOUNTS_JSON" || return 1
+      exec {accounts_fd}< <(jq -c '.[]' <<< "$SERV00_ACCOUNTS_JSON")
+      while IFS= read -r -u "$accounts_fd" item; do
+        host="$(jq -r .host <<< "$item")"; user="$(jq -r .user <<< "$item")"; pass="$(jq -r .pass <<< "$item")"
+        cmd="$(jq -r '.cmd // empty' <<< "$item")"; [[ -n "$cmd" ]] || cmd="$remote_cmd"
+        count=$((count + 1))
+        if ! prompt_yes_no "Remote bootstrap for ${user}@${host}?" N; then skipped=$((skipped + 1)); continue; fi
+        if serv00_deploy_account "$host" "$user" "$pass" "$cmd"; then success=$((success + 1)); else failed=$((failed + 1)); fi
       done
-      if [[ "$ok" == "true" ]]; then
-        success=$((success + 1))
-      else
-        failed=$((failed + 1))
-      fi
-    done < <(echo "$SERV00_ACCOUNTS_JSON" | jq -c '.[]')
-    log_info "$(msg "Serv00 批量汇总: total=${count} success=${success} failed=${failed} skipped=${skipped}" "Serv00 batch summary: total=${count} success=${success} failed=${failed} skipped=${skipped}")"
-    (( failed == 0 )) || die "$(msg "Serv00 批量执行存在失败项" "Serv00 batch finished with failures")"
-    log_success "$(msg "Serv00 批量远程引导完成，成功 ${success} 个账号" "Serv00 remote bootstrap completed for ${success} account(s)")"
-  elif [[ -n "${SERV00_HOST:-}" && -n "${SERV00_USER:-}" && -n "${SERV00_PASS:-}" ]]; then
-    log_info "$(msg "正在执行 Serv00 远程引导: ${SERV00_HOST}" "Executing remote Serv00 bootstrap on ${SERV00_HOST}")"
-    if ! prompt_yes_no "$(msg "确认为 ${SERV00_USER}@${SERV00_HOST} 执行远程 Serv00 引导吗？" "Confirm remote bootstrap for ${SERV00_USER}@${SERV00_HOST}?")" "Y"; then
-      log_warn "$(msg "用户取消了 Serv00 远程引导" "Serv00 remote bootstrap cancelled by user")"
-      return 0
+      exec {accounts_fd}<&-
+      log_info "Serv00 batch summary: total=${count} success=${success} failed=${failed} skipped=${skipped}"
+      (( failed == 0 )) || return 1
+    else
+      [[ -n "${SERV00_HOST:-}" && -n "${SERV00_USER:-}" && -n "${SERV00_PASS:-}" ]] || { log_error "Incomplete Serv00 credentials"; return 1; }
+      prompt_yes_no "Remote bootstrap for ${SERV00_USER}@${SERV00_HOST}?" N || return 1
+      serv00_deploy_account "$SERV00_HOST" "$SERV00_USER" "$SERV00_PASS" "$remote_cmd" || return 1
     fi
-    sshpass -p "${SERV00_PASS}" ssh -o StrictHostKeyChecking=no "${SERV00_USER}@${SERV00_HOST}" "$remote_cmd" || \
-      die "$(msg "Serv00 远程引导失败" "Remote Serv00 bootstrap failed")"
-    log_success "$(msg "Serv00 远程引导完成" "Serv00 remote bootstrap completed")"
   else
-    log_warn "$(msg "SERV00 凭据未设置；仅生成本地部署包" "SERV00 credentials not set; generated local bundle only")"
+    log_info "SERV00 credentials not set; generating a local deployment bundle"
   fi
-
-  cat > "${SBD_CONFIG_DIR}/serv00-run.sh" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-if [ -z "${SERV00_HOST:-}" ] || [ -z "${SERV00_USER:-}" ] || [ -z "${SERV00_PASS:-}" ]; then
-  echo "Please export SERV00_HOST SERV00_USER SERV00_PASS first"
-  exit 1
-fi
-
-cmd="${SERV00_BOOTSTRAP_CMD:-bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/serv00.sh)}"
-sshpass -p "${SERV00_PASS}" ssh -o StrictHostKeyChecking=no "${SERV00_USER}@${SERV00_HOST}" "${cmd}"
-EOF
-  chmod +x "${SBD_CONFIG_DIR}/serv00-run.sh"
-  log_success "$(msg "Serv00 部署包已生成: ${SBD_CONFIG_DIR}/serv00.env 与 ${SBD_CONFIG_DIR}/serv00-run.sh" "Serv00 deployment bundle generated at ${SBD_CONFIG_DIR}/serv00.env and ${SBD_CONFIG_DIR}/serv00-run.sh")"
-  return 0
+  provider_prepare_domain_runtime_artifacts "$protocols_csv" || return 1
+  mkdir -p "$SBD_CONFIG_DIR" || return 1
+  local tmp
+  tmp="$(mktemp "$SBD_CONFIG_DIR/serv00.env.XXXXXX")" || return 1
+  {
+    sbd_write_env_kv profile "$profile"
+    sbd_write_env_kv engine "$engine"
+    sbd_write_env_kv protocols "$protocols_csv"
+  } > "$tmp" || return 1
+  sbd_commit_file_with_backups "$SBD_CONFIG_DIR/serv00.env" "$tmp" 600 || return 1
+  tmp="$(mktemp "$SBD_CONFIG_DIR/serv00-run.XXXXXX")" || return 1
+  {
+    printf '#!/usr/bin/env bash\nset -euo pipefail\n'
+    printf 'exec bash %q install --provider serv00 --profile %q --engine %q --protocols %q "$@"\n' \
+      "$PROJECT_ROOT/sing-box-deve.sh" "$profile" "$engine" "$protocols_csv"
+  } > "$tmp" || return 1
+  sbd_commit_file_with_backups "$SBD_CONFIG_DIR/serv00-run.sh" "$tmp" 700 || return 1
+  log_success "Serv00 deployment bundle generated at ${SBD_CONFIG_DIR}"
 }

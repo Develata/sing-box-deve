@@ -147,6 +147,9 @@ main() {
       parse_uninstall_args "$@"
       provider_uninstall "$KEEP_SETTINGS"
       ;;
+    recover)
+      sbd_with_mutation_lock sbd_transaction_recover
+      ;;
     doctor)
       shift
       doctor

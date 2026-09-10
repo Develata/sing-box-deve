@@ -161,7 +161,7 @@ validate_generated_config() {
     sing-box)
       config_file="${SBD_CONFIG_DIR}/config.json"
       [[ -x "${SBD_BIN_DIR}/sing-box" ]] || die "sing-box binary not found"
-      if ! output="$("${SBD_BIN_DIR}/sing-box" check -c "$config_file" 2>&1)"; then
+      if ! output="$(sbd_run_deadline 30 "${SBD_BIN_DIR}/sing-box" check -c "$config_file" 2>&1)"; then
         if [[ "$with_rollback" == "true" ]] && sbd_restore_latest_file_backup "$config_file"; then
           log_warn "$(msg "配置验证失败，已回滚到上一版本" "Config validation failed, rolled back to previous version")"
         fi
@@ -172,7 +172,7 @@ validate_generated_config() {
     xray)
       config_file="${SBD_CONFIG_DIR}/xray-config.json"
       [[ -x "${SBD_BIN_DIR}/xray" ]] || die "xray binary not found"
-      if ! output="$("${SBD_BIN_DIR}/xray" run -test -config "$config_file" 2>&1)"; then
+      if ! output="$(sbd_run_deadline 30 "${SBD_BIN_DIR}/xray" run -test -config "$config_file" 2>&1)"; then
         if [[ "$with_rollback" == "true" ]] && sbd_restore_latest_file_backup "$config_file"; then
           log_warn "$(msg "配置验证失败，已回滚到上一版本" "Config validation failed, rolled back to previous version")"
         fi

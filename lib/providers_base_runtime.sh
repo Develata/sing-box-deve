@@ -140,24 +140,23 @@ detect_public_ip() {
 }
 
 ensure_uuid() {
-  local uuid_file="${SBD_DATA_DIR}/uuid"
-  if [[ ! -f "$uuid_file" ]]; then
-    local supplied_uuid="${SBD_UUID:-${UUID:-}}"
-    if [[ -n "$supplied_uuid" ]]; then
-      [[ "$supplied_uuid" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]] || die "Invalid UUID: ${supplied_uuid}"
-      printf '%s\n' "$supplied_uuid" > "$uuid_file"
-    elif command -v uuidgen >/dev/null 2>&1; then
-      uuidgen > "$uuid_file"
-    elif [[ -r /proc/sys/kernel/random/uuid ]]; then
-      cat /proc/sys/kernel/random/uuid > "$uuid_file"
-    elif command -v openssl >/dev/null 2>&1; then
-      openssl rand -hex 16 | sed -E 's/^(.{8})(.{4})(.{4})(.{4})(.{12}).*$/\1-\2-\3-\4-\5/' > "$uuid_file"
-    else
-      die "$(msg "缺少 uuid 生成依赖（uuidgen/openssl）" "Missing UUID generator dependency (uuidgen/openssl)")"
-    fi
-    secure_file "$uuid_file"
+  local uuid_file="$SBD_DATA_DIR/uuid" value tmp
+  if [[ -f "$uuid_file" && ! -L "$uuid_file" ]]; then
+    value="$(cat "$uuid_file")" || return 1
+  elif [[ ! -e "$uuid_file" && ! -L "$uuid_file" ]]; then
+    value="${SBD_UUID:-${UUID:-}}"
+    [[ -n "$value" ]] || value="$(sbd_run_deadline 30 python3 -c 'import uuid; print(uuid.uuid4())')" || return 1
+  else
+    return 1
   fi
-  cat "$uuid_file"
+  [[ "$value" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$ ]] || { log_error "Invalid persisted or supplied UUID"; return 1; }
+  if [[ ! -f "$uuid_file" ]]; then
+    tmp="$(mktemp "${uuid_file}.tmp.XXXXXX")" || return 1
+    printf '%s\n' "$value" > "$tmp" || return 1
+    secure_file "$tmp" || return 1
+    mv -f "$tmp" "$uuid_file" || return 1
+  fi
+  printf '%s\n' "$value"
 }
 
 ensure_self_signed_cert() {
@@ -166,12 +165,12 @@ ensure_self_signed_cert() {
   if [[ ! -f "$cert_file" || ! -f "$key_file" ]]; then
     if ! command -v openssl >/dev/null 2>&1; then
       log_warn "$(msg "缺少 openssl，跳过自签名证书生成" "openssl missing, skip self-signed certificate generation")"
-      return 0
+      return 1
     fi
-    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-      -keyout "$key_file" -out "$cert_file" -subj "/CN=www.bing.com" >/dev/null 2>&1
-    secure_file "$key_file"
-    secure_file "$cert_file"
+    sbd_run_deadline 30 openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+      -keyout "$key_file" -out "$cert_file" -subj "/CN=www.bing.com" >/dev/null 2>&1 || return 1
+    secure_file "$key_file" || return 1
+    secure_file "$cert_file" || return 1
   fi
 }
 

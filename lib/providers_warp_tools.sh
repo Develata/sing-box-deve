@@ -8,7 +8,7 @@ provider_warp_load_account() {
   local account_file
   account_file="$(provider_warp_account_env_file)"
   [[ -f "$account_file" ]] || die "$(msg "未找到 WARP 账户，请先执行 warp register" "WARP account not found, run warp register first")"
-  sbd_safe_load_env_file "$account_file"
+  sbd_safe_load_env_file "$account_file" || return 1
   WARP_PRIVATE_KEY="${WARP_PRIVATE_KEY:-}"
   WARP_PEER_PUBLIC_KEY="${WARP_PEER_PUBLIC_KEY:-bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=}"
   WARP_RESERVED="${WARP_RESERVED:-[0,0,0]}"
@@ -40,7 +40,7 @@ provider_warp_account_load_optional() {
   WARP_CLIENT_ID=""
 
   if [[ -f "$account_file" ]]; then
-    sbd_safe_load_env_file "$account_file"
+    sbd_safe_load_env_file "$account_file" || return 1
   fi
   WARP_PEER_PUBLIC_KEY="${WARP_PEER_PUBLIC_KEY:-bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=}"
   WARP_RESERVED="${WARP_RESERVED:-[0,0,0]}"
@@ -78,22 +78,26 @@ provider_warp_normalize_reserved() {
 }
 
 provider_warp_account_write() {
-  local private_key="$1" peer_public_key="$2" reserved="$3" local_v4="$4" local_v6="$5" client_id="${6:-}"
-  mkdir -p "$SBD_DATA_DIR"
-  cat > "${SBD_DATA_DIR}/warp-account.env" <<EOF
-WARP_PRIVATE_KEY=${private_key}
-WARP_PEER_PUBLIC_KEY=${peer_public_key}
-WARP_RESERVED=${reserved}
-WARP_CLIENT_ID=${client_id}
-WARP_LOCAL_V4=${local_v4}
-WARP_LOCAL_V6=${local_v6}
-EOF
-  chmod 600 "${SBD_DATA_DIR}/warp-account.env"
+  local private_key="$1" peer_public_key="$2" reserved="$3" local_v4="$4" local_v6="$5" client_id="${6:-}" tmp
+  mkdir -p "$SBD_DATA_DIR" || return 1
+  tmp="$(mktemp "$SBD_DATA_DIR/warp-account.env.XXXXXX")" || return 1
+  (
+    sbd_write_env_kv WARP_PRIVATE_KEY "$private_key" || exit 1
+    sbd_write_env_kv WARP_PEER_PUBLIC_KEY "$peer_public_key" || exit 1
+    sbd_write_env_kv WARP_RESERVED "$reserved" || exit 1
+    sbd_write_env_kv WARP_CLIENT_ID "$client_id" || exit 1
+    sbd_write_env_kv WARP_LOCAL_V4 "$local_v4" || exit 1
+    sbd_write_env_kv WARP_LOCAL_V6 "$local_v6" || exit 1
+  ) > "$tmp" || { rm -f "$tmp"; return 1; }
+  chmod 600 "$tmp" || return 1
+  mv -f "$tmp" "$SBD_DATA_DIR/warp-account.env" || return 1
   if [[ -n "$client_id" ]]; then
-    printf '%s\n' "$client_id" > "${SBD_DATA_DIR}/warp-client-id"
-    chmod 600 "${SBD_DATA_DIR}/warp-client-id"
+    tmp="$(mktemp "$SBD_DATA_DIR/warp-client-id.XXXXXX")" || return 1
+    printf '%s\n' "$client_id" > "$tmp" || return 1
+    chmod 600 "$tmp" || return 1
+    mv -f "$tmp" "$SBD_DATA_DIR/warp-client-id" || return 1
   else
-    rm -f "${SBD_DATA_DIR}/warp-client-id"
+    rm -f "$SBD_DATA_DIR/warp-client-id" || return 1
   fi
 }
 
@@ -113,6 +117,10 @@ provider_warp_account_show() {
 }
 
 provider_warp_rebuild_runtime_from_account() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_warp_rebuild_runtime_from_account_unlocked "$@"
+}
+
+provider_warp_rebuild_runtime_from_account_unlocked() {
   ensure_root
   local mode="${1:-auto}"
   local runtime_file
@@ -122,18 +130,22 @@ provider_warp_rebuild_runtime_from_account() {
     return 0
   fi
 
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   if [[ "$mode" != "force" && "${WARP_MODE:-off}" == "off" ]]; then
     log_info "$(msg "运行时 WARP_MODE=off，跳过自动重建" "Runtime WARP_MODE=off, skip automatic rebuild")"
     return 0
   fi
 
-  provider_warp_load_account
-  provider_cfg_with_lock provider_cfg_rebuild_runtime "${protocols:-vless-reality}"
+  provider_warp_load_account || return 1
+  provider_cfg_with_lock provider_cfg_rebuild_runtime "${protocols:-vless-reality}" || return 1
   log_success "$(msg "WARP 账户已应用到当前运行配置" "WARP account applied to current runtime config")"
 }
 
 provider_warp_account_set() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_warp_account_set_unlocked "$@"
+}
+
+provider_warp_account_set_unlocked() {
   ensure_root
   local private_key="${1:-}" local_v6="${2:-}" reserved="${3:-}" local_v4="${4:-}" peer_public_key="${5:-}" client_id="${6:-}"
   local interactive="false"
@@ -162,7 +174,7 @@ provider_warp_account_set() {
   local_v4="$(provider_warp_normalize_local_v4 "${local_v4:-172.16.0.2/32}")"
   local_v6="$(provider_warp_normalize_local_v6 "${local_v6:-2606:4700:110:876d:4d3c:4206:c90c:6bd0/128}")"
 
-  provider_warp_account_write "$private_key" "$peer_public_key" "$reserved" "$local_v4" "$local_v6" "$client_id"
+  provider_warp_account_write "$private_key" "$peer_public_key" "$reserved" "$local_v4" "$local_v6" "$client_id" || return 1
   log_success "$(msg "WARP 账户参数已更新" "WARP account settings updated")"
 
   if [[ "$interactive" == "true" ]]; then
@@ -175,18 +187,22 @@ provider_warp_account_set() {
 }
 
 provider_warp_set_mode() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_warp_set_mode_unlocked "$@"
+}
+
+provider_warp_set_mode_unlocked() {
   ensure_root
   local mode="${1:-}"
   [[ -n "$mode" ]] || die "Usage: warp mode <off|global|s|s4|s6|sx|xs|x|x4|x6|...>"
   WARP_MODE="$mode"
   validate_warp_mode_extended
 
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   WARP_MODE="$mode"
   if [[ "$mode" != "off" ]]; then
-    provider_warp_load_account
+    provider_warp_load_account || return 1
   fi
-  provider_cfg_with_lock provider_cfg_rebuild_runtime "${protocols:-vless-reality}"
+  provider_cfg_with_lock provider_cfg_rebuild_runtime "${protocols:-vless-reality}" || return 1
   log_success "$(msg "WARP_MODE 已更新: ${mode}" "WARP_MODE updated: ${mode}")"
 }
 
@@ -197,6 +213,10 @@ EOF
 }
 
 provider_warp_region_set() {
+  sbd_with_mutation_lock provider_warp_region_set_unlocked "$@"
+}
+
+provider_warp_region_set_unlocked() {
   die "warp region was removed; WARP outbound keeps Cloudflare default endpoint"
 }
 

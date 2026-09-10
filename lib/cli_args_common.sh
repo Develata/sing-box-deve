@@ -64,9 +64,11 @@ parse_logs_args() {
 
 parse_uninstall_args() {
   KEEP_SETTINGS="false"
+  PURGE_MANAGED_HOST_CHANGES="false"
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --keep-settings) KEEP_SETTINGS="true"; shift ;;
+      --purge-managed-host-changes) PURGE_MANAGED_HOST_CHANGES="true"; shift ;;
       *) die "Unknown uninstall argument: $1" ;;
     esac
   done

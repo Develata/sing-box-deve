@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
 SBD_WARP_SOCKS_CONFIG_FILE="${SBD_CONFIG_DIR}/warp-socks5.json"
-SBD_WARP_SOCKS_SERVICE_FILE="/etc/systemd/system/sing-box-deve-warp-socks5.service"
 SBD_WARP_SOCKS_PORT_FILE="${SBD_DATA_DIR}/warp-socks5-port"
 
 provider_warp_socks5_write_config() {
   local port="$1"
-  provider_warp_load_account
+  provider_warp_load_account || return 1
 
   local client_ipv4 client_ipv6
   client_ipv4="${WARP_LOCAL_V4:-}"
@@ -50,6 +49,10 @@ EOF
 }
 
 provider_warp_socks5_start() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_warp_socks5_start_unlocked "$@"
+}
+
+provider_warp_socks5_start_unlocked() {
   ensure_root
   local port="${1:-}"
   if [[ -z "$port" && -f "$SBD_WARP_SOCKS_PORT_FILE" ]]; then
@@ -63,9 +66,9 @@ provider_warp_socks5_start() {
     die "$(msg "端口已被占用: $port" "port already in use: $port")"
   fi
 
-  provider_warp_socks5_write_config "$port"
+  provider_warp_socks5_write_config "$port" || return 1
   local check_out
-  if ! check_out="$("${SBD_BIN_DIR}/sing-box" check -c "$SBD_WARP_SOCKS_CONFIG_FILE" 2>&1)"; then
+  if ! check_out="$(sbd_run_deadline 30 "${SBD_BIN_DIR}/sing-box" check -c "$SBD_WARP_SOCKS_CONFIG_FILE" 2>&1)"; then
     log_error "$check_out"
     die "$(msg "WARP Socks5 配置校验失败" "WARP Socks5 config validation failed")"
   fi
@@ -74,7 +77,11 @@ provider_warp_socks5_start() {
 
   detect_init_system
   if [[ "$SBD_INIT_SYSTEM" == "systemd" ]]; then
-    cat > "$SBD_WARP_SOCKS_SERVICE_FILE" <<EOF
+    local service_tmp
+    mkdir -p "$(dirname "$SBD_WARP_SOCKS_SERVICE_FILE")" || return 1
+    service_tmp="$(mktemp "${SBD_WARP_SOCKS_SERVICE_FILE}.tmp.XXXXXX")" || return 1
+    cat > "$service_tmp" <<EOF
+# Managed by sing-box-deve: service-v1
 [Unit]
 Description=sing-box-deve WARP SOCKS5
 After=network-online.target
@@ -92,16 +99,22 @@ RestartSec=2
 [Install]
 WantedBy=multi-user.target
 EOF
+    sbd_host_file_publish "$SBD_WARP_SOCKS_SERVICE_FILE" "$service_tmp" || return 1
   fi
 
-  sbd_service_enable_and_start "sing-box-deve-warp-socks5" "$exec_cmd"
-  printf '%s\n' "$port" > "$SBD_WARP_SOCKS_PORT_FILE"
+  sbd_service_enable_and_start "sing-box-deve-warp-socks5" "$exec_cmd" || return 1
+  sbd_service_wait_active sing-box-deve-warp-socks5 10 || return 1
+  printf '%s\n' "$port" > "$SBD_WARP_SOCKS_PORT_FILE" || return 1
   log_success "$(msg "WARP Socks5 已启动: 127.0.0.1:${port}" "WARP Socks5 started: 127.0.0.1:${port}")"
 }
 
 provider_warp_socks5_stop() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_warp_socks5_stop_unlocked "$@"
+}
+
+provider_warp_socks5_stop_unlocked() {
   ensure_root
-  sbd_service_stop "sing-box-deve-warp-socks5"
+  sbd_service_stop "sing-box-deve-warp-socks5" || return 1
   log_success "$(msg "WARP Socks5 已停止" "WARP Socks5 stopped")"
 }
 

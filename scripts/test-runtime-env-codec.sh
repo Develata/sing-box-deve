@@ -3,8 +3,8 @@
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../lib/common_base.sh
-source "${root_dir}/lib/common_base.sh"
+PROJECT_ROOT="$root_dir"
+source "${PROJECT_ROOT}/lib/load.sh"
 
 die() {
   printf '[ERROR] %s\n' "$*" >&2

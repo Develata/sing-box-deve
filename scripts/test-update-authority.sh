@@ -1,135 +1,29 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2119
+# shellcheck disable=SC1091,SC2034
 set -euo pipefail
-
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP_DIR="$(mktemp -d)"
-
-cleanup() {
-  rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT
-
-export HOME="${TMP_DIR}/home"
-mkdir -p "${HOME}/sing-box-deve/config"
-
-PROJECT_ROOT="$ROOT_DIR"
-
-# shellcheck source=lib/common_base.sh
-source "${ROOT_DIR}/lib/common_base.sh"
-# shellcheck source=lib/common_file_helpers.sh
-source "${ROOT_DIR}/lib/common_file_helpers.sh"
-# shellcheck source=lib/common_launcher.sh
-source "${ROOT_DIR}/lib/common_launcher.sh"
-# shellcheck source=lib/update_manifest.sh
-source "${ROOT_DIR}/lib/update_manifest.sh"
-# shellcheck source=lib/common_update_rollback.sh
-source "${ROOT_DIR}/lib/common_update_rollback.sh"
-# shellcheck source=lib/common_update_methods.sh
-source "${ROOT_DIR}/lib/common_update_methods.sh"
-
-missing_checksum_root="${TMP_DIR}/missing-checksum-root"
-mkdir -p "$missing_checksum_root"
-PROJECT_ROOT="$missing_checksum_root"
-if verify_installed_files >"${TMP_DIR}/missing-checksum.out" 2>"${TMP_DIR}/missing-checksum.err"; then
-  echo "[FAIL] verify_installed_files passed without checksums.txt" >&2
-  exit 1
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+source "$PROJECT_ROOT/lib/load.sh"
+authority_test="$(mktemp -d)"
+trap 'rm -rf "$authority_test"' EXIT
+SBD_CONFIG_DIR="$authority_test/config"
+SBD_STATE_DIR="$authority_test/state"
+SBD_INSTALL_DIR="$authority_test/install"
+SBD_HOST_STATE_DIR="$authority_test/control"
+SBD_LAUNCHER_PATH="$authority_test/bin/sb"
+root_with_quotes="$authority_test/runtime \\ with \" quotes"
+mkdir -p "$SBD_CONFIG_DIR" "$root_with_quotes/lib" "$authority_test/cwd/sing-box-deve/lib"
+printf '#!/usr/bin/env bash\nprintf "runtime-ok\\n"\n' > "$root_with_quotes/sing-box-deve.sh"
+printf '#!/usr/bin/env bash\nprintf "wrong-checkout\\n"\n' > "$authority_test/cwd/sing-box-deve/sing-box-deve.sh"
+touch "$root_with_quotes/lib/common.sh" "$authority_test/cwd/sing-box-deve/lib/common.sh"
+chmod +x "$root_with_quotes/sing-box-deve.sh" "$authority_test/cwd/sing-box-deve/sing-box-deve.sh"
+sbd_write_env_kv script_root "$root_with_quotes" > "$SBD_CONFIG_DIR/runtime.env"
+write_sb_launcher
+[[ "$("$SBD_LAUNCHER_PATH" --print-root)" == "$root_with_quotes" ]]
+(cd "$authority_test/cwd"; [[ "$("$SBD_LAUNCHER_PATH" help)" == runtime-ok ]])
+# No installed runtime means fail; a cwd checkout is never silently adopted.
+rm "$SBD_CONFIG_DIR/runtime.env"
+if (cd "$authority_test/cwd"; "$SBD_LAUNCHER_PATH" help >/dev/null 2>&1); then
+  echo '[FAIL] launcher silently adopted a cwd checkout' >&2; exit 1
 fi
-grep -q "Checksums file missing" "${TMP_DIR}/missing-checksum.err" || {
-  echo "[FAIL] missing-checksum error is not explicit" >&2
-  exit 1
-}
-PROJECT_ROOT="$ROOT_DIR"
-
-SBD_INSTALL_DIR="${TMP_DIR}/install"
-
-runtime_file="${HOME}/sing-box-deve/config/runtime.env"
-cat > "$runtime_file" <<EOF
-provider=vps
-profile=lite
-engine=sing-box
-protocols=vless-reality
-script_root=/opt/sing-box-deve/script
-installed_at=2026-04-30T00:00:00Z
-EOF
-
-auth_root="$(sbd_choose_authoritative_script_root "$ROOT_DIR")"
-[[ "$auth_root" == "$ROOT_DIR" ]] || {
-  echo "[FAIL] expected checkout authority ${ROOT_DIR}, got ${auth_root}" >&2
-  exit 1
-}
-sbd_update_runtime_script_root "$auth_root"
-grep -qx "script_root=${ROOT_DIR}" "$runtime_file" || {
-  echo "[FAIL] runtime.env did not switch to checkout root" >&2
-  exit 1
-}
-
-installed_root="${TMP_DIR}/installed-script"
-mkdir -p "$installed_root"
-cp -a "$ROOT_DIR/sing-box-deve.sh" "$ROOT_DIR/lib" "$ROOT_DIR/version" "$installed_root/"
-printf 'v0.0.1\n' > "${installed_root}/version"
-printf 'script_root="%s"\n' "$installed_root" > "$runtime_file"
-PROJECT_ROOT="$ROOT_DIR"
-sync_installed_script_root_from_project
-[[ "$(tr -d '[:space:]' < "${installed_root}/version")" == "$(tr -d '[:space:]' < "${ROOT_DIR}/version")" ]] || {
-  echo "[FAIL] installed script root was not synced from checkout" >&2
-  exit 1
-}
-grep -qx "script_root=${installed_root}" "$runtime_file" || {
-  echo "[FAIL] runtime.env should keep installed script_root after sync" >&2
-  exit 1
-}
-
-cat > "$runtime_file" <<EOF
-provider=vps
-profile=lite
-engine=sing-box
-protocols=vless-reality
-script_root=/opt/sing-box-deve/script
-installed_at=2026-04-30T00:00:00Z
-EOF
-
-ephemeral_root="${TMP_DIR}/src"
-mkdir -p "$ephemeral_root"
-tar -C "$ROOT_DIR" \
-  --exclude=.git \
-  --exclude=.codex \
-  -cf - . | tar -C "$ephemeral_root" -xf -
-chmod +x "${ephemeral_root}/sing-box-deve.sh"
-
-PROJECT_ROOT="$ephemeral_root"
-sbd_persist_script_root_if_needed "$PROJECT_ROOT"
-expected_persist="${SBD_INSTALL_DIR}/script"
-[[ "$PROJECT_ROOT" == "$expected_persist" ]] || {
-  echo "[FAIL] expected persisted root ${expected_persist}, got ${PROJECT_ROOT}" >&2
-  exit 1
-}
-[[ -x "${expected_persist}/sing-box-deve.sh" && -f "${expected_persist}/lib/common.sh" ]] || {
-  echo "[FAIL] persisted script root is incomplete" >&2
-  exit 1
-}
-grep -qx "script_root=${expected_persist}" "$runtime_file" || {
-  echo "[FAIL] runtime.env did not switch to persisted temp root" >&2
-  exit 1
-}
-
-printf 'script_root="%s"\n' "$expected_persist" > "$runtime_file"
-launcher="${TMP_DIR}/sb"
-write_sb_launcher "$launcher"
-launcher_root="$(cd "$TMP_DIR" && "$launcher" --print-root)"
-[[ "$launcher_root" == "$expected_persist" ]] || {
-  echo "[FAIL] launcher root mismatch: expected ${expected_persist}, got ${launcher_root}" >&2
-  exit 1
-}
-launcher_version="$(cd "$TMP_DIR" && "$launcher" --print-version)"
-expected_version="$(tr -d '[:space:]' < "${expected_persist}/version")"
-[[ "$launcher_version" == "$expected_version" ]] || {
-  echo "[FAIL] launcher version mismatch: expected ${expected_version}, got ${launcher_version}" >&2
-  exit 1
-}
-checkout_root="$(cd "$ROOT_DIR" && "$launcher" --print-root)"
-[[ "$checkout_root" == "$expected_persist" ]] || {
-  echo "[FAIL] launcher should ignore checkout cwd: expected ${expected_persist}, got ${checkout_root}" >&2
-  exit 1
-}
-
-echo "[OK] update authority checks passed"
+printf '[OK] launcher authority and quoted runtime path checks passed\n'

@@ -4,24 +4,24 @@ build_xray_config() {
   local protocols_csv="$1"
   local config_file="${SBD_CONFIG_DIR}/xray-config.json"
   local uuid
-  uuid="$(ensure_uuid)"
+  uuid="$(ensure_uuid)" || return 1
   local reality_server_name reality_port ws_path_vless xhttp_path xhttp_mode vless_decryption
-  reality_server_name="$(sbd_reality_server_name)"
-  reality_port="$(sbd_reality_handshake_port)"
-  ws_path_vless="$(sbd_vless_ws_path)"
-  xhttp_path="$(sbd_vless_xhttp_path "$uuid")"
-  xhttp_mode="$(sbd_vless_xhttp_mode)"
+  reality_server_name="$(sbd_reality_server_name)" || return 1
+  reality_port="$(sbd_reality_handshake_port)" || return 1
+  ws_path_vless="$(sbd_vless_ws_path)" || return 1
+  xhttp_path="$(sbd_vless_xhttp_path "$uuid")" || return 1
+  xhttp_mode="$(sbd_vless_xhttp_mode)" || return 1
   vless_decryption="none"
   if sbd_xray_vless_enc_enabled; then
-    ensure_xray_vless_enc_keys
-    vless_decryption="$(sbd_xray_vless_decryption_key)"
+    ensure_xray_vless_enc_keys || return 1
+    vless_decryption="$(sbd_xray_vless_decryption_key)" || return 1
     [[ -n "$vless_decryption" ]] || die "XRAY_VLESS_ENC=true but decryption key is empty"
   fi
 
   local port_vless_reality port_vless_ws port_vless_xhttp
-  port_vless_reality="$(resolve_protocol_port_for_engine "xray" "vless-reality")"
-  port_vless_ws="$(resolve_protocol_port_for_engine "xray" "vless-ws")"
-  port_vless_xhttp="$(resolve_protocol_port_for_engine "xray" "vless-xhttp")"
+  port_vless_reality="$(resolve_protocol_port_for_engine "xray" "vless-reality")" || return 1
+  port_vless_ws="$(resolve_protocol_port_for_engine "xray" "vless-ws")" || return 1
+  port_vless_xhttp="$(resolve_protocol_port_for_engine "xray" "vless-xhttp")" || return 1
 
   local private_key public_key short_id
   private_key=""; public_key=""; short_id=""
@@ -30,21 +30,21 @@ build_xray_config() {
   [[ -f "${SBD_DATA_DIR}/xray_short_id" ]] && short_id="$(tr -d '\r\n' < "${SBD_DATA_DIR}/xray_short_id")"
   if ! sbd_is_valid_reality_key "$private_key" || ! sbd_is_valid_reality_key "$public_key" || ! sbd_is_valid_reality_short_id "$short_id"; then
     local out
-    out="$("${SBD_BIN_DIR}/xray" x25519)"
-    private_key="$(printf '%s\n' "$out" | awk -F': *' '/Private[[:space:]]*[Kk]ey/{print $2; exit}')"
-    public_key="$(printf '%s\n' "$out" | awk -F': *' '/Public[[:space:]]*[Kk]ey|Password/{print $2; exit}')"
+    out="$(sbd_run_deadline 30 "${SBD_BIN_DIR}/xray" x25519)" || return 1
+    private_key="$(printf '%s\n' "$out" | awk -F': *' '/Private[[:space:]]*[Kk]ey/{print $2; exit}')" || return 1
+    public_key="$(printf '%s\n' "$out" | awk -F': *' '/Public[[:space:]]*[Kk]ey|Password/{print $2; exit}')" || return 1
     if command -v openssl >/dev/null 2>&1; then
-      short_id="$(openssl rand -hex 4)"
+      short_id="$(openssl rand -hex 4)" || return 1
     else
-      short_id="$(rand_hex_8)"
+      short_id="$(rand_hex_8)" || return 1
     fi
     sbd_is_valid_reality_key "$private_key" || die "Failed to generate valid xray reality private key"
     sbd_is_valid_reality_key "$public_key" || die "Failed to generate valid xray reality public key"
     sbd_is_valid_reality_short_id "$short_id" || die "Failed to generate valid xray reality short id"
-    printf '%s\n' "$private_key" > "${SBD_DATA_DIR}/xray_private.key"
-    printf '%s\n' "$public_key" > "${SBD_DATA_DIR}/xray_public.key"
-    printf '%s\n' "$short_id" > "${SBD_DATA_DIR}/xray_short_id"
-    chmod 600 "${SBD_DATA_DIR}/xray_private.key" "${SBD_DATA_DIR}/xray_short_id"
+    printf '%s\n' "$private_key" > "${SBD_DATA_DIR}/xray_private.key" || return 1
+    printf '%s\n' "$public_key" > "${SBD_DATA_DIR}/xray_public.key" || return 1
+    printf '%s\n' "$short_id" > "${SBD_DATA_DIR}/xray_short_id" || return 1
+    chmod 600 "${SBD_DATA_DIR}/xray_private.key" "${SBD_DATA_DIR}/xray_short_id" || return 1
     chmod 644 "${SBD_DATA_DIR}/xray_public.key" 2>/dev/null || true
   fi
 
@@ -55,7 +55,7 @@ build_xray_config() {
 
   if protocol_enabled "vless-reality" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "vless-reality" "$port_vless_reality" \
-      "$(xray_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
+      "$(xray_fragment_vless_reality "$uuid" "$port_vless_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")" || return 1
   fi
 
   local has_warp="false"
@@ -67,44 +67,44 @@ build_xray_config() {
 
   if protocol_enabled "vless-ws" "${protocols[@]}"; then
     sbd_inbounds_append inbounds inbound_map "vless-ws" "$port_vless_ws" \
-      "$(xray_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless" "$vless_decryption")"
+      "$(xray_fragment_vless_ws "$uuid" "$port_vless_ws" "$ws_path_vless" "$vless_decryption")" || return 1
   fi
 
   if protocol_enabled "vless-xhttp" "${protocols[@]}"; then
     local xhttp_reality="false"
     sbd_xhttp_use_reality && xhttp_reality="true"
     sbd_inbounds_append inbounds inbound_map "vless-xhttp" "$port_vless_xhttp" \
-      "$(xray_fragment_vless_xhttp "$uuid" "$port_vless_xhttp" "$vless_decryption" "$xhttp_path" "$xhttp_mode" "$xhttp_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")"
+      "$(xray_fragment_vless_xhttp "$uuid" "$port_vless_xhttp" "$vless_decryption" "$xhttp_path" "$xhttp_mode" "$xhttp_reality" "$reality_server_name" "$reality_port" "$private_key" "$short_id")" || return 1
   fi
 
   local xray_outbounds xray_routing primary_tag available_outbounds target_strategy
   primary_tag="direct"
   available_outbounds="direct"
-  target_strategy="$(xray_target_strategy_fragment)"
+  target_strategy="$(xray_target_strategy_fragment)" || return 1
   xray_outbounds="    {\"protocol\": \"freedom\", \"tag\": \"direct\"${target_strategy}},"$'\n'
   xray_outbounds+=$'    {"protocol": "blackhole", "tag": "block"}'
   xray_routing=""
   if [[ "$has_warp" == "true" ]]; then
     xray_outbounds+=$',\n'
-    xray_outbounds+="$(build_warp_outbound_xray)"
+    xray_outbounds+="$(build_warp_outbound_xray)" || return 1
     primary_tag="warp-out"
     available_outbounds+=",warp-out"
   fi
   if [[ "${OUTBOUND_PROXY_MODE:-direct}" != "direct" ]]; then
     xray_outbounds+=$',\n'
-    xray_outbounds+="$(build_upstream_outbound_xray)"
+    xray_outbounds+="$(build_upstream_outbound_xray)" || return 1
     primary_tag="proxy-out"
     available_outbounds+=",proxy-out"
   fi
-  xray_routing="$(build_xray_routing_fragment "$primary_tag" "$inbound_map" "$available_outbounds")"
+  xray_routing="$(build_xray_routing_fragment "$primary_tag" "$inbound_map" "$available_outbounds")" || return 1
 
   inbounds="${inbounds//\\n/$'\n'}"
   xray_outbounds="${xray_outbounds//\\n/$'\n'}"
   xray_routing="${xray_routing//\\n/$'\n'}"
 
   local tmp_config
-  tmp_config="$(mktemp "${config_file}.tmp.XXXXXX")"
-  cat > "$tmp_config" <<EOF
+  tmp_config="$(mktemp "${config_file}.tmp.XXXXXX")" || return 1
+  cat > "$tmp_config" <<EOF || return 1
 {
   "log": {"loglevel": "warning"},
   "inbounds": [
@@ -115,10 +115,10 @@ ${xray_outbounds}
   ]${xray_routing}
 }
 EOF
-  sbd_commit_file_with_backups "$config_file" "$tmp_config" 600
+  sbd_commit_file_with_backups "$config_file" "$tmp_config" 600 || return 1
 
-  multi_ports_runtime_append_xray "$protocols_csv"
-  echo "$public_key" > "${SBD_DATA_DIR}/xray_public.key"
+  multi_ports_runtime_append_xray "$protocols_csv" || return 1
+  echo "$public_key" > "${SBD_DATA_DIR}/xray_public.key" || return 1
 }
 
 write_systemd_service() {
@@ -146,7 +146,11 @@ write_systemd_service() {
 
   case "${SBD_INIT_SYSTEM:-systemd}" in
     systemd)
-      cat > "$SBD_SERVICE_FILE" <<EOF
+      local service_tmp
+      mkdir -p "$(dirname "$SBD_SERVICE_FILE")" || return 1
+      service_tmp="$(mktemp "$SBD_SERVICE_FILE.tmp.XXXXXX")" || return 1
+      cat > "$service_tmp" <<EOF
+# Managed by sing-box-deve: service-v1
 [Unit]
 Description=sing-box-deve core service
 After=network.target
@@ -164,7 +168,8 @@ LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF
-      systemd_reload_and_enable
+      sbd_host_file_publish "$SBD_SERVICE_FILE" "$service_tmp" || return 1
+      systemd_reload_and_enable || return 1
       safe_service_restart
       ;;
 

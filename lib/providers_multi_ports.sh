@@ -45,10 +45,14 @@ provider_multi_ports_reject_conflict() {
 }
 
 provider_multi_ports_add() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_multi_ports_add_unlocked "$@"
+}
+
+provider_multi_ports_add_unlocked() {
   ensure_root
   local protocol="$1" port="$2" mapping proto
   local runtime_provider runtime_profile runtime_engine runtime_protocols
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   runtime_provider="${provider:-vps}"
   runtime_profile="${profile:-lite}"
   runtime_engine="${engine:-sing-box}"
@@ -108,10 +112,14 @@ provider_multi_ports_remove_firewall() {
 }
 
 provider_multi_ports_remove() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_multi_ports_remove_unlocked "$@"
+}
+
+provider_multi_ports_remove_unlocked() {
   ensure_root
   local protocol="$1" port="$2"
   local runtime_provider runtime_profile runtime_engine runtime_protocols
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   runtime_provider="${provider:-vps}"
   runtime_profile="${profile:-lite}"
   runtime_engine="${engine:-sing-box}"
@@ -127,14 +135,18 @@ provider_multi_ports_remove() {
   profile="$runtime_profile"
   engine="$runtime_engine"
   protocols="$runtime_protocols"
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "已移除多真实端口: ${protocol}:${port}" "Removed multi real-port: ${protocol}:${port}")"
 }
 
 provider_multi_ports_clear() {
+  sbd_with_mutation_lock sbd_transaction_run config-change provider_multi_ports_clear_unlocked
+}
+
+provider_multi_ports_clear_unlocked() {
   ensure_root
   local runtime_provider runtime_profile runtime_engine runtime_protocols
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   runtime_provider="${provider:-vps}"
   runtime_profile="${profile:-lite}"
   runtime_engine="${engine:-sing-box}"
@@ -148,7 +160,7 @@ provider_multi_ports_clear() {
   profile="$runtime_profile"
   engine="$runtime_engine"
   protocols="$runtime_protocols"
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "多真实端口已清空" "Multi real-ports cleared")"
 }
 

@@ -12,26 +12,26 @@ case "$(uname -m)" in
 esac
 
 sb_release="${out_dir}/sing-box-release.json"
-curl -fsSL https://api.github.com/repos/SagerNet/sing-box/releases/latest -o "$sb_release"
+curl -fsSL --connect-timeout 5 --max-time 20 https://api.github.com/repos/SagerNet/sing-box/releases/latest -o "$sb_release"
 sb_tag="$(jq -r .tag_name "$sb_release")"
 sb_version="${sb_tag#v}"
 sb_asset="sing-box-${sb_version}-linux-${sb_arch}.tar.gz"
 sb_url="$(jq -r --arg name "$sb_asset" '.assets[] | select(.name==$name) | .browser_download_url' "$sb_release")"
 sb_digest="$(jq -r --arg name "$sb_asset" '.assets[] | select(.name==$name) | .digest // empty' "$sb_release")"
 [[ -n "$sb_url" && "$sb_digest" == sha256:* ]] || { echo "Missing sing-box asset or digest" >&2; exit 1; }
-curl -fsSL "$sb_url" -o "${out_dir}/${sb_asset}"
+curl -fsSL --connect-timeout 10 --max-time 300 "$sb_url" -o "${out_dir}/${sb_asset}"
 printf '%s  %s\n' "${sb_digest#sha256:}" "${out_dir}/${sb_asset}" | sha256sum -c -
 tar -xzf "${out_dir}/${sb_asset}" -C "$out_dir"
 sb_bin="${out_dir}/sing-box-${sb_version}-linux-${sb_arch}/sing-box"
 
 xr_release="${out_dir}/xray-release.json"
-curl -fsSL https://api.github.com/repos/XTLS/Xray-core/releases/latest -o "$xr_release"
+curl -fsSL --connect-timeout 5 --max-time 20 https://api.github.com/repos/XTLS/Xray-core/releases/latest -o "$xr_release"
 xr_asset="Xray-linux-${xr_arch}.zip"
 xr_url="$(jq -r --arg name "$xr_asset" '.assets[] | select(.name==$name) | .browser_download_url' "$xr_release")"
 xr_dgst_url="$(jq -r --arg name "${xr_asset}.dgst" '.assets[] | select(.name==$name) | .browser_download_url' "$xr_release")"
 [[ -n "$xr_url" && -n "$xr_dgst_url" ]] || { echo "Missing Xray asset or digest" >&2; exit 1; }
-curl -fsSL "$xr_url" -o "${out_dir}/${xr_asset}"
-curl -fsSL "$xr_dgst_url" -o "${out_dir}/${xr_asset}.dgst"
+curl -fsSL --connect-timeout 10 --max-time 300 "$xr_url" -o "${out_dir}/${xr_asset}"
+curl -fsSL --connect-timeout 5 --max-time 20 "$xr_dgst_url" -o "${out_dir}/${xr_asset}.dgst"
 xr_digest="$(awk -F'= *' '/SHA2?-?256/{print $2; exit}' "${out_dir}/${xr_asset}.dgst")"
 [[ -n "$xr_digest" ]] || { echo "Unable to parse Xray digest" >&2; exit 1; }
 printf '%s  %s\n' "$xr_digest" "${out_dir}/${xr_asset}" | sha256sum -c -

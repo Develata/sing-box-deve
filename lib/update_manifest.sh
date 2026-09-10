@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 #
-# Single source of truth for all files managed by the update system.
-# Both common_update.sh and scripts/update-checksums.sh source this file.
+# Source-checkout checksum inventory. Runtime archives use a generated, closed
+# runtime-files.txt inventory owned by scripts/runtime-archive.py.
 #
 
-# All files that should be downloaded and checksum-verified during update
+# Maintained source files verified by the repository pre-push suite
 UPDATE_MANIFEST_FILES=(
   "sing-box-deve.sh"
   "version"
@@ -27,7 +27,6 @@ UPDATE_MANIFEST_FILES=(
   "lib/common_update_sources.sh"
   "lib/common_update.sh"
   "lib/common_update_base.sh"
-  "lib/common_update_lock.sh"
   "lib/common_update_rollback.sh"
   "lib/common_update_methods.sh"
   "lib/common_context.sh"
@@ -172,6 +171,25 @@ UPDATE_MANIFEST_FILES=(
   ".github/workflows/pages.yml"
   ".github/workflows/serv00.yml"
   ".github/workflows/ssh-keepalive.yml"
+  "lib/common_io.sh"
+  "lib/common_lock.sh"
+  "lib/common_ownership.sh"
+  "lib/common_release.sh"
+  "lib/common_runtime_schema.sh"
+  "lib/load.sh"
+  "lib/providers_state.sh"
+  "lib/providers_transaction.sh"
+  "scripts/bounded-log.py"
+  "scripts/nohup-run.sh"
+  "scripts/runtime-archive.py"
+  "scripts/test-bounded-log.py"
+  "scripts/test-install-recovery.sh"
+  "scripts/test-io-deadlines.sh"
+  "scripts/test-reliability.sh"
+  "scripts/test-review-recovery.sh"
+  "scripts/test-runtime-archive.py"
+  "scripts/test-runtime-release.sh"
+  "scripts/test-source-graph.sh"
 )
 
 # Files that need executable permission after update

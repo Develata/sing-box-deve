@@ -8,6 +8,7 @@ cleanup() {
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
+export SBD_HOST_STATE_DIR="$TMP_DIR/host-control"
 
 fail() {
   echo "[FAIL] $*" >&2

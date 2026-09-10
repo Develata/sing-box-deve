@@ -101,7 +101,7 @@ grep -q "simulated user-mode daemon-reload failure" "${TMP_DIR}/daemon-reload-fa
 serv00_home="${TMP_DIR}/serv00-home"
 mkdir -p "$serv00_home"
 assert_success serv00-local-bundle env HOME="$serv00_home" "$SCRIPT" install --provider serv00 --yes
-grep -q "generated local bundle only" "${TMP_DIR}/serv00-local-bundle.out" || fail "serv00 local bundle warning missing"
+grep -q "generating a local deployment bundle" "${TMP_DIR}/serv00-local-bundle.out" || fail "serv00 local bundle warning missing"
 [[ -f "${serv00_home}/sing-box-deve/config/serv00.env" ]] || fail "serv00 local bundle missing serv00.env"
 
 serv00_cred_home="${TMP_DIR}/serv00-cred-home"
@@ -117,7 +117,7 @@ for d in /usr/bin /bin; do
   done
 done
 assert_failure serv00-credentials-no-sshpass env PATH="$serv00_no_sshpass_bin" HOME="$serv00_cred_home" SERV00_HOST=h SERV00_USER=u SERV00_PASS=p "$SCRIPT" install --provider serv00 --yes
-grep -q "sshpass is required" "${TMP_DIR}/serv00-credentials-no-sshpass.err" || fail "serv00 sshpass error missing"
+grep -q "Install sshpass before remote bootstrap" "${TMP_DIR}/serv00-credentials-no-sshpass.err" || fail "serv00 sshpass error missing"
 
 assert_failure integration-smoke-missing-value "${ROOT_DIR}/scripts/integration-smoke.sh" --script
 grep -q "requires a value" "${TMP_DIR}/integration-smoke-missing-value.err" || fail "integration-smoke missing-value error is not explicit"
@@ -128,11 +128,10 @@ grep -q "Option --tls-sni requires a value" "${TMP_DIR}/install-option-next-toke
 assert_failure update-option-next-token env HOME="$HOME" "$SCRIPT" update --source --yes
 grep -q "Option --source requires a value" "${TMP_DIR}/update-option-next-token.err" || fail "update next-option-as-value error is not explicit"
 
-local_remote_root="${TMP_DIR}/local-remote"
-mkdir -p "$local_remote_root"
-printf '%s\n' "$(tr -d '[:space:]' < "${ROOT_DIR}/version")" > "${local_remote_root}/version"
-assert_success update-default-script-only env HOME="$HOME" SBD_UPDATE_BASE_URL="file://${local_remote_root}" "$SCRIPT" update --source primary --yes
-! grep -q "Update installed core engine" "${TMP_DIR}/update-default-script-only.out" || fail "default update should not attempt core update"
+# Script-only update with a bad pinned digest must fail without a core update.
+printf 'not-an-archive' > "$TMP_DIR/bad-release.tar.gz"
+assert_failure update-default-script-only env HOME="$HOME" SBD_RELEASE_ARCHIVE_URL="file://$TMP_DIR/bad-release.tar.gz" SBD_RELEASE_SHA256="$(printf '0%.0s' {1..64})" "$SCRIPT" update --yes
+! grep -q "Update installed core" "${TMP_DIR}/update-default-script-only.out" || fail "default update should not attempt core update"
 
 assert_failure set-route-extra-arg env HOME="$HOME" "$SCRIPT" set-route direct extra
 grep -q "Usage: set-route" "${TMP_DIR}/set-route-extra-arg.err" || fail "set-route extra-arg error is not explicit"
@@ -241,7 +240,7 @@ protocols="vless-reality"
 script_root="$PROJECT_ROOT"
 installed_at="2026-06-17T00:00:00Z"
 EOF
-provider_cfg_apply_with_snapshot_unlocked profile full
+provider_cfg_command apply profile full
 grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"
 provider_cfg_protocol_add hysteria2 random
 grep -q '^profile="full"$' "$SBD_CONFIG_DIR/runtime.env"

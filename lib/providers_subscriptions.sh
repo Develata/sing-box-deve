@@ -22,7 +22,7 @@ provider_sub_rules_update() {
 provider_sub_refresh() {
   ensure_root
   [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
-  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env"
+  sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
   write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
   generate_client_artifacts
   log_success "$(msg "订阅与分享产物已刷新" "Subscription artifacts refreshed")"
@@ -39,6 +39,10 @@ provider_sub_show() {
 }
 
 provider_sub_command() {
+  sbd_with_mutation_lock provider_sub_command_unlocked "$@"
+}
+
+provider_sub_command_unlocked() {
   local action="${1:-show}"
   shift || true
   case "$action" in

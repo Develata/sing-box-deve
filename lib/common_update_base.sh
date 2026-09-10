@@ -29,8 +29,9 @@ fetch_remote_script_version() {
   while IFS= read -r base_url; do
     [[ -n "$base_url" ]] || continue
     version_url="$(update_url_with_cache_bust "${base_url}/version" "$cb")"
-    version="$(curl -fsSL "$version_url" 2>/dev/null | tr -d '[:space:]' || true)"
-    if [[ -n "$version" ]]; then
+    if ! version="$(sbd_http_small "$version_url" 2>/dev/null)"; then continue; fi
+    version="${version//[[:space:]]/}"
+    if [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9.-]+)?$ ]]; then
       SBD_ACTIVE_UPDATE_BASE_URL="$base_url"
       echo "$version"
       return 0

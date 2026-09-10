@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 SBD_CFG_SNAPSHOT_DIR="${SBD_STATE_DIR}/cfg-snapshots"
 SBD_CFG_SNAPSHOT_LATEST_FILE="${SBD_CFG_SNAPSHOT_DIR}/latest"
@@ -9,21 +10,13 @@ provider_cfg_snapshot_paths_sync() {
 }
 
 provider_cfg_snapshot_create() {
-  ensure_root
+  ensure_root >&2
   provider_cfg_snapshot_paths_sync
   local reason="${1:-cfg-change}" id dir
   mkdir -p "$SBD_CFG_SNAPSHOT_DIR"
   id="$(date -u +"%Y%m%dT%H%M%SZ")-$(rand_hex_8)"
   dir="${SBD_CFG_SNAPSHOT_DIR}/${id}"
-  mkdir -p "$dir"
-
-  cp -f "$(provider_cfg_runtime_file)" "$dir/runtime.env" 2>/dev/null || true
-  cp -f "${SBD_CONFIG_DIR}/config.json" "$dir/config.json" 2>/dev/null || true
-  cp -f "${SBD_CONFIG_DIR}/xray-config.json" "$dir/xray-config.json" 2>/dev/null || true
-  cp -f "$SBD_NODES_FILE" "$dir/nodes.txt" 2>/dev/null || true
-  cp -f "$SBD_ARGO_SERVICE_FILE" "$dir/sing-box-deve-argo.service" 2>/dev/null || true
-  cp -f "${SBD_DATA_DIR}/argo_mode" "$dir/argo_mode" 2>/dev/null || true
-  cp -f "${SBD_DATA_DIR}/argo_domain" "$dir/argo_domain" 2>/dev/null || true
+  sbd_state_capture "$dir" false || return 1
 
   cat > "$dir/meta.env" <<EOF_META
 snapshot_id=${id}
@@ -125,7 +118,7 @@ provider_cfg_snapshots_command() {
 
 provider_cfg_preview() {
   local action="${1:-}" arg1="${2:-}" arg2="${3:-}" arg3="${4:-}"
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   local current_protocols target_protocols
   current_protocols="${protocols:-vless-reality}"
   case "$action" in
@@ -187,15 +180,11 @@ provider_cfg_apply_with_snapshot_unlocked() {
   shift || true
   [[ -n "$action" ]] || die "Usage: cfg apply <action> ..."
   local sid
-  sid="$(provider_cfg_snapshot_create "cfg ${action}")"
+  sid="$(provider_cfg_snapshot_create "cfg ${action}")" || return 1
   log_info "$(msg "已创建配置快照: ${sid}" "cfg snapshot created: ${sid}")"
-  if ! ( provider_cfg_apply_dispatch "$action" "$@" ); then
-    log_error "$(msg "配置变更失败，正在回滚到快照: ${sid}" "Config change failed, rolling back to snapshot: ${sid}")"
-    if ! provider_cfg_rollback_unlocked "$sid"; then
-      die "$(msg "配置变更失败，且自动回滚失败，请手动执行: cfg rollback ${sid}" "Config change failed and auto-rollback failed, run manually: cfg rollback ${sid}")"
-    fi
-    die "$(msg "配置变更失败，已自动回滚到: ${sid}" "Config change failed and rolled back to: ${sid}")"
-  fi
+  sbd_transaction_phase "$SBD_ACTIVE_TRANSACTION" committing || return 1
+  provider_cfg_apply_dispatch "$action" "$@" || return 1
+  provider_cfg_snapshots_prune_unlocked "${SBD_CFG_SNAPSHOT_KEEP:-20}"
 }
 
 provider_cfg_rollback_unlocked() {
@@ -208,27 +197,26 @@ provider_cfg_rollback_unlocked() {
     id="$(cat "$SBD_CFG_SNAPSHOT_LATEST_FILE")"
   fi
 
+  [[ "$id" =~ ^[A-Za-z0-9_-]+$ ]] || { log_error "Invalid snapshot id"; return 1; }
   target_dir="${SBD_CFG_SNAPSHOT_DIR}/${id}"
   [[ -d "$target_dir" ]] || die "Snapshot not found: ${id}"
-  [[ -f "$target_dir/runtime.env" ]] || die "Snapshot runtime missing: ${id}"
-
-  cp -f "$target_dir/runtime.env" "$runtime_file"
-  cp -f "$target_dir/config.json" "${SBD_CONFIG_DIR}/config.json" 2>/dev/null || true
-  cp -f "$target_dir/xray-config.json" "${SBD_CONFIG_DIR}/xray-config.json" 2>/dev/null || true
-  cp -f "$target_dir/nodes.txt" "$SBD_NODES_FILE" 2>/dev/null || true
-
-  provider_cfg_rebuild_runtime
-  sbd_safe_load_env_file "$runtime_file"
+  sbd_state_verify "$target_dir" || return 1
+  sbd_transaction_phase "$SBD_ACTIVE_TRANSACTION" committing || return 1
+  sbd_restore_firewall_delta "$target_dir/files/state/firewall-rules.db" || return 1
+  sbd_state_restore "$target_dir" || return 1
+  CFG_RUNTIME_LOADED=false
+  provider_cfg_rebuild_runtime || return 1
+  sbd_load_runtime_env "$runtime_file" || return 1
   if [[ "${argo_mode:-off}" == "off" ]]; then
-    sbd_service_stop "sing-box-deve-argo"
+    sbd_service_stop "sing-box-deve-argo" || return 1
     rm -f "$SBD_ARGO_SERVICE_FILE"
     rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode" "$SBD_ARGO_TOKEN_FILE" "$SBD_ARGO_EXEC_FILE"
-    sbd_service_daemon_reload
+    sbd_service_daemon_reload || return 1
   else
-    configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"
+    configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}" || return 1
   fi
-  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
-  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
   log_success "$(msg "配置回滚完成: ${id}" "cfg rollback completed: ${id}")"
 }
 
@@ -238,10 +226,10 @@ provider_cfg_command() {
   case "$action" in
     snapshots|snapshot) provider_cfg_snapshots_command "$@" ;;
     preview) provider_cfg_preview "$@" ;;
-    apply) provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$@" ;;
-    rollback) provider_cfg_with_lock provider_cfg_rollback_unlocked "${1:-latest}" ;;
+    apply) provider_cfg_with_lock sbd_transaction_run config-change provider_cfg_apply_with_snapshot_unlocked "$@" ;;
+    rollback) provider_cfg_with_lock sbd_transaction_run config-rollback provider_cfg_rollback_unlocked "${1:-latest}" ;;
     rotate-id|argo|ip-pref|cdn-host|domain-split|tls|profile|protocol-add|protocol-remove|rebuild)
-      provider_cfg_with_lock provider_cfg_apply_with_snapshot_unlocked "$action" "$@"
+      provider_cfg_with_lock sbd_transaction_run config-change provider_cfg_apply_with_snapshot_unlocked "$action" "$@"
       ;;
     *)
       die "Usage: cfg [snapshots [list|prune [keep_count]]|preview <action...>|apply <action...>|rollback [snapshot_id|latest]|rotate-id|argo <off|temp|fixed> [token] [domain]|ip-pref <auto|v4|v6>|cdn-host <domain>|domain-split <direct_csv> <proxy_csv> <block_csv>|tls <self-signed|acme|acme-auto> [cert|domain] [key|email]|profile <lite|full>|protocol-add <proto_csv> [random|manual] [proto:port,...]|protocol-remove <proto_csv|index_csv>|rebuild]"

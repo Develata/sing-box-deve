@@ -4,16 +4,23 @@ sbd_offline_mode_enabled() {
   [[ "${SBD_OFFLINE_MODE:-false}" == "true" ]]
 }
 
+fetch_release_metadata() {
+  local repo="$1" tag="${2:-latest}" endpoint
+  [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && "$tag" =~ ^[A-Za-z0-9_.+-]+$ ]] || return 2
+  endpoint="tags/$tag"; [[ "$tag" != latest ]] || endpoint=latest
+  sbd_http_small "https://api.github.com/repos/${repo}/releases/${endpoint}"
+}
+
 fetch_latest_release_tag() {
   local repo="$1"
-  curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" | jq -r '.tag_name'
+  sbd_http_small "https://api.github.com/repos/${repo}/releases/latest" | jq -r '.tag_name'
 }
 
 fetch_release_asset_url() {
   local repo="$1"
   local tag="$2"
   local asset_name="$3"
-  curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${tag}" | jq -r \
+  sbd_http_small "https://api.github.com/repos/${repo}/releases/tags/${tag}" | jq -r \
     --arg name "$asset_name" '.assets[] | select(.name==$name) | .browser_download_url' | head -n1
 }
 
@@ -21,7 +28,7 @@ fetch_release_asset_digest() {
   local repo="$1"
   local tag="$2"
   local asset_name="$3"
-  curl -fsSL "https://api.github.com/repos/${repo}/releases/tags/${tag}" | jq -r \
+  sbd_http_small "https://api.github.com/repos/${repo}/releases/tags/${tag}" | jq -r \
     --arg name "$asset_name" '.assets[] | select(.name==$name) | .digest // empty' | head -n1
 }
 
@@ -72,41 +79,34 @@ install_sing_box_binary() {
     fi
     die "$(msg "SBD_OFFLINE_MODE=true，但未找到本地 sing-box 二进制" "SBD_OFFLINE_MODE=true but local sing-box binary not found")"
   fi
-  local tag
-  if [[ "$input_tag" == "latest" ]]; then
-    tag="$(fetch_latest_release_tag "SagerNet/sing-box")"
-  else
-    tag="$input_tag"
-    [[ "$tag" == v* ]] || tag="v${tag}"
-  fi
-  [[ -n "$tag" && "$tag" != "null" ]] || die "$(msg "无法获取最新 sing-box 发布版本" "Unable to fetch latest sing-box release")"
-
-  local version="${tag#v}"
-  local filename="sing-box-${version}-linux-${arch}.tar.gz"
-  local url digest expected
-  url="$(fetch_release_asset_url "SagerNet/sing-box" "$tag" "$filename")"
-  digest="$(fetch_release_asset_digest "SagerNet/sing-box" "$tag" "$filename")"
-  [[ -n "$url" ]] || die "$(msg "找不到 sing-box 资产文件: ${filename}" "Unable to locate sing-box asset: ${filename}")"
+  local tag release
+  [[ "$input_tag" == latest || "$input_tag" == v* ]] || input_tag="v${input_tag}"
+  release="$(fetch_release_metadata SagerNet/sing-box "$input_tag")" || return 1
+  tag="$(jq -er '.tag_name | select(type == "string" and length > 0)' <<< "$release")" || return 1
+  local version="${tag#v}" filename url digest expected
+  filename="sing-box-${version}-linux-${arch}.tar.gz"
+  url="$(jq -er --arg name "$filename" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$release")" || return 1
+  digest="$(jq -r --arg name "$filename" '.assets[] | select(.name == $name) | .digest // empty' <<< "$release")" || return 1
   expected=""
   if [[ "$digest" == sha256:* ]]; then
     expected="${digest#sha256:}"
   fi
   local cache_dir="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}"
-  mkdir -p "$cache_dir"
+  mkdir -p "$cache_dir" || return 1
   local archive="${cache_dir}/${filename}"
   local sums_file="${cache_dir}/sing-box-${version}-checksums.txt"
 
   log_info "$(msg "正在安装 sing-box ${tag}" "Installing sing-box ${tag}")"
   if download_file "$url" "$archive"; then
     if [[ -n "$expected" ]]; then
-      verify_sha256_expected "$archive" "$expected"
+      verify_sha256_expected "$archive" "$expected" || return 1
     else
       log_warn "$(msg "发布摘要缺失，回退到 checksums 文件校验" "Release digest metadata missing; fallback to checksums file")"
-      download_file "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-checksums.txt" "$sums_file"
-      verify_sha256_from_checksums_file "$archive" "$sums_file"
+      download_file "https://github.com/SagerNet/sing-box/releases/download/${tag}/sing-box-${version}-checksums.txt" "$sums_file" || return 1
+      verify_sha256_from_checksums_file "$archive" "$sums_file" || return 1
     fi
-    tar -xzf "$archive" -C "$cache_dir"
-    install -m 0755 "${cache_dir}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box"
+    tar -xzf "$archive" -C "$cache_dir" || return 1
+    install -m 0755 "${cache_dir}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box" || return 1
     rm -rf "${cache_dir}/sing-box-${version}-linux-${arch}" "$archive" "$sums_file" 2>/dev/null || true
   else
     if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
@@ -146,19 +146,19 @@ install_xray_binary() {
   local filename="Xray-linux-${x_arch}.zip"
   local url="https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}"
   local cache_dir="${SBD_CACHE_DIR:-${SBD_INSTALL_DIR}/cache}"
-  mkdir -p "$cache_dir"
+  mkdir -p "$cache_dir" || return 1
   local archive="${cache_dir}/${filename}"
   local dgst="${cache_dir}/${filename}.dgst"
 
   log_info "$(msg "正在安装 xray ${tag}" "Installing xray ${tag}")"
   if download_file "$url" "$archive"; then
-    download_file "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}.dgst" "$dgst"
-    verify_sha256_from_xray_dgst "$archive" "$dgst"
+    download_file "https://github.com/XTLS/Xray-core/releases/download/${tag}/${filename}.dgst" "$dgst" || return 1
+    verify_sha256_from_xray_dgst "$archive" "$dgst" || return 1
     if ! command -v unzip >/dev/null 2>&1; then
-      apt-get install -y unzip >/dev/null
+      sbd_apt_get install -y unzip >/dev/null || return 1
     fi
-    unzip -o "$archive" xray -d "$cache_dir" >/dev/null
-    install -m 0755 "${cache_dir}/xray" "${SBD_BIN_DIR}/xray"
+    unzip -o "$archive" xray -d "$cache_dir" >/dev/null || return 1
+    install -m 0755 "${cache_dir}/xray" "${SBD_BIN_DIR}/xray" || return 1
     rm -f "${cache_dir}/xray" "$archive" "$dgst" 2>/dev/null || true
   else
     if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
@@ -179,8 +179,8 @@ install_engine_binary() {
   # shellcheck disable=SC2034
   SBD_ENGINE_INSTALL_REUSED_EXISTING="false"
   case "$engine" in
-    sing-box) install_sing_box_binary "$tag" ;;
-    xray) install_xray_binary "$tag" ;;
+    sing-box) install_sing_box_binary "$tag" || return 1 ;;
+    xray) install_xray_binary "$tag" || return 1 ;;
     *) die "$(msg "不支持的内核: $engine" "Unsupported engine: $engine")" ;;
   esac
   if [[ "${SBD_ENGINE_INSTALL_REUSED_EXISTING:-false}" == "true" && -n "${SBD_ENGINE_INSTALL_REUSED_EXISTING_FILE:-}" ]]; then

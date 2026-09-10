@@ -4,9 +4,9 @@ sbd_configure_web_front() {
   local protocols_csv="${1:-vless-reality}" domain cert key found engine bin paths conf_file service site_dir
   sbd_web_front_required "$protocols_csv" || return 0
   [[ "$(sbd_web_front_mode)" != "off" ]] || return 0
-  sbd_web_front_assert_tcp443_available "$protocols_csv"
-  sbd_web_front_install_if_needed || return 0
-  found="$(sbd_find_web_front)" || return 0
+  sbd_web_front_assert_tcp443_available "$protocols_csv" || return 1
+  sbd_web_front_install_if_needed || return 1
+  found="$(sbd_find_web_front)" || return 1
   engine="${found%%|*}"
   bin="${found#*|}"
   domain="$(sbd_nginx_safe_server_name "$(sbd_tls_server_name)")"
@@ -17,7 +17,7 @@ sbd_configure_web_front() {
   [[ -d "$site_dir" ]] || die "Archive site directory not found: ${site_dir}"
 
   if [[ "$engine" == "openresty" ]]; then
-    sbd_ensure_openresty_confd_include "$(sbd_openresty_conf_root)" "$bin"
+    sbd_ensure_openresty_confd_include "$(sbd_openresty_conf_root)" "$bin" || return 1
   fi
   paths="$(sbd_web_front_conf_paths "$engine")"
   conf_file="${paths%%|*}"
@@ -25,9 +25,9 @@ sbd_configure_web_front() {
   bin="${paths%%|*}"
   service="${paths#*|}"
 
-  sbd_write_web_front_conf_staged "$conf_file" "$bin" "$domain" "$cert" "$key" "$site_dir"
-  sbd_web_front_open_firewall
-  sbd_web_front_reload "$engine" "$bin" "$service"
+  sbd_write_web_front_conf_staged "$conf_file" "$bin" "$domain" "$cert" "$key" "$site_dir" || return 1
+  sbd_web_front_open_firewall || return 1
+  sbd_web_front_reload "$engine" "$bin" "$service" || return 1
   WEB_FRONT_ENGINE="$engine"
   WEB_FRONT_CONF="$conf_file"
   WEB_FRONT_DOMAIN="$domain"
@@ -47,7 +47,7 @@ sbd_configure_web_front_http_challenge() {
 
   if [[ "$engine" == "openresty" ]]; then
     bin="${found#*|}"
-    sbd_ensure_openresty_confd_include "$(sbd_openresty_conf_root)" "$bin"
+    sbd_ensure_openresty_confd_include "$(sbd_openresty_conf_root)" "$bin" || return 1
   fi
   paths="$(sbd_web_front_conf_paths "$engine")"
   conf_file="${paths%%|*}"
@@ -55,9 +55,9 @@ sbd_configure_web_front_http_challenge() {
   bin="${paths%%|*}"
   service="${paths#*|}"
 
-  sbd_write_web_front_http_conf_staged "$conf_file" "$bin" "$domain" "$site_dir"
-  sbd_web_front_open_firewall
-  sbd_web_front_reload "$engine" "$bin" "$service"
+  sbd_write_web_front_http_conf_staged "$conf_file" "$bin" "$domain" "$site_dir" || return 1
+  sbd_web_front_open_firewall || return 1
+  sbd_web_front_reload "$engine" "$bin" "$service" || return 1
   WEB_FRONT_ENGINE="$engine"
   WEB_FRONT_CONF="$conf_file"
   WEB_FRONT_DOMAIN="$domain"

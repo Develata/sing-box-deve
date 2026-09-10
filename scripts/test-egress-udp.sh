@@ -45,6 +45,12 @@ source "${ROOT_DIR}/lib/providers.sh"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/lib/cli_args.sh"
 
+SBD_INSTALL_DIR="$TMP_DIR/install"
+SBD_RUNTIME_DIR="$TMP_DIR/run"
+SBD_SERVICE_FILE="$TMP_DIR/services/core"
+SBD_ARGO_SERVICE_FILE="$TMP_DIR/services/argo"
+SBD_WARP_SOCKS_SERVICE_FILE="$TMP_DIR/services/warp"
+SBD_FW_REPLAY_SERVICE_FILE="$TMP_DIR/services/firewall"
 SBD_STATE_DIR="${TMP_DIR}/state"
 SBD_CONFIG_DIR="${TMP_DIR}/config"
 SBD_DATA_DIR="${TMP_DIR}/data"

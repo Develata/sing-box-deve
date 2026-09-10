@@ -3,14 +3,14 @@
 sbd_ensure_openresty_confd_include() {
   local conf_root="$1" test_bin="${2:-}" include_line="    include conf.d/*.conf;"
   local nginx_conf="${conf_root}/nginx.conf" tmp_conf backup_conf=""
-  mkdir -p "${conf_root}/conf.d"
+  mkdir -p "${conf_root}/conf.d" || return 1
   if [[ ! -f "$nginx_conf" ]]; then
     [[ "${SBD_USER_MODE:-false}" == "true" ]] && return 0
     die "OpenResty nginx.conf not found: ${nginx_conf}"
   fi
-  backup_conf="${nginx_conf}.sbd.bak.$(date +%s)"
-  cp -f "$nginx_conf" "$backup_conf"
-  tmp_conf="$(mktemp "${nginx_conf}.tmp.XXXXXX")"
+  backup_conf="$(mktemp "${nginx_conf}.bak.XXXXXX")" || return 1
+  cp -p "$nginx_conf" "$backup_conf" || return 1
+  tmp_conf="$(mktemp "${nginx_conf}.tmp.XXXXXX")" || return 1
   if ! awk -v inc_line="$include_line" '
     function count_delta(s,   i,c,d) {
       d = 0
@@ -50,9 +50,10 @@ sbd_ensure_openresty_confd_include() {
     rm -f "$tmp_conf"
     die "Unable to add conf.d include inside OpenResty http{} block"
   fi
-  mv -f "$tmp_conf" "$nginx_conf"
-  if [[ -n "$test_bin" ]] && ! "$test_bin" -t >/dev/null; then
+  sbd_host_file_publish "$nginx_conf" "$tmp_conf" || return 1
+  if [[ -n "$test_bin" ]] && ! sbd_run_deadline 30 "$test_bin" -t >/dev/null; then
     mv -f "$backup_conf" "$nginx_conf"
     die "OpenResty nginx.conf failed syntax test after adding conf.d include"
   fi
+  rm -f "$backup_conf"
 }

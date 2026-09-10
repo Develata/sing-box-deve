@@ -8,7 +8,7 @@ provider_cfg_load_runtime_exports() {
   local runtime_file
   runtime_file="$(provider_cfg_runtime_file)"
   [[ -f "$runtime_file" ]] || die "$(msg "未找到运行时状态" "No runtime state found")"
-  sbd_safe_load_env_file "$runtime_file"
+  sbd_load_runtime_env "$runtime_file" || return 1
   [[ -n "${provider:-}" && -n "${profile:-}" && -n "${engine:-}" && -n "${protocols:-}" ]] || \
     die "$(msg "运行时状态缺少关键字段(provider/profile/engine/protocols)" "Runtime missing required fields (provider/profile/engine/protocols)")"
   export ARGO_MODE="${argo_mode:-off}"
@@ -62,40 +62,40 @@ provider_cfg_rebuild_runtime() {
   ensure_root
   local target_protocols="${1:-}"
   if [[ "${CFG_RUNTIME_LOADED:-false}" != "true" ]]; then
-    provider_cfg_load_runtime_exports
+    provider_cfg_load_runtime_exports || return 1
   fi
   [[ -n "$target_protocols" ]] && protocols="$target_protocols"
   local runtime_provider="${provider:-vps}" runtime_profile="${profile:-lite}"
   local runtime_engine="${engine:-sing-box}" runtime_protocols="${protocols:-vless-reality}"
-  validate_feature_modes
-  provider_prepare_domain_runtime_artifacts "$runtime_protocols"
+  validate_feature_modes || return 1
+  provider_prepare_domain_runtime_artifacts "$runtime_protocols" || return 1
   case "$runtime_engine" in
-    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" ;;
-    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" ;;
+    sing-box) build_sing_box_config "$runtime_protocols" && validate_generated_config "sing-box" "true" || return 1 ;;
+    xray) build_xray_config "$runtime_protocols" && validate_generated_config "xray" "true" || return 1 ;;
     *) die "$(msg "运行时内核不受支持: ${runtime_engine}" "Unsupported engine in runtime: ${runtime_engine}")" ;;
   esac
   if declare -F provider_cfg_protocol_ensure_firewall_for_current >/dev/null 2>&1; then
     provider_cfg_protocol_ensure_firewall_for_current "$runtime_protocols" || die "Failed to reconcile firewall rules for current protocols: ${runtime_protocols}"
   fi
-  provider_commit_domain_web_front "$runtime_protocols"
-  write_nodes_output "$runtime_engine" "$runtime_protocols"
-  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
-  provider_restart core
+  provider_commit_domain_web_front "$runtime_protocols" || return 1
+  write_nodes_output "$runtime_engine" "$runtime_protocols" || return 1
+  persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols" || return 1
+  provider_restart core || return 1
 }
 
 provider_cfg_rotate_identity() {
   ensure_root
-  provider_cfg_load_runtime_exports
-  rm -f "${SBD_DATA_DIR}/uuid"
-  ensure_uuid >/dev/null
+  provider_cfg_load_runtime_exports || return 1
+  rm -f "${SBD_DATA_DIR}/uuid" || return 1
+  ensure_uuid >/dev/null || return 1
   if command -v openssl >/dev/null 2>&1; then
-    openssl rand -hex 4 > "${SBD_DATA_DIR}/reality_short_id" 2>/dev/null || true
-    openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id" 2>/dev/null || true
+    openssl rand -hex 4 > "${SBD_DATA_DIR}/reality_short_id" 2>/dev/null || return 1
+    openssl rand -hex 4 > "${SBD_DATA_DIR}/xray_short_id" 2>/dev/null || return 1
   else
     rand_hex_8 > "${SBD_DATA_DIR}/reality_short_id"
     rand_hex_8 > "${SBD_DATA_DIR}/xray_short_id"
   fi
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "身份标识已轮换（UUID/short-id）" "Identity rotated (UUID/short-id)")"
 }
 
@@ -105,18 +105,18 @@ provider_cfg_set_argo() {
   case "$mode" in off|temp|fixed) ;;
     *) die "$(msg "用法: cfg argo <off|temp|fixed> [token] [domain]" "Usage: cfg argo <off|temp|fixed> [token] [domain]")" ;;
   esac
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   ARGO_MODE="$mode"; ARGO_TOKEN="$token"; ARGO_DOMAIN="$domain"
   if [[ "$mode" == "off" ]]; then
-    sbd_service_stop "sing-box-deve-argo"
+    sbd_service_stop "sing-box-deve-argo" || return 1
     rm -f "$SBD_ARGO_SERVICE_FILE"
     rm -f "${SBD_DATA_DIR}/argo_domain" "${SBD_DATA_DIR}/argo_mode" "$SBD_ARGO_TOKEN_FILE" "$SBD_ARGO_EXEC_FILE"
-    sbd_service_daemon_reload
+    sbd_service_daemon_reload || return 1
   else
-    configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}"
+    configure_argo_tunnel "${protocols:-vless-reality}" "${engine:-sing-box}" || return 1
   fi
-  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
-  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
   log_success "$(msg "Argo 模式已更新: ${mode}" "Argo mode updated: ${mode}")"
 }
 
@@ -126,9 +126,9 @@ provider_cfg_set_ip_preference() {
   case "$pref" in auto|v4|v6) ;;
     *) die "$(msg "用法: cfg ip-pref <auto|v4|v6>" "Usage: cfg ip-pref <auto|v4|v6>")" ;;
   esac
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   IP_PREFERENCE="$pref"
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "IP 优先级已更新: ${pref}" "IP preference updated: ${pref}")"
 }
 
@@ -136,21 +136,21 @@ provider_cfg_set_cdn_host() {
   ensure_root
   local host="$1"
   [[ -n "$host" ]] || die "$(msg "用法: cfg cdn-host <domain>" "Usage: cfg cdn-host <domain>")"
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   CDN_TEMPLATE_HOST="$host"
-  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}"
-  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
+  write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
+  persist_runtime_state "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
   log_success "$(msg "CDN 主机模板已更新: ${host}" "CDN host template updated: ${host}")"
 }
 
 provider_cfg_set_domain_split() {
   ensure_root
   local direct="$1" proxy="$2" block="$3"
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   DOMAIN_SPLIT_DIRECT="$direct"
   DOMAIN_SPLIT_PROXY="$proxy"
   DOMAIN_SPLIT_BLOCK="$block"
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "域名分流规则已更新" "Domain split updated")"
 }
 
@@ -161,12 +161,12 @@ provider_cfg_set_tls() {
   case "$mode" in self-signed|acme|acme-auto) ;;
     *) die "$(msg "用法: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email]" "Usage: cfg tls <self-signed|acme|acme-auto> [cert_path|domain] [key_path|email]")" ;;
   esac
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   if [[ "$mode" == "acme-auto" ]]; then
     domain="$cert"
     email="$key"
     [[ -n "$domain" && -n "$email" ]] || die "$(msg "用法: cfg tls acme-auto <domain> <email>" "Usage: cfg tls acme-auto <domain> <email>")"
-    provider_sys_acme_issue "$domain" "$email"
+    provider_sys_acme_issue "$domain" "$email" || return 1
     cert="${SBD_LAST_ACME_CERT_PATH:-}"
     key="${SBD_LAST_ACME_KEY_PATH:-}"
     if [[ -z "$cert" || -z "$key" ]]; then
@@ -196,7 +196,7 @@ provider_cfg_set_tls() {
     ACME_EMAIL=""
     ACME_DNS_PROVIDER=""
   fi
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "TLS 模式已更新: ${mode}" "TLS mode updated: ${mode}")"
 }
 
@@ -206,10 +206,10 @@ provider_cfg_set_profile() {
   case "$new_profile" in lite|full) ;;
     *) die "$(msg "用法: cfg profile <lite|full>" "Usage: cfg profile <lite|full>")" ;;
   esac
-  provider_cfg_load_runtime_exports
+  provider_cfg_load_runtime_exports || return 1
   validate_profile_protocols "$new_profile" "${protocols:-vless-reality}"
   profile="$new_profile"
-  provider_cfg_rebuild_runtime
+  provider_cfg_rebuild_runtime || return 1
   log_success "$(msg "运行档位已更新: ${new_profile}" "Profile updated: ${new_profile}")"
 }
 

@@ -59,8 +59,8 @@ menu_firewall() {
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) fw_status; menu_pause ;;
-      2) fw_detect_backend; fw_rollback; menu_pause ;;
-      3) fw_detect_backend; fw_replay; menu_pause ;;
+      2) cli_handle_fw_command rollback; menu_pause ;;
+      3) cli_handle_fw_command replay; menu_pause ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac

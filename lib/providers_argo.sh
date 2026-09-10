@@ -1,29 +1,35 @@
 #!/usr/bin/env bash
 
 install_cloudflared_binary() {
+  local stored actual
+  if [[ -x "$SBD_BIN_DIR/cloudflared" && -f "$SBD_DATA_DIR/cloudflared.sha256" ]]; then
+    stored="$(cat "$SBD_DATA_DIR/cloudflared.sha256")" || return 1
+    actual="$(sha256sum "$SBD_BIN_DIR/cloudflared")" || return 1
+    [[ "${actual%% *}" != "$stored" ]] || return 0
+  fi
   local arch
   arch="$(get_arch)"
   local asset="cloudflared-linux-amd64"
   [[ "$arch" == "arm64" ]] && asset="cloudflared-linux-arm64"
 
-  local tag
-  tag="$(fetch_latest_release_tag "cloudflare/cloudflared")"
-  [[ -n "$tag" && "$tag" != "null" ]] || die "Unable to fetch latest cloudflared release"
-
-  local url digest expected
-  url="$(fetch_release_asset_url "cloudflare/cloudflared" "$tag" "$asset")"
-  digest="$(fetch_release_asset_digest "cloudflare/cloudflared" "$tag" "$asset")"
-  [[ -n "$url" ]] || die "Unable to locate cloudflared asset ${asset}"
-  [[ "$digest" == sha256:* ]] || die "Unable to locate cloudflared sha256 digest metadata for ${asset}"
+  local release url digest expected
+  release="$(fetch_release_metadata cloudflare/cloudflared latest)" || return 1
+  url="$(jq -er --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$release")" || return 1
+  digest="$(jq -er --arg name "$asset" '.assets[] | select(.name == $name) | .digest' <<< "$release")" || return 1
+  [[ "$digest" == sha256:* ]] || { log_error "Missing cloudflared digest"; return 1; }
   expected="${digest#sha256:}"
 
-  local bin_out
+  local bin_out candidate
   bin_out="${SBD_BIN_DIR}/cloudflared"
-  mkdir -p "$SBD_BIN_DIR"
-
-  download_file "$url" "$bin_out"
-  chmod 0755 "$bin_out"
-  verify_sha256_expected "$bin_out" "$expected"
+  mkdir -p "$SBD_BIN_DIR" || return 1
+  candidate="$(mktemp "${bin_out}.candidate.XXXXXX")" || return 1
+  if ! download_file "$url" "$candidate" || ! (verify_sha256_expected "$candidate" "$expected"); then
+    rm -f "$candidate"
+    return 1
+  fi
+  chmod 0755 "$candidate" || { rm -f "$candidate"; return 1; }
+  mv -f "$candidate" "$bin_out" || { rm -f "$candidate"; return 1; }
+  printf '%s\n' "$expected" > "$SBD_DATA_DIR/cloudflared.sha256" || return 1
 }
 
 argo_write_token_file() {
@@ -87,7 +93,7 @@ argo_restore_nohup_exec_command() {
   [[ "${ARGO_MODE:-off}" != "off" ]] || die "Argo is disabled in runtime state"
   local exec_cmd
   exec_cmd="$(argo_build_exec_command "${protocols:-vless-ws}" "${engine:-sing-box}")"
-  argo_write_exec_command "$exec_cmd"
+  argo_write_exec_command "$exec_cmd" || return 1
   printf '%s\n' "$exec_cmd"
 }
 
@@ -117,17 +123,22 @@ configure_argo_tunnel() {
 
   local exec_cmd
   if [[ "$mode" == "fixed" ]]; then
-    argo_write_token_file "$token"
+    argo_write_token_file "$token" || return 1
     exec_cmd="$(argo_build_exec_command "$protocols_csv" "$engine")"
   else
     mode="temp"
     rm -f "$SBD_ARGO_TOKEN_FILE"
-    : > "$argo_log"
+    rm -f "${SBD_DATA_DIR}/argo_domain" || return 1
+    : > "$argo_log" || return 1
     exec_cmd="$(argo_build_exec_command "$protocols_csv" "$engine")"
   fi
-  argo_write_exec_command "$exec_cmd"
+  argo_write_exec_command "$exec_cmd" || return 1
 
-  cat > "$SBD_ARGO_SERVICE_FILE" <<EOF
+  local service_tmp
+  mkdir -p "$(dirname "$SBD_ARGO_SERVICE_FILE")" || return 1
+  service_tmp="$(mktemp "$SBD_ARGO_SERVICE_FILE.tmp.XXXXXX")" || return 1
+  cat > "$service_tmp" <<EOF
+# Managed by sing-box-deve: service-v1
 [Unit]
 Description=sing-box-deve argo tunnel
 After=network.target sing-box-deve.service
@@ -139,26 +150,37 @@ ExecStart=${exec_cmd}
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=read-only
-StandardOutput=append:${argo_log}
-StandardError=append:${argo_log}
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sing-box-deve-argo
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
+  sbd_host_file_publish "$SBD_ARGO_SERVICE_FILE" "$service_tmp" || return 1
 
-  sbd_service_enable_and_start "sing-box-deve-argo" "$exec_cmd"
+  sbd_service_enable_and_start "sing-box-deve-argo" "$exec_cmd" || return 1
 
   echo "$mode" > "${SBD_DATA_DIR}/argo_mode"
   [[ -n "$domain" ]] && echo "$domain" > "${SBD_DATA_DIR}/argo_domain"
 
   if [[ "$mode" == "temp" ]]; then
-    local temp_domain="" remaining=20
-    while (( remaining > 0 )); do
+    local temp_domain="" deadline=$((SECONDS + 20)) invocation remaining
+    if [[ "${SBD_INIT_SYSTEM:-}" == systemd ]]; then
+      invocation="$(sbd_service_op systemctl show -p InvocationID --value sing-box-deve-argo.service)" || return 1
+      [[ "$invocation" =~ ^[a-f0-9]{32}$ ]] || return 1
+    fi
+    while (( SECONDS < deadline )); do
+      remaining=$((deadline - SECONDS))
+      if [[ "${SBD_INIT_SYSTEM:-}" == systemd ]]; then
+        SBD_SERVICE_TIMEOUT="$remaining" sbd_service_op journalctl "_SYSTEMD_INVOCATION_ID=$invocation" -n 200 --no-pager > "$argo_log" || return 1
+      elif [[ "${SBD_INIT_SYSTEM:-}" == nohup && -f "$SBD_DATA_DIR/sing-box-deve-argo.log" ]]; then
+        tail -n 200 "$SBD_DATA_DIR/sing-box-deve-argo.log" > "$argo_log" || return 1
+      fi
       temp_domain="$(grep -aEo 'https://[^ ]*trycloudflare.com' "$argo_log" 2>/dev/null | tail -n1 | sed 's#https://##')"
       [[ -n "$temp_domain" ]] && break
-      remaining=$((remaining - 1))
       sleep 1
     done
     if [[ -n "$temp_domain" ]]; then

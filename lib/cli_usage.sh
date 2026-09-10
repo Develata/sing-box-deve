@@ -47,7 +47,8 @@ Usage:
   sing-box-deve.sh settings show
   sing-box-deve.sh settings set <key> <value>
   sing-box-deve.sh settings set key1=value1 key2=value2 ...
-  sing-box-deve.sh uninstall [--keep-settings]
+  sing-box-deve.sh uninstall [--keep-settings] [--purge-managed-host-changes]
+  sing-box-deve.sh recover
   sing-box-deve.sh doctor
   sing-box-deve.sh fw status
   sing-box-deve.sh fw rollback
