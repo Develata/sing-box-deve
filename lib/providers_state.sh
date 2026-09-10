@@ -3,7 +3,7 @@
 # A versioned, closed inventory: generated configs preserve primary port values;
 # identity and sidecar inputs must be restored before any rebuild.
 sbd_state_inventory() {
-  local name
+  local name schema="${2:-3}"
   for name in runtime.env config.yaml config.json xray-config.json settings.conf warp-socks5.json clash_custom_rules.list serv00.env serv00-run.sh; do printf 'config|%s\n' "$name"; done
   for name in uuid reality_private.key reality_public.key reality_short_id xray_private.key xray_public.key xray_short_id \
     xray_vless_decryption.key xray_vless_encryption.key ss2022_password hy2_obfs_password cert.pem private.key acme-cert.pem acme-key.pem \
@@ -13,6 +13,7 @@ sbd_state_inventory() {
   printf '%s\n' 'service|core' 'service|argo' 'service|firewall' 'service|warp'
   if [[ "${1:-false}" == true ]]; then
     printf '%s\n' 'bin|sing-box' 'bin|xray' 'bin|cloudflared'
+    [[ "$schema" == 2 ]] || printf '%s\n' 'bin|libcronet.so'
   elif [[ "${1:-false}" == sidecars ]]; then
     printf '%s\n' 'bin|cloudflared'
   fi
@@ -54,21 +55,23 @@ sbd_state_capture() {
       log_error "Unexpected state object: ${path}"; return 1
     fi
   done < "$dir/inventory"
-  printf '2\n' > "$dir/schema" || return 1
+  printf '3\n' > "$dir/schema" || return 1
   printf '%s\n' "$binaries" > "$dir/includes-binaries" || return 1
   (cd "$dir"; find files -type f -exec sha256sum {} + > checksums.txt) || return 1
   sbd_state_verify "$dir"
 }
 
 sbd_state_verify() {
-  local dir="$1" binaries expected actual scope name file sum checks=""
-  [[ -f "$dir/schema" && "$(<"$dir/schema")" == 2 && -s "$dir/checksums.txt" ]] || {
-    log_error "Snapshot lacks a complete v2 state inventory: ${dir}"; return 1;
+  local dir="$1" binaries expected actual scope name file sum checks="" schema
+  [[ -f "$dir/schema" && -s "$dir/checksums.txt" ]] || {
+    log_error "Snapshot lacks a complete state inventory: ${dir}"; return 1;
   }
+  schema="$(<"$dir/schema")"
+  [[ "$schema" == 2 || "$schema" == 3 ]] || return 1
   [[ -z "$(find "$dir" -type l -print -quit)" ]] || return 1
   binaries="$(<"$dir/includes-binaries")"
   [[ "$binaries" == true || "$binaries" == false || "$binaries" == sidecars ]] || return 1
-  expected="$(sbd_state_inventory "$binaries")"; actual="$(cat "$dir/inventory")" || return 1
+  expected="$(sbd_state_inventory "$binaries" "$schema")"; actual="$(cat "$dir/inventory")" || return 1
   [[ "$expected" == "$actual" ]] || { log_error "Snapshot inventory mismatch"; return 1; }
   while IFS='|' read -r scope name; do
     if [[ -f "$dir/files/$scope/$name" && ! -e "$dir/files/$scope/$name.absent" ]]; then file="files/$scope/$name"

@@ -61,6 +61,17 @@ provider_core_candidate_binary_commit() {
   candidate="${candidate_root}/bin/${target_engine}"
   live="${SBD_BIN_DIR}/${target_engine}"
   [[ -x "$candidate" ]] || return 1
+  # The purego Naive client needs its matching shared library beside the core.
+  # Both files belong to the binary snapshot and recover as one transaction.
+  if [[ "$target_engine" == sing-box ]]; then
+    if [[ -f "$candidate_root/bin/libcronet.so" ]]; then
+      tmp="$(mktemp "$SBD_BIN_DIR/libcronet.so.candidate.XXXXXX")" || return 1
+      cp -p "$candidate_root/bin/libcronet.so" "$tmp" || { rm -f "$tmp"; return 1; }
+      mv -f "$tmp" "$SBD_BIN_DIR/libcronet.so" || { rm -f "$tmp"; return 1; }
+    else
+      rm -f -- "$SBD_BIN_DIR/libcronet.so" || return 1
+    fi
+  fi
   tmp="$(mktemp "${live}.candidate.XXXXXX")" || return 1
   cp -p "$candidate" "$tmp" || { rm -f "$tmp"; return 1; }
   chmod 0755 "$tmp" || { rm -f "$tmp"; return 1; }

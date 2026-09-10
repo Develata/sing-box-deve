@@ -40,7 +40,7 @@ legacy_apply_install_defaults() {
 
   [[ -n "${vlpt:-}" ]] && add_legacy_proto "vless-reality" && legacy_set_port_override "vless-reality" "${vlpt}"
   [[ -n "${vwpt:-}" ]] && add_legacy_proto "vless-ws" && legacy_set_port_override "vless-ws" "${vwpt}"
-  [[ -n "${xhpt:-}" ]] && add_legacy_proto "vless-xhttp" && legacy_set_port_override "vless-xhttp" "${xhpt}" && export SBD_XHTTP_REALITY_ENC="true"
+  [[ -n "${xhpt:-}" ]] && add_legacy_proto "vless-xhttp" && legacy_set_port_override "vless-xhttp" "${xhpt}" && export XRAY_XHTTP_REALITY="true"
   [[ -n "${vxpt:-}" ]] && add_legacy_proto "vless-xhttp" && legacy_set_port_override "vless-xhttp" "${vxpt}"
   [[ -n "${sspt:-}" ]] && add_legacy_proto "shadowsocks-2022" && legacy_set_port_override "shadowsocks-2022" "${sspt}"
   [[ -n "${hypt:-}" ]] && add_legacy_proto "hysteria2" && legacy_set_port_override "hysteria2" "${hypt}"

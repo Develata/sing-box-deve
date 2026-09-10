@@ -42,12 +42,14 @@ node_model_add_vless_ws() {
 node_model_add_vless_xhttp() {
   local uuid="$1" server="$2" port="$3" encryption="$4" sni="$5" fp="$6"
   local public_key="$7" short_id="$8" path="$9" mode="${10}" host="${11}"
+  local security=none
+  if sbd_xhttp_use_reality; then security=reality; fi
   node_model_append "$(jq -cn \
     --arg kind vless-xhttp --arg tag sbd-vless-xhttp --arg uuid "$uuid" --arg server "$server" \
     --argjson port "$port" --arg encryption "$encryption" --arg sni "$sni" --arg fp "$fp" \
     --arg public_key "$public_key" --arg short_id "$short_id" --arg path "$path" \
-    --arg mode "$mode" --arg host "$host" \
-    '{kind:$kind,tag:$tag,uuid:$uuid,server:$server,port:$port,encryption:$encryption,sni:$sni,fingerprint:$fp,public_key:$public_key,short_id:$short_id,path:$path,mode:$mode,host:$host,singbox_compatible:false,clash_compatible:false}')"
+    --arg mode "$mode" --arg host "$host" --arg security "$security" \
+    '{kind:$kind,tag:$tag,security:$security,uuid:$uuid,server:$server,port:$port,encryption:$encryption,sni:$sni,fingerprint:$fp,public_key:$public_key,short_id:$short_id,path:$path,mode:$mode,host:$host,singbox_compatible:false,clash_compatible:false}')"
 }
 
 node_model_add_ss2022() {
@@ -117,7 +119,7 @@ node_model_render_uri_file() {
           "$(node_model_value "$node" '.sni')" "$(node_model_value "$node" '.fingerprint')" \
           "$(node_model_value "$node" '.public_key')" "$(node_model_value "$node" '.short_id')" \
           "$(uri_encode "$(node_model_value "$node" '.path')")" "$(node_model_value "$node" '.mode')" \
-          "$(node_model_value "$node" '.host')" >> "$out_file"
+          "$(node_model_value "$node" '.host')" "$(node_model_value "$node" '.security // "reality"')" >> "$out_file"
         ;;
       shadowsocks-2022)
         node_link_ss2022 "$(node_model_value "$node" '.password')" \

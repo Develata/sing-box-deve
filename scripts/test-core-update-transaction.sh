@@ -39,6 +39,7 @@ provider_restart() { return 0; }
 provider_core_candidate_install() {
   local target_engine="$1" candidate_root="$2"
   mkdir -p "${candidate_root}/bin" "${candidate_root}/data"
+  printf 'new-cronet\n' > "${candidate_root}/bin/libcronet.so"
   printf 'new-binary\n' > "${candidate_root}/bin/${target_engine}"
   chmod 0755 "${candidate_root}/bin/${target_engine}"
   printf 'v-new\n' > "${candidate_root}/data/engine-version"
@@ -64,6 +65,7 @@ provider_core_health_check() {
 }
 
 seed_old_state() {
+  printf 'old-cronet\n' > "${SBD_BIN_DIR}/libcronet.so"
   printf 'old-binary\n' > "${SBD_BIN_DIR}/sing-box"
   chmod 0755 "${SBD_BIN_DIR}/sing-box"
   printf '{"generation":"old"}\n' > "${SBD_CONFIG_DIR}/config.json"
@@ -75,6 +77,7 @@ candidate_mode="failure"
 if (provider_update >/dev/null 2>&1); then
   die "candidate validation failure was reported as success"
 fi
+[[ "$(<"${SBD_BIN_DIR}/libcronet.so")" == old-cronet ]] || die "Cronet library not restored"
 [[ "$(<"${SBD_BIN_DIR}/sing-box")" == "old-binary" ]] || die "binary not restored after candidate failure"
 [[ "$(<"${SBD_CONFIG_DIR}/config.json")" == '{"generation":"old"}' ]] || die "config not restored after candidate failure"
 
@@ -85,6 +88,7 @@ health_calls=0
 if (provider_update >/dev/null 2>&1); then
   die "runtime health failure was reported as success"
 fi
+[[ "$(<"${SBD_BIN_DIR}/libcronet.so")" == old-cronet ]] || die "Cronet library not restored"
 [[ "$(<"${SBD_BIN_DIR}/sing-box")" == "old-binary" ]] || die "binary not restored after health failure"
 [[ "$(<"${SBD_CONFIG_DIR}/config.json")" == '{"generation":"old"}' ]] || die "config not restored after health failure"
 
@@ -92,6 +96,7 @@ seed_old_state
 health_mode="success"
 health_calls=0
 provider_update >/dev/null
+[[ "$(<"${SBD_BIN_DIR}/libcronet.so")" == new-cronet ]] || die "Cronet library not committed"
 [[ "$(<"${SBD_BIN_DIR}/sing-box")" == "new-binary" ]] || die "new binary was not committed"
 [[ "$(<"${SBD_CONFIG_DIR}/config.json")" == $'{\n  "generation": "new"\n}' ]] || die "candidate config was not committed"
 

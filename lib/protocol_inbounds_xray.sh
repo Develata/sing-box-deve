@@ -50,6 +50,8 @@ xray_fragment_vless_xhttp() {
   target_json="$(sbd_json_string "${server_name}:${reality_port}")"
   private_key_json="$(sbd_json_string "$private_key")"
   short_id_json="$(sbd_json_string "$short_id")"
+  local flow_json='""'
+  [[ "$decryption" == none ]] || flow_json='"xtls-rprx-vision"'
   if [[ "$use_reality" == "true" ]]; then
     cat <<EOF
     {
@@ -57,7 +59,7 @@ xray_fragment_vless_xhttp() {
       "listen": "::",
       "port": ${port},
       "protocol": "vless",
-      "settings": {"clients": [{"id": ${uuid_json}, "flow": "xtls-rprx-vision"}], "decryption": ${decryption_json}},
+      "settings": {"clients": [{"id": ${uuid_json}, "flow": ${flow_json}}], "decryption": ${decryption_json}},
       "streamSettings": {"network": "xhttp", "security": "reality", "realitySettings": {"show": false, "target": ${target_json}, "xver": 0, "serverNames": [${server_name_json}], "privateKey": ${private_key_json}, "shortIds": [${short_id_json}]}, "xhttpSettings": {"path": ${xhttp_path_json}, "mode": ${xhttp_mode_json}}}
     }
 EOF
@@ -68,7 +70,7 @@ EOF
       "listen": "::",
       "port": ${port},
       "protocol": "vless",
-      "settings": {"clients": [{"id": ${uuid_json}, "flow": "xtls-rprx-vision"}], "decryption": ${decryption_json}},
+      "settings": {"clients": [{"id": ${uuid_json}, "flow": ${flow_json}}], "decryption": ${decryption_json}},
       "streamSettings": {"network": "xhttp", "xhttpSettings": {"path": ${xhttp_path_json}, "mode": ${xhttp_mode_json}}}
     }
 EOF

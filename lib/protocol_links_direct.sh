@@ -17,10 +17,12 @@ node_link_vless_ws() {
 
 node_link_vless_xhttp() {
   local uuid="$1" ip="$2" port="$3" enc="$4" sni="$5" fp="$6" pbk="$7" sid="$8" path_uri="$9" mode="${10}" host="${11}"
-  local vh=""
+  local vh="" flow="" security="${12:-reality}" tls_q=""
+  [[ "$enc" == none ]] || flow="&flow=xtls-rprx-vision"
   ip="$(uri_authority_host "$ip")"
   [[ -n "$host" ]] && vh="&host=$host"
-  echo "vless://$uuid@$ip:${port}?encryption=$enc&flow=xtls-rprx-vision&security=reality&sni=$sni&fp=$fp&pbk=$pbk&sid=$sid&type=xhttp&path=${path_uri}&mode=$mode${vh}#sbd-vless-xhttp"
+  [[ "$security" != reality ]] || tls_q="&sni=$sni&fp=$fp&pbk=$pbk&sid=$sid"
+  echo "vless://$uuid@$ip:${port}?encryption=${enc}${flow}&security=${security}${tls_q}&type=xhttp&path=${path_uri}&mode=$mode${vh}#sbd-vless-xhttp"
 }
 
 node_link_ss2022() {

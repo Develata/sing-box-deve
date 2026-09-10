@@ -107,6 +107,9 @@ install_sing_box_binary() {
     fi
     tar -xzf "$archive" -C "$cache_dir" || return 1
     install -m 0755 "${cache_dir}/sing-box-${version}-linux-${arch}/sing-box" "${SBD_BIN_DIR}/sing-box" || return 1
+    if [[ -f "${cache_dir}/sing-box-${version}-linux-${arch}/libcronet.so" ]]; then
+      install -m 0644 "${cache_dir}/sing-box-${version}-linux-${arch}/libcronet.so" "${SBD_BIN_DIR}/libcronet.so" || return 1
+    fi
     rm -rf "${cache_dir}/sing-box-${version}-linux-${arch}" "$archive" "$sums_file" 2>/dev/null || true
   else
     if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then

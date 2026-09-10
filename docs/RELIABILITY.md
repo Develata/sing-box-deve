@@ -4,7 +4,7 @@
 
 安装、重装、配置、端口、WARP、core 更新和脚本切换使用持久恢复记录；脚本发行采用独立的不可变版本目录。写入口共享一把 `flock`，在读取基线之前取得。root 模式控制状态位于 `/var/lib/sing-box-deve.host`，用户模式位于 `~/sing-box-deve.host`；锁不会随卸载删除，也不会由 nohup 子进程继承。
 
-事务先保存并核验权威输入，再记录阶段，最后提交。权威集合包括 runtime/config、UUID 与密钥、Argo/WARP 参数、多端口与防火墙记录、服务定义；core 更新另外保存二进制。`runtime.env` 新写入采用 schema 2 和整份 SHA256，旧格式在下一次写入时迁移。不要手改生成的 runtime 文件，使用 CLI 或 `apply -f` 输入配置。
+事务先保存并核验权威输入，再记录阶段，最后提交。权威集合包括 runtime/config、UUID 与密钥、Argo/WARP 参数、多端口与防火墙记录、服务定义；core 更新另外保存二进制及配套 `libcronet.so`。新快照使用 schema 3，继续读取 schema 2 快照；schema 2 未记录动态库，因此只恢复其原有清单。`runtime.env` 新写入采用 schema 2 和整份 SHA256，旧格式在下一次写入时迁移。不要手改生成的 runtime 文件，使用 CLI 或 `apply -f` 输入配置。
 
 普通错误、TERM/HUP/INT 会尝试恢复；SIGKILL 后由下一次写操作先恢复，也可执行：
 
