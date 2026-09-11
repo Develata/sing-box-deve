@@ -12,9 +12,11 @@
 
 | Provider | Profile | Argo | WARP | Outbound Proxy | 静态验证 | 实机验证 |
 |---|---|---|---|---|---|---|
-| vps | lite | off | off | direct | 通过 | 待目标机执行 |
-| vps | full | temp/fixed | off/global | socks/http/https | 通过 | 待目标机执行 |
+| vps | lite | off | off | direct | 通过 | Debian 13 通过 |
+| vps | full | temp/fixed | off/global | socks/http/https | 通过 | Debian 13：temp、global、SOCKS 通过；fixed、HTTP/HTTPS 待专项实机验证 |
 | serv00 | lite/full | off/temp/fixed | off | direct/socks/http/https | 通过 | 需凭据执行 |
+
+2026-09-11，提交 `f26a317e01b12455c4db82784b9c15042e270e20` 在 Debian 13 systemd VPS 上完成 29 项主路径检查：Lite 安装、Reality 转发、标识轮换与回滚、改端口、Full + 临时 Argo 重装和转发、内核更新、WARP SOCKS5 与全局出口、重启、Xray/sing-box 切换及保留设置卸载。退出码为 0，原部署、受管理防火墙规则及其他服务恢复核验通过。这是 SSH 实机回执；最终发布提交仍须取得下述 GitHub workflow 门禁记录。
 
 ## 3) 推荐实机验收命令
 

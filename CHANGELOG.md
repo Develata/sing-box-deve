@@ -6,6 +6,27 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) st
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-09-11
+
+### Added
+
+- Added persistent upstream import from VLESS, Hysteria2, TUIC, Shadowsocks 2022 and Naive links through the CLI, menu and web generator; retained SOCKS/HTTP/HTTPS parameter configuration.
+- Added minimal runtime release archives with checksum verification and a same-commit Debian lifecycle acceptance gate.
+- Added native-core proxy traffic checks and real systemd lifecycle acceptance for installation, recovery, Argo, WARP, engine switching and uninstall.
+
+### Changed
+
+- Unified mutation locking and transaction recovery across runtime configuration, installation and core updates.
+- Bounded external commands, background process lifetimes, logs and recovery state; documented deployment ownership and verification limits.
+
+### Fixed
+
+- Preserved XHTTP security parameters and Cronet support across core updates.
+- Kept optional QR rendering failures from rolling back successful installations.
+- Corrected routing examples and acceptance reset order, and bounded temporary Argo hostname readiness retries.
+
+## [v1.0.7]
+
 ### Added
 
 - Added managed nginx/OpenResty web-front support for domain deployments, with selection order: existing OpenResty → existing nginx → optional official nginx install.
