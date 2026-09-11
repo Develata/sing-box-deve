@@ -22,6 +22,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) st
 
 ### Fixed
 
+- Resolved the protected home directory from system account data when `HOME` is absent, so non-login service environments can run transactions without weakening home-directory deletion protection.
 - Preserved script source across configuration rebuilds/snapshot rollback, and restored failed script transactions without restarting services or regenerating node artifacts.
 - Recognized the exact legacy firewall replay service template when it invokes a verified project launcher, allowing existing installations to pass transaction ownership checks while rejecting altered or unrelated service files.
 

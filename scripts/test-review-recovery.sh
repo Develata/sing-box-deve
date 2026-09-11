@@ -34,6 +34,13 @@ export PROJECT_ROOT SBD_INSTALL_DIR SBD_CONFIG_DIR SBD_STATE_DIR SBD_HOST_STATE_
 while read -r _ _ function_name; do export -f "$function_name"; done < <(declare -F)
 export SBD_MUTATION_DEPTH
 
+run_case missing_home_in_service_environment '
+  unset HOME
+  sbd_uninstall_validate_roots
+  SBD_INSTALL_DIR="$(python3 -c "import os,pwd; print(pwd.getpwuid(os.geteuid()).pw_dir)")"
+  if sbd_uninstall_validate_roots; then exit 1; fi
+'
+
 run_case repeated_host_publish '
   dir="$review_root/repeated"
   mkdir "$dir"

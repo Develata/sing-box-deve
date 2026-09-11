@@ -63,13 +63,17 @@ uninstall_remove_managed_global_bins() {
 }
 
 sbd_uninstall_validate_roots() {
-  local root canonical host_state
+  local root canonical host_state protected_home="${HOME:-}"
+  if [[ -z "$protected_home" ]]; then
+    protected_home="$(sbd_run_deadline 5 python3 -c 'import os,pwd; print(pwd.getpwuid(os.geteuid()).pw_dir)')" || return 1
+  fi
+  [[ "$protected_home" == /* ]] || return 1
   host_state="$(sbd_host_state_dir)" || return 1
   for root in "$SBD_CONFIG_DIR" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR"; do
     [[ "$root" == /* && "$root" != *$'\n'* && "$root" != *'|'* && ! -L "$root" && "$root" != *'/../'* && "$root" != */.. ]] || return 1
     canonical="$(realpath -m "$root")" || return 1
     [[ "$canonical" == "${root%/}" && "$host_state" != "$canonical" && "$host_state" != "$canonical/"* ]] || return 1
-    case "$canonical" in /|/etc|/opt|/usr|/usr/local|/bin|/sbin|/lib|/tmp|/var|/var/tmp|/var/lib|/run|/home|/root|"${HOME%/}"|'') return 1 ;; esac
+    case "$canonical" in /|/etc|/opt|/usr|/usr/local|/bin|/sbin|/lib|/tmp|/var|/var/tmp|/var/lib|/run|/home|/root|"${protected_home%/}"|'') return 1 ;; esac
   done
 }
 
