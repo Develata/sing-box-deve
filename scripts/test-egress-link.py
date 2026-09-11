@@ -77,6 +77,61 @@ class Links(unittest.TestCase):
             self.assertEqual(module.render_singbox(node).get('flow', ''), expected)
             self.assertEqual(module.render_xray(node)['settings']['vnext'][0]['users'][0].get('flow', ''), expected)
 
+    def test_reality_export_compatibility(self):
+        canonical = REALITY + '&type=tcp&flow=xtls-rprx-vision&encryption=none'
+        expected = module.parse_link(canonical)
+        for name in ('insecure', 'allowInsecure', 'allow_insecure'):
+            for value in ('1', 'true', '0', 'false'):
+                with self.subTest(name=name, value=value):
+                    node = module.parse_link(canonical + f'&{name}={value}&udp=1')
+                    self.assertFalse(node['insecure'])
+                    self.assertTrue(node['udp'])
+                    for render in (module.render_singbox, module.render_xray):
+                        self.assertEqual(render(node), render(expected))
+        # The same normalization applies to the Xray Reality/XHTTP transport.
+        node = module.parse_link(REALITY + '&type=xhttp&allowInsecure=1&udp=1')
+        self.assertFalse(node['insecure'])
+        self.assertEqual(module.render_xray(node)['streamSettings']['security'], 'reality')
+
+    def test_vless_udp_export_flag(self):
+        for value, expected in (('0', False), ('false', False), ('1', True), ('true', True)):
+            self.assertIs(module.parse_link(REALITY + '&udp=' + value)['udp'], expected)
+        for suffix in ('&udp=maybe', '&udp=1&udp=0', '&allowInsecure=maybe',
+                       '&insecure=1&allowInsecure=1'):
+            with self.subTest(suffix=suffix), self.assertRaises(module.LinkError):
+                module.parse_link(REALITY + suffix)
+
+    def test_udp_export_flags_across_protocols(self):
+        password = base64.b64encode(bytes(range(16))).decode()
+        auth = base64.urlsafe_b64encode(('2022-blake3-aes-128-gcm:' + password).encode()).decode().rstrip('=')
+        links = (REALITY, f'vless://{UID}@exit.example?type=ws',
+                 'hysteria2://password@exit.example?sni=exit.example',
+                 f'tuic://{UID}:password@exit.example?congestion_control=bbr',
+                 f'ss://{auth}@exit.example:443?',
+                 'naive+https://user:password@exit.example?uot=true')
+        for link in links:
+            canonical = module.parse_link(link)
+            for value, expected in (('0', False), ('false', False), ('1', True), ('true', True)):
+                with self.subTest(kind=canonical['kind'], value=value):
+                    node = module.parse_link(link + '&udp=' + value)
+                    self.assertIs(node['udp'], expected)
+                    for engine, render in (('sing-box', module.render_singbox), ('xray', module.render_xray)):
+                        if node['kind'] in module.ENGINE_KINDS[engine]:
+                            out = render(node)
+                            if node['kind'] == 'naive':
+                                self.assertEqual(out.get('udp_over_tcp', False), expected)
+                            else:
+                                self.assertEqual(out, render(canonical))
+            for suffix in ('&udp=maybe', '&udp=', '&udp=1&udp=0'):
+                with self.subTest(kind=canonical['kind'], suffix=suffix), self.assertRaises(module.LinkError):
+                    module.parse_link(link + suffix)
+
+    def test_naive_udp_flag_does_not_enable_uot(self):
+        for query in ('udp=1', 'uot=false&udp=true', 'uot=0&udp=1'):
+            node = module.parse_link('naive+https://user:password@exit.example?' + query)
+            self.assertFalse(node['udp'])
+            self.assertNotIn('udp_over_tcp', module.render_singbox(node))
+
     def test_userinfo_delimiters_precede_decoding(self):
         for link in ('naive+https://user%3Apass@exit.example',
                      'naive+https://user%3Aname:pass@exit.example',
@@ -102,7 +157,7 @@ class Links(unittest.TestCase):
             '', REALITY + '&pbk=duplicate', REALITY.replace(':443?', ':0?'),
             REALITY.replace(':443?', ':65536?'), REALITY.replace('sid=abcd', 'sid=abc'),
             REALITY.replace(KEY, 'bad'), REALITY.replace(UID, 'invalid-uuid'),
-            REALITY + '&unexpected=value', REALITY + '&insecure=true',
+            REALITY + '&unexpected=value', REALITY + '&insecure=maybe',
             REALITY + '&type=grpc', REALITY + '&type=ws', REALITY + '&sni=other',
             'hy2://pass%00word@exit.example', 'hy2://bad%GG@exit.example',
             'hy2://password@exit.example?insecure=maybe',

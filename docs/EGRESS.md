@@ -36,6 +36,8 @@ sb set-egress --mode direct
 
 VLESS `flow` 按链接原值导入，缺省或空值均不启用 Vision；需要 Vision 时必须明确填写 `flow=xtls-rprx-vision`。Naive/TUIC 的用户名与密码先按 URI 中的冒号分隔，再各自解码；Naive Basic auth 用户名不能含冒号。
 
+节点链接接受导出器附带的 `udp=1/true` 或 `udp=0/false`；后者要求选择 `--udp direct` 或 `--udp block`，菜单默认建议 direct。该标记不能赋予协议额外能力：Naive 仍需显式 `uot=true` 才能代理 UDP。Reality 链接中附带的通用 `insecure` / `allowInsecure` / `allow_insecure` 布尔标记会归一化为 false，仍校验公钥、short ID 等认证参数；这不表示为 Reality 启用跳过认证。重复、冲突或格式错误的参数仍会被拒绝。
+
 VLESS `encryption` 非 `none` 需要 Xray，具体参数仍由当前内核检查。XHTTP 使用 Vision 时还必须启用 VLESS Encryption；旧链接若带 `encryption=none&flow=xtls-rprx-vision`，需在更新后的远端重新生成配置和链接。本次同时修正该组合的服务端和分享链接生成。Naive 出口需要 sing-box 的 Cronet 支持；安装及 core 更新会部署已校验发行包附带的 `libcronet.so`，并将动态库和二进制一起纳入回滚。旧版 core 或缺失构建功能会在配置检查阶段报错，不应绕过检查启动。
 
 `vless://`、`hy2://`、`hysteria2://`、`tuic://`、`ss://`、`naive+https://` 均可导入。优先使用本项目输出的节点链接；对外部链接采取严格解析，拒绝重复参数、未知选项、畸形编码、不支持的传输及错误凭据格式。暂不支持 HY2 端口跳跃、Gecko、SS 插件、XHTTP extra JSON 等扩展。
@@ -48,7 +50,7 @@ VLESS `encryption` 非 `none` 需要 Xray，具体参数仍由当前内核检查
 
 Naive 只有链接显式带 `uot=true` 且远端支持对应 UDP-over-TCP 扩展时才允许 `proxy`；普通 Naive 链接必须选 `direct` 或 `block`。HTTP/HTTPS 也必须选这两者之一。WARP 与上游出口不能同时启用。
 
-TLS 默认验证证书。sing-box 的 HY2、TUIC、VLESS TLS 可显式使用链接的 `insecure=true`，仅在明确接受该语义时使用；Reality 和 Naive 不接受这一选项。Xray 26.3.27 已移除 `allowInsecure=true`，其出口要求正常验证 TLS，导入时拒绝 insecure 链接。链接文件和 URI 凭据不会作为 shell 代码执行。
+TLS 默认验证证书。sing-box 的 HY2、TUIC、VLESS TLS 可显式使用链接的 `insecure=true`，仅在明确接受该语义时使用；Reality 按上述兼容规则保持认证，Naive 不接受跳过证书验证。Xray 26.3.27 已移除 TLS 的 `allowInsecure=true`，其普通 TLS 出口要求正常验证证书，导入时拒绝相应 insecure 链接。链接文件和 URI 凭据不会作为 shell 代码执行。
 
 ## 依据与验证边界
 

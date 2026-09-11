@@ -6,6 +6,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) st
 
 ## [Unreleased]
 
+## [v1.1.1] - 2026-09-11
+
+### Fixed
+
+- Accepted redundant insecure export flags on Reality upstream links while retaining Reality authentication, and honored `udp` export flags across supported protocols through the existing UDP policy checks without implicitly enabling Naive UoT.
+
 ## [v1.1.0] - 2026-09-11
 
 ### Added

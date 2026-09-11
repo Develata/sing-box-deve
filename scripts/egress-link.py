@@ -87,6 +87,7 @@ def parse_link(link):
         require(len(present) <= 1, f'Conflicting {name} parameters')
         return params.pop(present[0]) if present else default
 
+    udp_enabled = boolean(take('udp', 'true'), 'UDP')
     node = {'server': host, 'port': port, 'udp': True}
     if scheme != 'ss':
         node['sni'] = clean(take('sni', host, ('peer', 'serverName')), 'SNI', True)
@@ -114,7 +115,9 @@ def parse_link(link):
                 'XHTTP Vision requires VLESS encryption; regenerate incompatible old links')
         node['fingerprint'] = take('fp', 'chrome')
         if node['security'] == 'reality':
-            require(not node['insecure'], 'Reality does not use insecure TLS')
+            # Some exporters attach a generic TLS flag to Reality links. Keep
+            # Reality authentication enabled rather than passing that flag on.
+            node['insecure'] = False
             node['public_key'] = take('pbk')
             require(len(decode64(node['public_key'], 'Reality public key')) == 32, 'Reality public key must contain 32 bytes')
             node['short_id'] = take('sid')
@@ -161,6 +164,8 @@ def parse_link(link):
         node.update(kind='naive', username=clean(username, 'username', True), password=clean(password, 'password', True))
         require(not node['insecure'] and not node['alpn'], 'Naive requires verified TLS and does not accept ALPN overrides')
         node['udp'] = boolean(take('uot', 'false'), 'Naive uot')
+    # Export metadata can disable UDP, but cannot grant transport capability.
+    node['udp'] = node['udp'] and udp_enabled
     require(not params, 'Unsupported node link parameter (remove unsupported options instead of silently ignoring them)')
     return node
 

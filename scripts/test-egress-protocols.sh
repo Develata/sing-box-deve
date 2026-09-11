@@ -59,10 +59,16 @@ export ARGO_MODE=off WARP_MODE=off ROUTE_MODE=global-proxy IP_PREFERENCE=auto TL
 export OUTBOUND_PROXY_MODE=direct OUTBOUND_PROXY_UDP_MODE=proxy OUTBOUND_PROXY_LINK=''
 persist_runtime_state vps lite sing-box vless-reality
 reality="$(node_link_vless_reality "$uid" 192.0.2.10 443 cover.example chrome BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB abcd1234)"
+reality_base="$reality"
+reality="${reality_base%%#*}&allowInsecure=1&udp=1#exported-node"
 ws="$(node_link_vless_ws "$uid" 192.0.2.10 443 none %2Fws cdn.example tls cdn.example)"
 hy2="$(node_link_hysteria2 "$uid" 192.0.2.10 443 cert.example salamander obfs-password)"
+hy2_base="$hy2"
+hy2="${hy2_base%%#*}&udp=1#exported-node"
 tuic="$(node_link_tuic "$uid" 192.0.2.10 443 cert.example)"
 ss="$(node_link_ss2022 AAAAAAAAAAAAAAAAAAAAAA== 192.0.2.10 443)"
+ss_base="$ss"
+ss="${ss_base%%#*}?udp=1#exported-node"
 naive="$(node_link_naive "$uid" 192.0.2.10 443 cert.example)"
 xhttp="$(node_link_vless_xhttp "$uid" 192.0.2.10 443 none cert.example chrome BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB abcd1234 %2Fxh auto cert.example)"
 links=("$reality" "$ws" "$hy2" "$tuic" "$ss" "$naive" "$xhttp")
@@ -91,6 +97,17 @@ for core in sing-box xray; do
     jq -e '[.outbounds[] | select(.tag == "proxy-out")] | length == 1' "$config" >/dev/null
     printf '[OK] %s egress: %s\n' "$core" "$kind"
   done
+  for udp_disabled in "${reality_base%%#*}&udp=0" "${hy2_base%%#*}&udp=0" "${ss_base%%#*}?udp=0"; do
+    before="$(sha256sum "$SBD_CONFIG_DIR/runtime.env")"
+    if (provider_set_egress direct '' '' '' '' proxy "$udp_disabled"); then
+      echo '[FAIL] UDP-disabled link accepted with proxy policy'; exit 1
+    fi
+    [[ "$before" == "$(sha256sum "$SBD_CONFIG_DIR/runtime.env")" ]]
+    provider_set_egress direct '' '' '' '' direct "$udp_disabled"
+    provider_cfg_load_runtime_exports
+    [[ "$OUTBOUND_PROXY_LINK" == "$udp_disabled" && "$OUTBOUND_PROXY_UDP_MODE" == direct ]]
+  done
+  printf '[OK] %s VLESS/HY2/SS UDP export flags respect policy and rejected state\n' "$core"
 done
 
 # Route changes retain the complete link, then a failed replacement compensates.
