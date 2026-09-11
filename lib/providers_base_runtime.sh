@@ -33,7 +33,7 @@ validate_feature_modes() {
 
   case "${OUTBOUND_PROXY_MODE:-direct}" in
     direct|socks|http|https) ;;
-    vless-reality|vless-ws|vless-xhttp|hysteria2|tuic|shadowsocks-2022|naive)
+    vless-reality|vless-ws|vless-xhttp|hysteria2|shadowsocks-2022|naive)
       [[ -n "${OUTBOUND_PROXY_LINK:-}" ]] || die "This egress protocol requires --link or OUTBOUND_PROXY_LINK" ;;
     *) die "Invalid OUTBOUND_PROXY_MODE: ${OUTBOUND_PROXY_MODE}" ;;
   esac

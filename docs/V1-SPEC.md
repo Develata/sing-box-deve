@@ -38,9 +38,10 @@ The project manages six objects: host, runtime, public inbounds, outbounds, gene
 ## Scope
 
 - Scenarios: VPS, Serv00/Hostuno
-- Public inbound protocols: `vless-reality`, `vless-ws`, `vless-xhttp` (xray compatibility), `shadowsocks-2022`, `naive`, `hysteria2`, `tuic`
+- Public inbound protocols: `vless-reality`, `vless-ws`, `vless-xhttp` (xray compatibility), `shadowsocks-2022`, `naive`, `hysteria2`
 - Feature modes: Argo and WARP outbound
 - Pruned from mainline: SAP, Workers, Psiphon, SFW packaging, GitLab/TG subscription push, jump, set-share, set-port-egress, anytls, trojan
+- Retired: TUIC inbound and upstream. Legacy runtime remains readable for inspection and script recovery; migrate with the previous script before configuration/core changes.
 
 ## Platform Support Contract
 
@@ -56,5 +57,5 @@ The project manages six objects: host, runtime, public inbounds, outbounds, gene
 - WARP outbound implemented for sing-box/xray routing modes
 - Artifact checksum verification implemented for `sing-box`, `xray`, and `cloudflared`
 - Serv00 provider supports environment-driven executable deployment flow
-- Outbound upstream proxy implemented (`direct/socks/http/https`) plus protocol share-link import (Reality, WS, HY2, TUIC, SS2022, Naive, XHTTP); engine constraints and UDP behavior are defined in [EGRESS.md](EGRESS.md)
+- Outbound upstream proxy implemented (`direct/socks/http/https`) plus protocol share-link import (Reality, WS, HY2, SS2022, Naive, XHTTP); engine constraints and UDP behavior are defined in [EGRESS.md](EGRESS.md)
 - CI checks include syntax, shellcheck, examples JSON, checksum manifest consistency, CLI smoke, and firewall record tests

@@ -8,7 +8,7 @@
 
 - 安装/重装：`wizard`, `install`, `apply -f`, `apply --runtime`
 - 状态：`panel`, `list`, `doctor`, `logs`, `restart`
-- 协议：`vless-reality`, `vless-ws`, `vless-xhttp`(xray compatibility), `shadowsocks-2022`, `naive`, `hysteria2`, `tuic`
+- 协议：`vless-reality`, `vless-ws`, `vless-xhttp`(xray compatibility), `shadowsocks-2022`, `naive`, `hysteria2`
 - 端口：`set-port`, `mport`
 - 出站：`set-egress`, `set-route`, `split3`
 - 特性：Argo, WARP outbound
@@ -26,6 +26,7 @@
 - set-share endpoint rewriting
 - set-port-egress per-port outbound policy
 - `anytls` / `trojan` public inbound
+- TUIC inbound 与 upstream（旧部署仅保留读取与脚本恢复能力，升级前显式迁移）
 
 ## 4) 验收标准
 
@@ -48,7 +49,7 @@
 - mutation 锁在读入基线前取得，保护 install/apply/cfg/core/script update/uninstall 及直接写入口；锁不随安装目录删除。只读命令不持有长期写锁。
 - `runtime.env`、身份/端口等 data 输入是恢复集合；配置/订阅为衍生产物。快照恢复输入之后再重建，缺失文件也必须记录，以撤销后来新增的状态。
 - 安装恢复保留原配置、data、binary、service、firewall 与 host ownership；host 包管理的副作用只做可证明的补偿，失败时保留恢复记录，不能声称完整 ACID。
-- 脚本 runtime 是不可变版本目录；`current` 是唯一版本选择器；入口先解析物理根再加载模块。旧 checkout 和已安装入口不会因当前目录不同而切换。
+- 默认脚本 runtime 是不可变版本目录，`current` 选择完整 Release。显式 Git 绑定由封存的 `runtime.env` 中 `script_source`、`script_root`、`script_source_uid`、`script_fallback_root` 决定；`current` 保留完整恢复代码，绑定前版本受保留保护。入口先解析物理根再加载模块，不随 cwd 切换；普通 Git 写入不参与管理锁，禁止与管理命令并发。配置快照不改变来源，来源事务与事务恢复拥有这些字段。
 - 发行 archive 在候选目录验证格式、路径、摘要与加载图后切换；恢复与迁移保留上一代。网络使用分类型 deadline，重试次数和单次/总预算均有限。
 - Serv00 remote 执行必须显式配置受信任 backend，核验主机密钥；不默认执行第三方 mutable main。
 - 卸载仅移除可证明归属的资源；备份不得位于删除集合内。长期日志、快照和旧发行有默认保留策略。

@@ -15,6 +15,7 @@ sbd_host_state_dir() {
 SBD_MUTATION_DEPTH=0
 
 sbd_with_mutation_lock() {
+  if declare -F sbd_git_source_guard >/dev/null; then sbd_git_source_guard || return 1; fi
   if (( SBD_MUTATION_DEPTH > 0 )); then
     "$@"
     return $?
@@ -29,6 +30,7 @@ sbd_with_mutation_lock() {
     [[ ! -L "$host_state/mutation.lock" ]] || exit 1
     exec {lock_fd}> "$host_state/mutation.lock" || exit 1
     flock -w "$wait_seconds" "$lock_fd" || { log_error "Another mutation is in progress (lock timeout)"; exit 1; }
+    if declare -F sbd_git_source_guard >/dev/null; then sbd_git_source_guard || exit 1; fi
     SBD_MUTATION_DEPTH=1
     SBD_MUTATION_LOCK_FD="$lock_fd"
     if declare -F sbd_transaction_recover >/dev/null; then sbd_transaction_recover || exit 1; fi

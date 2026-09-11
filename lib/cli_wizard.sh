@@ -45,7 +45,7 @@ wizard() {
   echo
   printf '%s\n' "$(msg "部署预设" "Deployment preset")"
   echo "1) reality-only: $(msg "仅 vless-reality；不需要域名" "vless-reality only; no domain required")"
-  echo "2) reality-plus-domain: $(msg "vless-reality + hysteria2/tuic/naive；必须自有域名和有效证书" "vless-reality + hysteria2/tuic/naive; requires domain and valid certificate")"
+  echo "2) reality-plus-domain: $(msg "vless-reality + hysteria2/naive；必须自有域名和有效证书" "vless-reality + hysteria2/naive; requires domain and valid certificate")"
   echo "3) full: $(msg "全部 sing-box 协议各部署一份；必须自有域名和有效证书" "all sing-box protocols; requires domain and valid certificate")"
   local preset_choice
   prompt_with_default "$(msg "选择预设 [1/2/3]" "Choose preset [1/2/3]")" "1" preset_choice
@@ -60,20 +60,20 @@ wizard() {
       INSTALL_PRESET="reality-plus-domain"
       ENGINE="sing-box"
       PROFILE="full"
-      PROTOCOLS="vless-reality,hysteria2,tuic,naive"
+      PROTOCOLS="vless-reality,hysteria2,naive"
       ;;
     3|full)
       INSTALL_PRESET="full"
       ENGINE="sing-box"
       PROFILE="full"
-      PROTOCOLS="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
+      PROTOCOLS="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2"
       ;;
     *) die "$(msg "预设必须是 1/2/3" "Preset must be 1/2/3")" ;;
   esac
 
   if protocols_require_domain_cert "$PROTOCOLS"; then
     echo
-    printf '%s\n' "$(msg "所选协议包含 hysteria2/tuic/naive，必须提供自有域名和有效证书。" "Selected protocols include hysteria2/tuic/naive and require a domain with a valid certificate.")"
+    printf '%s\n' "$(msg "所选协议包含 hysteria2/naive，必须提供自有域名和有效证书。" "Selected protocols include hysteria2/naive and require a domain with a valid certificate.")"
     prompt_with_default "$(msg "输入 TLS 域名/SNI" "Input TLS domain/SNI")" "example.com" TLS_SERVER_NAME
     ACME_DOMAIN="${ACME_DOMAIN:-$TLS_SERVER_NAME}"
     if prompt_yes_no "$(msg "是否提供已有证书路径？" "Provide existing certificate paths?")" "N"; then

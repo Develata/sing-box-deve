@@ -5,12 +5,30 @@ uninstall_disable_unit() {
 }
 
 sbd_managed_unit_file() {
-  local file="$1" exec_cmd
+  local file="$1" exec_cmd launcher="${SBD_LAUNCHER_PATH:-/usr/local/bin/sb}"
   [[ -f "$file" && ! -L "$file" ]] || return 1
   if [[ -f "$(sbd_host_file_record "$file")/after.sha256" ]]; then sbd_host_file_unchanged "$file"; return $?; fi
   grep -q '^# Managed by sing-box-deve: service-v1$' "$file" && return 0
   exec_cmd="$(sed -n 's/^ExecStart=//p' "$file" | head -n1)"
-  [[ "$exec_cmd" == "$SBD_INSTALL_DIR/"* ]]
+  [[ "$exec_cmd" == "$SBD_INSTALL_DIR/"* ]] && return 0
+  # Pre-ledger firewall units used the global launcher outside the install root.
+  # Adopt only the complete historical template and a recognized project launcher.
+  [[ "$file" == "${SBD_FW_REPLAY_SERVICE_FILE:-}" ]] || return 1
+  sbd_managed_launcher "$launcher" || return 1
+  cmp -s -- "$file" <(cat <<EOF
+[Unit]
+Description=sing-box-deve firewall replay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=${launcher} fw replay
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  )
 }
 
 uninstall_remove_legacy_engine_units() {

@@ -8,7 +8,6 @@ protocol_link_marker_by_protocol() {
     shadowsocks-2022) echo "#sbd-shadowsocks-2022" ;;
     naive) echo "#sbd-naive" ;;
     hysteria2) echo "#sbd-hysteria2" ;;
-    tuic) echo "#sbd-tuic" ;;
     *) echo "" ;;
   esac
 }

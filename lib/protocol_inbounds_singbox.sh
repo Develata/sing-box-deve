@@ -134,28 +134,3 @@ singbox_fragment_hysteria2() {
     }
 EOF
 }
-
-singbox_fragment_tuic() {
-  local uuid="$1" port="$2" tls_sni="$3" cert_file="$4" key_file="$5"
-  local uuid_json tls_sni_json cert_file_json key_file_json
-  uuid_json="$(sbd_json_string "$uuid")"
-  tls_sni_json="$(sbd_json_string "$tls_sni")"
-  cert_file_json="$(sbd_json_string "$cert_file")"
-  key_file_json="$(sbd_json_string "$key_file")"
-  cat <<EOF
-    {
-      "type": "tuic",
-      "tag": "tuic",
-      "listen": "::",
-      "listen_port": ${port},
-      "users": [{"uuid": ${uuid_json}, "password": ${uuid_json}}],
-      "congestion_control": "bbr",
-      "tls": {
-        "enabled": true,
-        "server_name": ${tls_sni_json},
-        "certificate_path": ${cert_file_json},
-        "key_path": ${key_file_json}
-      }
-    }
-EOF
-}

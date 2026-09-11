@@ -137,13 +137,13 @@ parse_install_args() {
     reality-plus-domain|reality-plus)
       ENGINE="sing-box"
       PROFILE="full"
-      PROTOCOLS="vless-reality,hysteria2,tuic,naive"
+      PROTOCOLS="vless-reality,hysteria2,naive"
       protocols_explicit="true"
       ;;
     full)
       ENGINE="sing-box"
       PROFILE="full"
-      PROTOCOLS="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
+      PROTOCOLS="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2"
       protocols_explicit="true"
       ;;
     *) die "--preset must be reality-only|reality-plus-domain|full" ;;

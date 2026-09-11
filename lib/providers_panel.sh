@@ -53,7 +53,9 @@ provider_status_header() {
     sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
     log_info "$(msg "环境: ${provider:-unknown} | 规格: ${profile:-unknown} | 内核: ${engine:-unknown}" "Provider: ${provider:-unknown} | Profile: ${profile:-unknown} | Engine: ${engine:-unknown}")"
     log_info "$(msg "协议: ${protocols:-none}" "Protocols: ${protocols:-none}")"
-    log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 出站: $(provider_i18n_value "${outbound_proxy_mode:-direct}") | UDP: ${outbound_proxy_udp_mode:-proxy}" "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Egress: ${outbound_proxy_mode:-direct} | UDP: ${outbound_proxy_udp_mode:-proxy}")"
+    local upstream="${outbound_proxy_mode:-direct}"
+    [[ "$upstream" != direct ]] || upstream=none
+    log_info "$(msg "Argo: $(provider_i18n_value "${argo_mode:-off}") | WARP: $(provider_i18n_value "${warp_mode:-off}") | 路由: $(provider_i18n_value "${route_mode:-direct}") | 上游节点: $(provider_i18n_value "$upstream") | UDP: ${outbound_proxy_udp_mode:-proxy}" "Argo: ${argo_mode:-off} | WARP: ${warp_mode:-off} | Route: ${route_mode:-direct} | Upstream node: ${upstream} | UDP: ${outbound_proxy_udp_mode:-proxy}")"
     log_info "$(msg "IP 优先级: $(provider_i18n_value "${ip_preference:-auto}") | TLS: $(provider_i18n_value "${tls_mode:-self-signed}") | CDN 主机: ${cdn_template_host:-$(provider_i18n_value auto)}" "IP preference: ${ip_preference:-auto} | TLS: ${tls_mode:-self-signed} | CDN host: ${cdn_template_host:-auto}")"
     provider_panel_tls_warning "${tls_mode:-self-signed}" "${acme_cert_path:-}" "${acme_key_path:-}"
     log_info "$(msg "分流域名: 直连='${domain_split_direct:-}' 代理='${domain_split_proxy:-}' 屏蔽='${domain_split_block:-}'" "Domain split: direct='${domain_split_direct:-}' proxy='${domain_split_proxy:-}' block='${domain_split_block:-}'")"
@@ -84,12 +86,13 @@ provider_status_header() {
   script_remote="$(fetch_remote_script_version 2>/dev/null || true)"
   if [[ -z "$script_remote" ]]; then
     script_upgrade="unknown"
-  elif [[ "$script_local" == "$script_remote" ]]; then
-    script_upgrade="no"
-  else
+  elif version_lt "$script_local" "$script_remote"; then
     script_upgrade="yes"
+  else
+    script_upgrade="no"
   fi
   log_info "$(msg "脚本: 本地=${script_local} 远端=${script_remote:-n/a} 升级=$(provider_i18n_upgrade "$script_upgrade")" "Script: local=${script_local} remote=${script_remote:-n/a} upgrade=${script_upgrade}")"
+  sbd_show_script_source
 
   if [[ -x "${SBD_BIN_DIR}/sing-box" ]]; then
     local sbver

@@ -34,10 +34,6 @@ singbox_client_proxy_outbounds() {
           tls:{enabled:true,server_name:.sni,insecure:.insecure}} +
           (if .obfs_mode == "off" then {} else
             {obfs:{type:.obfs_mode,password:.obfs_password}} end) + dial)
-      elif .kind == "tuic" then
-        ({type:"tuic",tag:.tag,server:.server,server_port:.port,uuid:.uuid,
-          password:.password,congestion_control:"bbr",
-          tls:{enabled:true,server_name:.sni,insecure:.insecure}} + dial)
       else empty end
     ]' "$SBD_NODE_MODEL_FILE"
 }
@@ -63,10 +59,6 @@ clash_client_proxies() {
           sni:.sni,"skip-cert-verify":.insecure} +
           (if .obfs_mode == "off" then {} else
             {obfs:.obfs_mode,"obfs-password":.obfs_password} end))
-      elif .kind == "tuic" then
-        {name:.tag,type:"tuic",server:.server,port:.port,uuid:.uuid,password:.password,
-          sni:.sni,"skip-cert-verify":.insecure,"udp-relay-mode":"native",
-          "congestion-controller":"bbr"}
       else empty end
     ]' "$SBD_NODE_MODEL_FILE"
 }

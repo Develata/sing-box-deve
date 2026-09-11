@@ -5,7 +5,7 @@ const protocolHints = schema.protocolHints || {};
 const protocolMeta = {};
 Object.keys(protocolHints).forEach(function (p) { protocolMeta[p] = protocolHints[p]; });
 const protocolsAll = schema.protocols || Object.keys(protocolMeta);
-const domainCertProtocols = ["hysteria2", "tuic", "naive"];
+const domainCertProtocols = ["hysteria2", "naive"];
 const CDN_TLS_PORTS = [443, 8443, 2053, 2083, 2087, 2096];
 const CDN_PLAIN_PORTS = [80, 8080, 8880, 2052, 2082, 2086, 2095];
 

@@ -10,9 +10,9 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 
 LIMIT = 16384
 LINK_SCHEMES = {'vless': 'vless', 'hy2': 'hysteria2', 'hysteria2': 'hysteria2',
-                'tuic': 'tuic', 'ss': 'shadowsocks-2022', 'naive+https': 'naive'}
+                'ss': 'shadowsocks-2022', 'naive+https': 'naive'}
 ENGINE_KINDS = {
-    'sing-box': ['vless-reality', 'vless-ws', 'hysteria2', 'tuic', 'shadowsocks-2022', 'naive'],
+    'sing-box': ['vless-reality', 'vless-ws', 'hysteria2', 'shadowsocks-2022', 'naive'],
     'xray': ['vless-reality', 'vless-ws', 'vless-xhttp', 'hysteria2', 'shadowsocks-2022'],
 }
 
@@ -59,8 +59,9 @@ def parse_link(link):
     require(not re.search(r'%(?![0-9a-fA-F]{2})', link), 'Invalid percent encoding')
     parts = urlsplit(link)
     scheme = parts.scheme.lower()
+    require(scheme != 'tuic', 'TUIC is no longer supported')
     require(scheme in LINK_SCHEMES,
-            'Supported links: vless://, hy2://, hysteria2://, tuic://, ss://, naive+https://')
+            'Supported links: vless://, hy2://, hysteria2://, ss://, naive+https://')
     # Legacy SIP002 encodes the entire authority; modern links encode userinfo.
     if scheme == 'ss' and '@' not in parts.netloc:
         authority = decode64(parts.netloc, 'Shadowsocks authority').decode('utf-8')
@@ -137,15 +138,6 @@ def parse_link(link):
         require(node['obfs'] in ('off', 'salamander'), 'Supported Hysteria2 obfs: salamander')
         if node['obfs'] != 'off':
             node['obfs_password'] = clean(take('obfs-password', aliases=('obfsPassword',)), 'obfs password', True)
-    elif scheme == 'tuic':
-        require(parts.password is not None, 'TUIC link requires UUID:password')
-        identity = unquote(parts.username or '', errors='strict')
-        password = unquote(parts.password, errors='strict')
-        node.update(kind='tuic', uuid=user_id(identity), password=clean(password, 'password', True))
-        node['congestion_control'] = take('congestion_control', 'bbr')
-        require(node['congestion_control'] in ('bbr', 'cubic', 'new_reno'), 'Invalid TUIC congestion control')
-        node['udp_relay_mode'] = take('udp_relay_mode', 'native')
-        require(node['udp_relay_mode'] in ('native', 'quic'), 'Invalid TUIC UDP relay mode')
     elif scheme == 'ss':
         if ':' not in credentials:
             credentials = decode64(credentials, 'Shadowsocks credentials').decode('utf-8')
@@ -193,7 +185,7 @@ def render_singbox(node):
         ipaddress.ip_address(node['server'])
     except ValueError:
         out['domain_resolver'] = 'dns-local'
-    for field in ('uuid', 'password', 'username', 'method', 'congestion_control', 'udp_relay_mode'):
+    for field in ('uuid', 'password', 'username', 'method'):
         if field in node:
             out[field] = node[field]
     if kind == 'vless-reality':

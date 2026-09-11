@@ -46,7 +46,7 @@ PROJECT_ROOT="$ROOT_DIR"
 source "${ROOT_DIR}/lib/protocols.sh"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/lib/protocol_links_common.sh"
-protocol_csv_has "vless-reality,hysteria2,tuic,naive,vless-ws" "vless-ws" || fail "protocol_csv_has missed vless-ws"
+protocol_csv_has "vless-reality,hysteria2,naive,vless-ws" "vless-ws" || fail "protocol_csv_has missed vless-ws"
 if protocol_csv_has "vless-reality,hysteria2" "vless-ws"; then
   fail "protocol_csv_has returned false positive"
 fi
@@ -56,6 +56,11 @@ mkdir -p "$remote_root"
 printf '%s\n' 'v9.9.9' > "${remote_root}/version"
 
 assert_success help "$SCRIPT" help
+assert_failure retired-tuic "$SCRIPT" install --dry-run --profile full --protocols tuic
+assert_failure retired-tupt env tupt=10443 "$SCRIPT" install --dry-run
+assert_failure retired-tuic-port env SBD_PORT_TUIC=10443 "$SCRIPT" install --dry-run
+assert_failure retired-tuic-link "$SCRIPT" set-egress --link 'tuic://11111111-1111-4111-8111-111111111111:test-only@192.0.2.1:443'
+if contains_protocol tuic; then fail "Retired TUIC remains in the active registry"; fi
 
 assert_success version env SBD_UPDATE_BASE_URL="file://${remote_root}" "$SCRIPT" version
 grep -q "Current script version" "${TMP_DIR}/version.out" || fail "version output missing local version"

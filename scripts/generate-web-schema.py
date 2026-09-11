@@ -51,8 +51,8 @@ def parse_engine_support(text: str, engine: str) -> list[str]:
 def parse_presets(text: str) -> dict[str, dict[str, str]]:
     presets = {
         "reality-only": {"label": "reality-only", "engine": "sing-box", "profile": "lite", "protocols": "vless-reality", "requiresDomainCert": False},
-        "reality-plus-domain": {"label": "reality-plus-domain", "engine": "sing-box", "profile": "full", "protocols": "vless-reality,hysteria2,tuic,naive", "requiresDomainCert": True},
-        "full": {"label": "full", "engine": "sing-box", "profile": "full", "protocols": "vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic", "requiresDomainCert": True},
+        "reality-plus-domain": {"label": "reality-plus-domain", "engine": "sing-box", "profile": "full", "protocols": "vless-reality,hysteria2,naive", "requiresDomainCert": True},
+        "full": {"label": "full", "engine": "sing-box", "profile": "full", "protocols": "vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2", "requiresDomainCert": True},
     }
     for key, expected in presets.items():
         needle = expected["protocols"]

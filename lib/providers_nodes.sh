@@ -7,6 +7,7 @@ build_aggregate_subscription() {
 
 write_nodes_output() {
   local engine="$1" protocols_csv="$2" ip uuid tls_insecure
+  validate_protocols_csv "$protocols_csv" || return 1
   ip="$(detect_public_ip)"
   uuid="$(ensure_uuid)"
   node_model_init
@@ -14,7 +15,7 @@ write_nodes_output() {
   local reality_sni reality_fp tls_sni vless_ws_path
   local xhttp_path xhttp_mode enc_vless
   local ip_vless_ws ip_xhttp public_key short_id tls_host
-  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 p_tuic ss2022_password hy2_obfs_mode hy2_obfs_password
+  local p_vless_reality p_vless_ws p_xhttp p_ss p_naive p_hy2 ss2022_password hy2_obfs_mode hy2_obfs_password
   local protocols=()
 
   reality_sni="$(sbd_reality_server_name)"
@@ -52,7 +53,6 @@ write_nodes_output() {
   p_ss="$(resolve_protocol_port_for_engine "$engine" "shadowsocks-2022")"
   p_naive="$(resolve_protocol_port_for_engine "$engine" "naive")"
   p_hy2="$(resolve_protocol_port_for_engine "$engine" "hysteria2")"
-  p_tuic="$(resolve_protocol_port_for_engine "$engine" "tuic")"
 
   if protocol_enabled "vless-reality" "${protocols[@]}"; then
     node_model_add_vless_reality "$uuid" "$ip" "$p_vless_reality" "$reality_sni" "$reality_fp" "$public_key" "$short_id"
@@ -79,10 +79,6 @@ write_nodes_output() {
     fi
     node_model_add_hysteria2 "$uuid" "$tls_host" "$p_hy2" "$tls_sni" "$tls_insecure" "$hy2_obfs_mode" "$hy2_obfs_password"
   fi
-  if protocol_enabled "tuic" "${protocols[@]}"; then
-    node_model_add_tuic "$uuid" "$tls_host" "$p_tuic" "$tls_sni" "$tls_insecure"
-  fi
-
   if [[ "${ARGO_MODE:-${argo_mode:-off}}" != "off" && -f "${SBD_DATA_DIR}/argo_domain" ]]; then
     local argo_domain argo_host
     argo_domain="$(<"${SBD_DATA_DIR}/argo_domain")"

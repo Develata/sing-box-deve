@@ -2,6 +2,7 @@
 
 build_xray_config() {
   local protocols_csv="$1"
+  validate_protocols_csv "$protocols_csv" || return 1
   local config_file="${SBD_CONFIG_DIR}/xray-config.json"
   local uuid
   uuid="$(ensure_uuid)" || return 1

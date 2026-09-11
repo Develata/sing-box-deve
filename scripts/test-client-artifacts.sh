@@ -43,17 +43,19 @@ node_model_add_vless_ws \
 node_model_add_ss2022 MDEyMzQ1Njc4OWFiY2RlZg== 192.0.2.1 8388
 node_model_add_naive 33333333-3333-4333-8333-333333333333 2001:db8::11 443 www.bing.com false
 node_model_add_hysteria2 44444444-4444-4444-8444-444444444444 2001:db8::12 8443 www.bing.com true off ''
-node_model_add_tuic 55555555-5555-4555-8555-555555555555 2001:db8::13 10443 www.bing.com true
+# Retained legacy models must not reintroduce the retired protocol into exports.
+node_model_append '{"kind":"tuic","tag":"legacy-tuic","uuid":"55555555-5555-4555-8555-555555555555","password":"test-only","server":"192.0.2.13","port":10443,"sni":"example.com","insecure":false}'
 
 node_model_render_uri_file "$SBD_NODES_FILE"
+if grep -qi 'tuic' "$SBD_NODES_FILE"; then die "Retired TUIC URI was exported"; fi
 base64 -w 0 < "$SBD_NODES_FILE" > "$SBD_SUB_FILE"
 grep -Fq '@[2001:db8::10]:443' "$SBD_NODES_FILE" || die "IPv6 URI authority is not bracketed"
 grep -Fq '@[2001:db8::11]:443' "$SBD_NODES_FILE" || die "Naive IPv6 URI authority is not bracketed"
 grep -Fq '@[2001:db8::12]:8443' "$SBD_NODES_FILE" || die "Hysteria2 IPv6 URI authority is not bracketed"
-grep -Fq '@[2001:db8::13]:10443' "$SBD_NODES_FILE" || die "TUIC IPv6 URI authority is not bracketed"
 
 sing_client="${SBD_DATA_DIR}/sing_box_client.json"
 render_singbox_client_json "$sing_client"
+if grep -qi 'tuic' "$sing_client"; then die "Retired TUIC sing-box outbound was exported"; fi
 jq -e '
   any(.outbounds[]; .type == "vless" and .tag == "sbd-vless-reality") and
   any(.outbounds[]; .type == "shadowsocks" and .tag == "sbd-shadowsocks-2022") and
@@ -75,6 +77,7 @@ fi
 
 clash_client="${SBD_DATA_DIR}/clash_meta_client.yaml"
 render_clash_meta_yaml "$clash_client"
+if grep -qi 'tuic' "$clash_client"; then die "Retired TUIC Clash proxy was exported"; fi
 proxy_json="$(sed -n 's/^proxies: //p' "$clash_client" | head -n1)"
 jq -e 'length >= 3 and any(.[]; .name == "sbd-vless-reality")' <<< "$proxy_json" >/dev/null || \
   die "Clash client does not contain real proxies"

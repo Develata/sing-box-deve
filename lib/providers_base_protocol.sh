@@ -9,7 +9,6 @@ protocol_port_map() {
     shadowsocks-2022) echo "tcp:2443" ;;
     naive) echo "tcp:22443" ;;
     hysteria2) echo "udp:8443" ;;
-    tuic) echo "udp:10443" ;;
     argo) echo "tcp:8080" ;;
     warp) echo "udp:51820" ;;
     *) die "No port map for protocol: $proto" ;;
@@ -39,7 +38,6 @@ protocol_inbound_tag() {
     shadowsocks-2022) echo "ss-2022" ;;
     naive) echo "naive" ;;
     hysteria2) echo "hy2" ;;
-    tuic) echo "tuic" ;;
     *) return 1 ;;
   esac
 }
@@ -94,7 +92,7 @@ engine_supports_protocol() {
   case "$engine" in
     sing-box)
       case "$protocol" in
-        vless-reality|vless-ws|shadowsocks-2022|naive|hysteria2|tuic) return 0 ;;
+        vless-reality|vless-ws|shadowsocks-2022|naive|hysteria2) return 0 ;;
         *) return 1 ;;
       esac
       ;;

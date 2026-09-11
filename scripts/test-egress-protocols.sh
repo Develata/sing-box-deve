@@ -65,14 +65,13 @@ ws="$(node_link_vless_ws "$uid" 192.0.2.10 443 none %2Fws cdn.example tls cdn.ex
 hy2="$(node_link_hysteria2 "$uid" 192.0.2.10 443 cert.example salamander obfs-password)"
 hy2_base="$hy2"
 hy2="${hy2_base%%#*}&udp=1#exported-node"
-tuic="$(node_link_tuic "$uid" 192.0.2.10 443 cert.example)"
 ss="$(node_link_ss2022 AAAAAAAAAAAAAAAAAAAAAA== 192.0.2.10 443)"
 ss_base="$ss"
 ss="${ss_base%%#*}?udp=1#exported-node"
 naive="$(node_link_naive "$uid" 192.0.2.10 443 cert.example)"
 xhttp="$(node_link_vless_xhttp "$uid" 192.0.2.10 443 none cert.example chrome BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB abcd1234 %2Fxh auto cert.example)"
-links=("$reality" "$ws" "$hy2" "$tuic" "$ss" "$naive" "$xhttp")
-kinds=(vless-reality vless-ws hysteria2 tuic shadowsocks-2022 naive vless-xhttp)
+links=("$reality" "$ws" "$hy2" "$ss" "$naive" "$xhttp")
+kinds=(vless-reality vless-ws hysteria2 shadowsocks-2022 naive vless-xhttp)
 
 for core in sing-box xray; do
   OUTBOUND_PROXY_LINK=''
@@ -80,7 +79,7 @@ for core in sing-box xray; do
   persist_runtime_state vps lite "$core" vless-reality
   for i in "${!links[@]}"; do
     kind="${kinds[$i]}" link="${links[$i]}"
-    if [[ "$core:$kind" == sing-box:vless-xhttp || "$core:$kind" == xray:tuic || "$core:$kind" == xray:naive ]]; then
+    if [[ "$core:$kind" == sing-box:vless-xhttp || "$core:$kind" == xray:naive ]]; then
       before="$(sha256sum "$SBD_CONFIG_DIR/runtime.env")"
       if provider_set_egress direct '' '' '' '' direct "$link"; then echo '[FAIL] incompatible core accepted'; exit 1; fi
       [[ "$before" == "$(sha256sum "$SBD_CONFIG_DIR/runtime.env")" && ! -f "$egress_root/stops" ]]
@@ -108,6 +107,26 @@ for core in sing-box xray; do
     [[ "$OUTBOUND_PROXY_LINK" == "$udp_disabled" && "$OUTBOUND_PROXY_UDP_MODE" == direct ]]
   done
   printf '[OK] %s VLESS/HY2/SS UDP export flags respect policy and rejected state\n' "$core"
+  # Importing a node under direct routing must not silently enable proxy use.
+  provider_set_route direct
+  provider_set_egress direct '' '' '' '' proxy "$reality"
+  provider_cfg_load_runtime_exports
+  [[ "$ROUTE_MODE" == direct && "$OUTBOUND_PROXY_LINK" == "$reality" ]]
+  if [[ "$core" == sing-box ]]; then
+    jq -e '.route.final == "direct"' "$config" >/dev/null
+  else
+    jq -e '.outbounds[0].tag == "direct" and ((.routing.rules // []) | length == 0)' "$config" >/dev/null
+  fi
+  provider_set_route global-proxy
+  if [[ "$core" == sing-box ]]; then
+    jq -e '.route.final == "proxy-out"' "$config" >/dev/null
+  else
+    jq -e '.routing.rules[-1].outboundTag == "proxy-out"' "$config" >/dev/null
+  fi
+  provider_set_route direct
+  provider_cfg_load_runtime_exports
+  [[ "$ROUTE_MODE" == direct && "$OUTBOUND_PROXY_LINK" == "$reality" ]]
+  printf '[OK] %s direct import, explicit proxy routing and direct switch retain the saved node\n' "$core"
 done
 
 # Route changes retain the complete link, then a failed replacement compensates.

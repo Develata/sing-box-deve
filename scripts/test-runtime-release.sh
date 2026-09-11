@@ -59,4 +59,61 @@ sbd_with_mutation_lock sbd_release_rollback
 ) && fail 'injected kill did not execute'
 [[ "$("$SBD_LAUNCHER_PATH" --print-version)" == v9.0.1 ]] || fail 'selector kill left mixed/unbootable runtime'
 sbd_release_verify "$(readlink -f "$SBD_INSTALL_DIR/current")"
+# README manual recovery: the candidate updater installs a local, digest-pinned
+# archive through the regular transaction, accepting the exact legacy fw unit.
+(
+  manual="$release_test/manual recovery"
+  SBD_INSTALL_DIR="$manual/install"
+  SBD_CONFIG_DIR="$manual/config"
+  SBD_STATE_DIR="$manual/state"
+  SBD_HOST_STATE_DIR="$manual/control"
+  SBD_RUNTIME_DIR="$manual/run"
+  SBD_BIN_DIR="$SBD_INSTALL_DIR/bin"
+  SBD_DATA_DIR="$SBD_INSTALL_DIR/data"
+  SBD_RULES_FILE="$SBD_STATE_DIR/firewall-rules.db"
+  SBD_LAUNCHER_PATH="$manual/sb"
+  SBD_SERVICE_FILE="$manual/services/core"
+  SBD_ARGO_SERVICE_FILE="$manual/services/argo"
+  SBD_FW_REPLAY_SERVICE_FILE="$manual/services/firewall"
+  SBD_WARP_SOCKS_SERVICE_FILE="$manual/services/warp"
+  mkdir -p "$SBD_CONFIG_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$manual/services"
+  sbd_write_env_kv script_root "$release_test/source" > "$SBD_CONFIG_DIR/runtime.env"
+  # Script-only migration must remain available for a retired deployment.
+  printf 'provider="vps"\nprofile="full"\nengine="sing-box"\nprotocols="vless-reality,tuic"\n' >> "$SBD_CONFIG_DIR/runtime.env"
+  printf 'is_sbd_project_root() { :; }\n# /etc/sing-box-deve/runtime.env\n' > "$SBD_LAUNCHER_PATH"
+  cat > "$SBD_FW_REPLAY_SERVICE_FILE" <<EOF
+[Unit]
+Description=sing-box-deve firewall replay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=$SBD_LAUNCHER_PATH fw replay
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  printf 'existing core binary\n' > "$SBD_BIN_DIR/sing-box"
+  printf '{"existing":"core configuration"}\n' > "$SBD_CONFIG_DIR/config.json"
+  printf 'existing identity\n' > "$SBD_DATA_DIR/uuid"
+  sha256sum "$SBD_BIN_DIR/sing-box" "$SBD_CONFIG_DIR/config.json" "$SBD_DATA_DIR/uuid" "$SBD_FW_REPLAY_SERVICE_FILE" > "$manual/preserved.sha256"
+  sbd_service_probe() { printf 'active enabled\n'; }
+  sbd_service_op() { fail 'manual script update invoked a service operation'; }
+  provider_restart() { fail 'manual script update restarted a core'; }
+  ensure_root() { :; }
+  sleep 120 & sentinel=$!
+  trap 'kill "$sentinel" 2>/dev/null || true; wait "$sentinel" 2>/dev/null || true' EXIT
+  cp "$release_test/runtime.tar.gz" "$manual/runtime.tar.gz"
+  SBD_RELEASE_ARCHIVE_URL="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().as_uri())' "$manual/runtime.tar.gz")"
+  SBD_RELEASE_SHA256="$release_sum"
+  update_command --script --yes
+  [[ "$("$SBD_LAUNCHER_PATH" --print-version)" == v9.0.1 ]]
+  [[ "$(readlink -f "$SBD_INSTALL_DIR/previous")" == "$SBD_INSTALL_DIR/releases/legacy-"* ]]
+  update_command --script --yes
+  sha256sum -c "$manual/preserved.sha256"
+  kill -0 "$sentinel"
+  [[ ! -L "$SBD_HOST_STATE_DIR/transactions/active" ]]
+  printf '[OK] manual local-archive update and repeated update preserved core/config/identity/legacy unit; no service operations\n'
+)
 printf '[OK] runtime release, migration and interruption checks passed\n'

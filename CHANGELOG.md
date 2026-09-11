@@ -4,7 +4,26 @@ All notable changes to this project are documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style: entries are grouped by version and by change type (`Added`, `Changed`, `Fixed`, `Removed`, `Security`). Version numbers follow the repository `version` file and use SemVer-like `major.minor.patch` numbering.
 
-## [Unreleased]
+## [v1.2.0] - 2026-09-11
+
+### Added
+
+- Added opt-in fixed Git checkout binding with version/commit display, source validation, stale-menu rejection and complete Release recovery when the checkout is missing or damaged. Manual `git pull` affects the next `sb` invocation; the default remains immutable Release installation.
+
+### Removed
+
+- Removed TUIC inbound and upstream support from protocol registries, presets, legacy install parameters, configuration/link/client generation, CLI menus and the web generator. Retained legacy runtime decoding for status and script update/rollback; configuration/core changes require migration with the previous script first.
+
+### Changed
+
+- Grouped egress menus into traffic routing and upstream configuration, preserving saved nodes when selecting direct routing and explaining that importing a node does not switch the default route.
+- Consolidated service log navigation, removed ineffective primary/backup script-update menu choices, and corrected descriptions of removed features.
+- Documented checkout versus installed-runtime versions and manual script recovery using a complete local archive without updating or restarting the core.
+
+### Fixed
+
+- Preserved script source across configuration rebuilds/snapshot rollback, and restored failed script transactions without restarting services or regenerating node artifacts.
+- Recognized the exact legacy firewall replay service template when it invokes a verified project launcher, allowing existing installations to pass transaction ownership checks while rejecting altered or unrelated service files.
 
 ## [v1.1.1] - 2026-09-11
 

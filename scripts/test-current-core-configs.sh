@@ -47,8 +47,7 @@ sing_matrix=(
   shadowsocks-2022
   naive
   hysteria2
-  tuic
-  "vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
+  "vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2"
 )
 for protocols_csv in "${sing_matrix[@]}"; do
   build_sing_box_config "$protocols_csv"

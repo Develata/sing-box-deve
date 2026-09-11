@@ -212,44 +212,78 @@ menu_port() {
   done
 }
 
+menu_egress_route() {
+  local c route
+  menu_title "$(msg "[流量路由]" "[Traffic Routing]")"
+  echo "1) $(msg "默认直连（保留上游节点）" "Direct by default (keep upstream)")"
+  echo "2) $(msg "默认走上游代理（global-proxy）" "Proxy by default (global-proxy)")"
+  echo "3) $(msg "国内直连，其余走代理（cn-direct）" "China direct, others proxy (cn-direct)")"
+  echo "4) $(msg "国内走代理，其余直连（cn-proxy）" "China proxy, others direct (cn-proxy)")"
+  echo "0) $(msg "返回上级" "Back")"
+  printf '%s\n' "$(msg "显式域名规则和 UDP 策略仍可覆盖默认路由。" "Explicit domain rules and UDP policy can override the default route.")"
+  read -r -p "$(msg "请选择" "Select"): " c
+  case "${c:-0}" in
+    1) route=direct ;;
+    2) route=global-proxy ;;
+    3) route=cn-direct ;;
+    4) route=cn-proxy ;;
+    0) return 0 ;;
+    *) menu_invalid; return 0 ;;
+  esac
+  provider_set_route "$route"
+  menu_pause
+}
+
+menu_egress_upstream() {
+  local c m h p u pw udp_default=proxy udp_mode
+  menu_title "$(msg "[上游节点]" "[Upstream Node]")"
+  echo "1) $(msg "导入节点分享链接（Reality/WS/HY2/SS/Naive/XHTTP）" "Import node link (Reality/WS/HY2/SS/Naive/XHTTP)")"
+  echo "2) $(msg "手动填写 SOCKS/HTTP/HTTPS 代理" "Enter SOCKS/HTTP/HTTPS proxy")"
+  echo "3) $(msg "删除上游配置（需先切回直连路由）" "Remove upstream (switch to direct routing first)")"
+  echo "0) $(msg "返回上级" "Back")"
+  printf '%s\n' "$(msg "配置节点不会自动切换路由；请在流量路由中选择是否使用代理。" "Configuring a node does not change routing; select proxy use in Traffic Routing.")"
+  read -r -p "$(msg "请选择" "Select"): " c
+  case "${c:-0}" in
+    1)
+      if sbd_egress_prompt_link; then
+        provider_set_egress direct "" "" "" "" "$OUTBOUND_PROXY_UDP_MODE" "$OUTBOUND_PROXY_LINK"
+      fi
+      ;;
+    2)
+      read -r -p "$(msg "模式[socks/http/https]" "mode[socks/http/https]"): " m
+      read -r -p "$(msg "主机" "host"): " h
+      read -r -p "$(msg "端口" "port"): " p
+      read -r -p "$(msg "用户(可选)" "user(optional)"): " u
+      read -r -s -p "$(msg "密码(可选，输入不回显)" "pass(optional, hidden)"): " pw
+      printf '\n'
+      [[ "$m" == "http" || "$m" == "https" ]] && udp_default=direct
+      read -r -p "$(msg "UDP 策略[proxy/direct/block]" "UDP policy[proxy/direct/block]") [${udp_default}]: " udp_mode
+      provider_set_egress "$m" "$h" "$p" "$u" "$pw" "${udp_mode:-$udp_default}"
+      ;;
+    3)
+      if prompt_yes_no "$(msg "确认删除已保存的上游节点和凭据？" "Remove the saved upstream node and credentials?")" N; then
+        provider_set_egress direct "" "" "" "" proxy
+      fi
+      ;;
+    0) return 0 ;;
+    *) menu_invalid ;;
+  esac
+  menu_pause
+}
+
 menu_egress() {
+  local c
   while true; do
     menu_status_header
     menu_title "$(msg "[出站策略管理]" "[Egress Management]")"
-    echo "1) $(msg "切换为直连出站（set-egress direct）" "Set direct egress (set-egress direct)")"
-    echo "2) $(msg "配置上游代理出站（set-egress socks/http/https）" "Set upstream proxy egress (set-egress socks/http/https)")"
-    echo "3) $(msg "设置分流路由模式（set-route ...）" "Set route mode (set-route ...)")"
-    echo "4) $(msg "导入协议节点分享链接（Reality/HY2/TUIC/SS/Naive/XHTTP）" "Import protocol node link (Reality/HY2/TUIC/SS/Naive/XHTTP)")"
+    echo "1) $(msg "流量路由：直连/代理/国内分流（set-route）" "Traffic routing: direct/proxy/China rules (set-route)")"
+    echo "2) $(msg "上游节点：导入链接/手动配置/删除（set-egress）" "Upstream node: import/configure/remove (set-egress)")"
+    printf '%s\n' "$(msg "要改变默认流量是否走代理，请选 1；仅导入节点不会自动启用代理路由。" "Choose 1 to change default proxy use; importing a node does not enable proxy routing.")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
-      1)
-        provider_set_egress direct "" "" "" "" proxy
-        menu_pause
-        ;;
-      2)
-        read -r -p "$(msg "模式[socks/http/https]" "mode[socks/http/https]"): " m
-        read -r -p "$(msg "主机" "host"): " h
-        read -r -p "$(msg "端口" "port"): " p
-        read -r -p "$(msg "用户(可选)" "user(optional)"): " u
-        read -r -p "$(msg "密码(可选)" "pass(optional)"): " pw
-        local udp_default="proxy" udp_mode=""
-        [[ "$m" == "http" || "$m" == "https" ]] && udp_default="direct"
-        read -r -p "$(msg "UDP 策略[proxy/direct/block]" "UDP policy[proxy/direct/block]") [${udp_default}]: " udp_mode
-        provider_set_egress "$m" "$h" "$p" "$u" "$pw" "${udp_mode:-$udp_default}"
-        menu_pause
-        ;;
-      3)
-        read -r -p "$(msg "路由模式[direct/global-proxy/cn-direct/cn-proxy]" "route mode[direct/global-proxy/cn-direct/cn-proxy]"): " rm
-        provider_set_route "$rm"
-        menu_pause
-        ;;
-      4)
-        if sbd_egress_prompt_link; then
-          provider_set_egress direct "" "" "" "" "$OUTBOUND_PROXY_UDP_MODE" "$OUTBOUND_PROXY_LINK"
-        fi
-        menu_pause
-        ;;
+      1) menu_egress_route ;;
+      2) menu_egress_upstream ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac

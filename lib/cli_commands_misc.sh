@@ -38,6 +38,7 @@ show_version() {
   local local_ver remote_ver
   local_ver="$(current_script_version)"
   log_info "$(msg "当前脚本版本" "Current script version"): ${local_ver}"
+  sbd_show_script_source
   remote_ver="$(fetch_remote_script_version "auto" 2>/dev/null || true)"
   if [[ -n "$remote_ver" ]]; then
     log_info "$(msg "远程最新版本" "Remote latest version"): ${remote_ver}"
@@ -50,14 +51,29 @@ show_version() {
 
 update_command() {
   parse_update_args "$@"
+  if [[ -n "$UPDATE_BIND_GIT" ]]; then
+    log_warn "$(msg "sb 将执行固定 Git 目录中的代码；能修改该目录的用户也能修改这些管理命令。" "sb will execute the fixed Git checkout; its owner can modify these management commands.")"
+    prompt_yes_no "$(msg "绑定该 Git 目录？" "Bind this Git directory?") $UPDATE_BIND_GIT" N || return 1
+    sbd_with_mutation_lock sbd_transaction_run script-update sbd_bind_git_source "$UPDATE_BIND_GIT"
+    return $?
+  fi
+  if [[ "$UPDATE_CHECK_SOURCE" == true ]]; then sbd_check_script_source; return $?; fi
   if [[ "$UPDATE_ROLLBACK" == true ]]; then perform_script_rollback; return $?; fi
   if [[ "$UPDATE_SCRIPT" == true ]]; then
-    prompt_yes_no "Install a verified script release?" N || return 1
-    perform_script_self_update || return 1
+    if sbd_source_is_git && [[ "$UPDATE_RELEASE" == false ]]; then
+      sbd_check_script_source || return 1
+      log_info "$(msg "Git 模式请手动 git pull；安装 Release 并解除绑定请使用 update --release。" "In Git mode, run git pull manually; use update --release to install a Release and remove the binding.")"
+    else
+      prompt_yes_no "$(msg "安装完整 Release（解除已有 Git 绑定）？" "Install a verified script Release (remove any Git binding)?")" N || return 1
+      perform_script_self_update || return 1
+      unset SBD_GIT_SOURCE_STAMP SBD_GIT_SOURCE_UID
+    fi
     if [[ "$UPDATE_CORE" == true ]]; then
+      local next_root
+      next_root="$(sbd_read_runtime_script_root)" || return 1
       local -a next_args=(update --core)
       [[ "$AUTO_YES" != true ]] || next_args+=(--yes)
-      exec bash "$SBD_INSTALL_DIR/current/sing-box-deve.sh" "${next_args[@]}"
+      exec bash "$next_root/sing-box-deve.sh" "${next_args[@]}"
     fi
   fi
   if [[ "$UPDATE_CORE" == true ]]; then

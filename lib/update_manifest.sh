@@ -179,6 +179,8 @@ UPDATE_MANIFEST_FILES=(
   "lib/common_lock.sh"
   "lib/common_ownership.sh"
   "lib/common_release.sh"
+  "lib/common_git_source.sh"
+  "lib/common_source_binding.sh"
   "lib/common_runtime_schema.sh"
   "lib/load.sh"
   "lib/providers_state.sh"
@@ -192,6 +194,7 @@ UPDATE_MANIFEST_FILES=(
   "scripts/egress-link.py"
   "scripts/test-egress-link.py"
   "scripts/test-egress-protocols.sh"
+  "scripts/test-retired-protocols.sh"
   "scripts/test-egress-traffic.py"
   "docs/EGRESS.md"
   "scripts/test-bounded-log.py"
@@ -201,6 +204,7 @@ UPDATE_MANIFEST_FILES=(
   "scripts/test-review-recovery.sh"
   "scripts/test-runtime-archive.py"
   "scripts/test-runtime-release.sh"
+  "scripts/test-git-source.sh"
   "scripts/test-source-graph.sh"
 )
 

@@ -76,6 +76,67 @@ run_case foreign_service_preflight '
   if sbd_transaction_begin install; then exit 1; fi
   [[ ! -e "$SBD_HOST_STATE_DIR/transactions/active" ]]
 '
+run_case legacy_firewall_service_ownership '
+  dir="$review_root/legacy-firewall"
+  mkdir -p "$dir"
+  SBD_HOST_STATE_DIR="$dir/control"
+  SBD_SERVICE_FILE="$dir/core"
+  SBD_ARGO_SERVICE_FILE="$dir/argo"
+  SBD_FW_REPLAY_SERVICE_FILE="$dir/firewall"
+  SBD_WARP_SOCKS_SERVICE_FILE="$dir/warp"
+  SBD_LAUNCHER_PATH="$dir/sb"
+  printf "is_sbd_project_root() { :; }\n# /etc/sing-box-deve/runtime.env\n" > "$SBD_LAUNCHER_PATH"
+  cat > "$SBD_FW_REPLAY_SERVICE_FILE" <<EOF
+[Unit]
+Description=sing-box-deve firewall replay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=$SBD_LAUNCHER_PATH fw replay
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  cp "$SBD_FW_REPLAY_SERVICE_FILE" "$dir/legacy"
+  sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"
+  sbd_service_probe() { printf "inactive disabled\n"; }
+  transaction="$(sbd_transaction_begin config-change)"
+  [[ -L "$SBD_HOST_STATE_DIR/transactions/active" ]]
+  cmp -s "$SBD_FW_REPLAY_SERVICE_FILE" "$dir/legacy"
+  SBD_ACTIVE_TRANSACTION="$transaction"
+  { printf "# Managed by sing-box-deve: service-v1\n"; cat "$dir/legacy"; } > "$dir/candidate"
+  sbd_host_file_publish "$SBD_FW_REPLAY_SERVICE_FILE" "$dir/candidate"
+  sbd_host_file_unchanged "$SBD_FW_REPLAY_SERVICE_FILE"
+  sbd_host_transaction_restore "$transaction"
+  cmp -s "$SBD_FW_REPLAY_SERVICE_FILE" "$dir/legacy"
+  [[ ! -d "$(sbd_host_file_record "$SBD_FW_REPLAY_SERVICE_FILE")" ]]
+  sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"
+  # Reject foreign commands, extra directives, another unit path and symlinks.
+  printf "ExecStartPost=/foreign/command\n" >> "$SBD_FW_REPLAY_SERVICE_FILE"
+  if sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"; then exit 1; fi
+  sed "s|^ExecStart=.*|ExecStart=/foreign/sb fw replay|" "$dir/legacy" > "$SBD_FW_REPLAY_SERVICE_FILE"
+  if sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"; then exit 1; fi
+  cp "$dir/legacy" "$SBD_FW_REPLAY_SERVICE_FILE"
+  cp "$dir/legacy" "$SBD_SERVICE_FILE"
+  if sbd_managed_unit_file "$SBD_SERVICE_FILE"; then exit 1; fi
+  mv "$SBD_FW_REPLAY_SERVICE_FILE" "$dir/real-unit"
+  ln -s "$dir/real-unit" "$SBD_FW_REPLAY_SERVICE_FILE"
+  if sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"; then exit 1; fi
+  rm "$SBD_FW_REPLAY_SERVICE_FILE"
+  cp "$dir/legacy" "$SBD_FW_REPLAY_SERVICE_FILE"
+  printf "#!/bin/sh\nexit 0\n" > "$SBD_LAUNCHER_PATH"
+  if sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"; then exit 1; fi
+  printf "# Managed by sing-box-deve: launcher-v1\n" > "$SBD_LAUNCHER_PATH"
+  sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"
+  # An existing ownership ledger takes priority over legacy recognition.
+  sbd_host_file_prepare "$SBD_FW_REPLAY_SERVICE_FILE"
+  printf "external change\n" >> "$SBD_FW_REPLAY_SERVICE_FILE"
+  sbd_host_file_commit "$SBD_FW_REPLAY_SERVICE_FILE"
+  cp "$dir/legacy" "$SBD_FW_REPLAY_SERVICE_FILE"
+  if sbd_managed_unit_file "$SBD_FW_REPLAY_SERVICE_FILE"; then exit 1; fi
+'
 run_case install_warp_account_only '
   SBD_ACTIVE_TRANSACTION="$review_root/warp-transaction"
   SBD_MUTATION_DEPTH=1

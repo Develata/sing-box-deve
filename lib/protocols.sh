@@ -7,7 +7,6 @@ ALL_PROTOCOLS=(
   shadowsocks-2022
   naive
   hysteria2
-  tuic
 )
 
 validate_provider() {
@@ -146,9 +145,6 @@ protocol_hint() {
     hysteria2)
       echo "risk=medium;resource=medium;note=requires user-controlled domain and trusted certificate; udp heavy at high throughput"
       ;;
-    tuic)
-      echo "risk=medium;resource=medium;note=requires user-controlled domain and trusted certificate; udp + tls cert overhead"
-      ;;
     *)
       echo "risk=unknown;resource=unknown;note=n/a"
       ;;
@@ -164,7 +160,6 @@ protocol_capability() {
     shadowsocks-2022) echo "tls=no;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     naive) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=limited" ;;
     hysteria2) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
-    tuic) echo "tls=yes;reality=no;multi-port=yes;warp-egress=yes;share=yes" ;;
     *) echo "tls=unknown;reality=unknown;multi-port=unknown;warp-egress=unknown;share=unknown" ;;
   esac
 }

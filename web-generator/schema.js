@@ -25,8 +25,7 @@ window.SBD_WEB_SCHEMA = {
     "vless-ws",
     "shadowsocks-2022",
     "naive",
-    "hysteria2",
-    "tuic"
+    "hysteria2"
   ],
   "protocolHints": {
     "vless-reality": "default secure choice",
@@ -34,8 +33,7 @@ window.SBD_WEB_SCHEMA = {
     "vless-ws": "simple ws profile",
     "shadowsocks-2022": "password management required",
     "naive": "requires user-controlled domain and trusted certificate",
-    "hysteria2": "requires user-controlled domain and trusted certificate; udp heavy at high throughput",
-    "tuic": "requires user-controlled domain and trusted certificate; udp + tls cert overhead"
+    "hysteria2": "requires user-controlled domain and trusted certificate; udp heavy at high throughput"
   },
   "engineSupport": {
     "sing-box": [
@@ -43,8 +41,7 @@ window.SBD_WEB_SCHEMA = {
       "vless-ws",
       "shadowsocks-2022",
       "naive",
-      "hysteria2",
-      "tuic"
+      "hysteria2"
     ],
     "xray": [
       "vless-reality",
@@ -64,14 +61,14 @@ window.SBD_WEB_SCHEMA = {
       "label": "reality-plus-domain",
       "engine": "sing-box",
       "profile": "full",
-      "protocols": "vless-reality,hysteria2,tuic,naive",
+      "protocols": "vless-reality,hysteria2,naive",
       "requiresDomainCert": true
     },
     "full": {
       "label": "full",
       "engine": "sing-box",
       "profile": "full",
-      "protocols": "vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic",
+      "protocols": "vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2",
       "requiresDomainCert": true
     }
   },
@@ -108,7 +105,6 @@ window.SBD_WEB_SCHEMA = {
       "vless": "vless",
       "hy2": "hysteria2",
       "hysteria2": "hysteria2",
-      "tuic": "tuic",
       "ss": "shadowsocks-2022",
       "naive+https": "naive"
     },
@@ -117,7 +113,6 @@ window.SBD_WEB_SCHEMA = {
         "vless-reality",
         "vless-ws",
         "hysteria2",
-        "tuic",
         "shadowsocks-2022",
         "naive"
       ],

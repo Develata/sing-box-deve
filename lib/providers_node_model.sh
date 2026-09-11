@@ -78,14 +78,6 @@ node_model_add_hysteria2() {
     '{kind:$kind,tag:$tag,password:$password,server:$server,port:$port,sni:$sni,insecure:$insecure,obfs_mode:$obfs_mode,obfs_password:$obfs_password}')"
 }
 
-node_model_add_tuic() {
-  local uuid="$1" server="$2" port="$3" sni="$4" insecure="$5"
-  node_model_append "$(jq -cn \
-    --arg kind tuic --arg tag sbd-tuic --arg uuid "$uuid" --arg server "$server" \
-    --argjson port "$port" --arg sni "$sni" --argjson insecure "$insecure" \
-    '{kind:$kind,tag:$tag,uuid:$uuid,password:$uuid,server:$server,port:$port,sni:$sni,insecure:$insecure}')"
-}
-
 node_model_value() {
   local node_json="$1" expression="$2"
   jq -r "$expression // empty" <<< "$node_json"
@@ -135,11 +127,6 @@ node_model_render_uri_file() {
           "$(node_model_value "$node" '.server')" "$(node_model_value "$node" '.port')" \
           "$(node_model_value "$node" '.sni')" "$(node_model_value "$node" '.obfs_mode')" \
           "$(node_model_value "$node" '.obfs_password')" >> "$out_file"
-        ;;
-      tuic)
-        node_link_tuic "$(node_model_value "$node" '.uuid')" \
-          "$(node_model_value "$node" '.server')" "$(node_model_value "$node" '.port')" \
-          "$(node_model_value "$node" '.sni')" >> "$out_file"
         ;;
     esac
   done < <(jq -c '.nodes[]' "$SBD_NODE_MODEL_FILE")

@@ -8,8 +8,7 @@ menu_service() {
     echo "2) $(msg "仅重启核心服务（restart --core）" "Restart core only (restart --core)")"
     echo "3) $(msg "仅重启 Argo 边车（restart --argo）" "Restart Argo sidecar (restart --argo)")"
     echo "4) $(msg "重建节点文件（regen-nodes）" "Regenerate nodes (regen-nodes)")"
-    echo "5) $(msg "查看核心日志（logs --core）" "Show core logs (logs --core)")"
-    echo "6) $(msg "查看 Argo 日志（logs --argo）" "Show Argo logs (logs --argo)")"
+    echo "5) $(msg "查看日志（进入日志菜单）" "View logs (open Logs menu)")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
@@ -17,8 +16,7 @@ menu_service() {
       2) provider_restart core; menu_pause ;;
       3) provider_restart argo; menu_pause ;;
       4) provider_regen_nodes; menu_pause ;;
-      5) provider_logs core; menu_pause ;;
-      6) provider_logs argo; menu_pause ;;
+      5) menu_logs ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
@@ -30,22 +28,47 @@ menu_update() {
     menu_status_header
     menu_title "$(msg "[更新管理]" "[Update Management]")"
     echo "1) $(msg "更新核心内核（update --core）" "Update core engine (update --core)")"
-    echo "2) $(msg "更新脚本与模块（update --script）" "Update script/modules (update --script)")"
-    echo "3) $(msg "同时更新内核与脚本（update --all）" "Update both core+script (update --all)")"
-    echo "4) $(msg "仅主源更新脚本（update --script --source primary）" "Script update by primary source")"
-    echo "5) $(msg "仅备源更新脚本（update --script --source backup）" "Script update by backup source")"
+    if sbd_source_is_git; then
+      echo "2) $(msg "检查已拉取的 Git 源码（update --script）" "Check pulled Git source (update --script)")"
+      echo "3) $(msg "检查 Git 源码并更新内核（update --all）" "Check Git source and update core (update --all)")"
+    else
+      echo "2) $(msg "更新脚本与模块（update --script）" "Update script/modules (update --script)")"
+      echo "3) $(msg "同时更新内核与脚本（update --all）" "Update both core+script (update --all)")"
+    fi
+    echo "4) $(msg "脚本来源与回退（Git / Release）" "Script source and rollback (Git / Release)")"
+    printf '%s\n' "$(msg "仅更新脚本或切换脚本来源不会重启核心。" "Script-only updates and source switches do not restart the core.")"
     echo "0) $(msg "返回上级" "Back")"
     read -r -p "$(msg "请选择" "Select"): " c
     case "${c:-0}" in
       1) update_command --core --yes; menu_pause ;;
       2) update_command --script --force --yes; menu_pause ;;
       3) update_command --all --force --yes; menu_pause ;;
-      4) update_command --script --source primary --force --yes; menu_pause ;;
-      5) update_command --script --source backup --force --yes; menu_pause ;;
+      4) menu_script_source ;;
       0) return 0 ;;
       *) menu_invalid; menu_pause ;;
     esac
   done
+}
+
+menu_script_source() {
+  local c path
+  menu_title "$(msg "[脚本来源与回退]" "[Script Source and Rollback]")"
+  echo "1) $(msg "绑定固定 Git 源码目录" "Bind a fixed Git checkout")"
+  echo "2) $(msg "校验当前脚本来源" "Verify current script source")"
+  echo "3) $(msg "安装 Release 并解除 Git 绑定" "Install Release and remove Git binding")"
+  echo "4) $(msg "回退脚本（Git 模式恢复绑定前版本）" "Roll back script (pre-binding release in Git mode)")"
+  echo "0) $(msg "返回上级" "Back")"
+  read -r -p "$(msg "请选择" "Select"): " c
+  case "${c:-0}" in
+    1)
+      read -r -p "$(msg "永久 Git 目录的绝对路径" "Absolute path of permanent Git checkout"): " path
+      [[ -z "$path" ]] || AUTO_YES=false update_command --bind-git "$path"; menu_pause ;;
+    2) update_command --check-source; menu_pause ;;
+    3) AUTO_YES=false update_command --release; menu_pause ;;
+    4) update_command --rollback; menu_pause ;;
+    0) return 0 ;;
+    *) menu_invalid; menu_pause ;;
+  esac
 }
 
 menu_firewall() {

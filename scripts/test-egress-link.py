@@ -49,10 +49,6 @@ class Links(unittest.TestCase):
         self.assertEqual(out['domain_resolver'], 'dns-local')
 
     def test_core_capabilities(self):
-        tuic = module.parse_link(f'tuic://{UID}:password@exit.example?congestion_control=cubic&udp_relay_mode=quic')
-        self.assertEqual(module.render_singbox(tuic)['udp_relay_mode'], 'quic')
-        with self.assertRaises(module.LinkError):
-            module.render_xray(tuic)
         naive = module.parse_link('naive+https://user:password@exit.example?uot=true')
         self.assertTrue(module.render_singbox(naive)['udp_over_tcp'])
         self.assertNotIn('insecure', module.render_singbox(naive)['tls'])
@@ -62,6 +58,15 @@ class Links(unittest.TestCase):
         self.assertEqual(module.render_xray(xhttp)['streamSettings']['network'], 'xhttp')
         with self.assertRaises(module.LinkError):
             module.render_singbox(xhttp)
+
+    def test_retired_tuic_is_rejected(self):
+        self.assertNotIn('tuic', module.LINK_SCHEMES)
+        for engine, kinds in module.ENGINE_KINDS.items():
+            with self.subTest(engine=engine):
+                self.assertNotIn('tuic', kinds)
+        for scheme in ('tuic', 'TUIC'):
+            with self.subTest(scheme=scheme), self.assertRaisesRegex(module.LinkError, 'no longer supported'):
+                module.parse_link(f'{scheme}://{UID}:password@exit.example?congestion_control=bbr')
 
     def test_rejected_core_tls_and_xhttp_flow(self):
         node = module.parse_link('hy2://password@exit.example?insecure=true')
@@ -106,7 +111,6 @@ class Links(unittest.TestCase):
         auth = base64.urlsafe_b64encode(('2022-blake3-aes-128-gcm:' + password).encode()).decode().rstrip('=')
         links = (REALITY, f'vless://{UID}@exit.example?type=ws',
                  'hysteria2://password@exit.example?sni=exit.example',
-                 f'tuic://{UID}:password@exit.example?congestion_control=bbr',
                  f'ss://{auth}@exit.example:443?',
                  'naive+https://user:password@exit.example?uot=true')
         for link in links:
@@ -134,8 +138,7 @@ class Links(unittest.TestCase):
 
     def test_userinfo_delimiters_precede_decoding(self):
         for link in ('naive+https://user%3Apass@exit.example',
-                     'naive+https://user%3Aname:pass@exit.example',
-                     f'tuic://{UID}%3Apass@exit.example'):
+                     'naive+https://user%3Aname:pass@exit.example'):
             with self.subTest(link=link), self.assertRaises(module.LinkError):
                 module.parse_link(link)
         node = module.parse_link('naive+https://local%40user:local%3Apass%40word@exit.example')

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 build_sing_box_config() {
   local protocols_csv="$1"
+  validate_protocols_csv "$protocols_csv" || return 1
   local config_file="${SBD_CONFIG_DIR}/config.json"
   local uuid
   uuid="$(ensure_uuid)" || return 1
@@ -19,13 +20,11 @@ build_sing_box_config() {
   tls_server_name="$(sbd_tls_server_name)" || return 1
   ws_path_vless="$(sbd_vless_ws_path)" || return 1
   local port_vless_reality port_vless_ws port_ss2022 port_naive port_hysteria2
-  local port_tuic
   port_vless_reality="$(resolve_protocol_port_for_engine "sing-box" "vless-reality")" || return 1
   port_vless_ws="$(resolve_protocol_port_for_engine "sing-box" "vless-ws")" || return 1
   port_ss2022="$(resolve_protocol_port_for_engine "sing-box" "shadowsocks-2022")" || return 1
   port_naive="$(resolve_protocol_port_for_engine "sing-box" "naive")" || return 1
   port_hysteria2="$(resolve_protocol_port_for_engine "sing-box" "hysteria2")" || return 1
-  port_tuic="$(resolve_protocol_port_for_engine "sing-box" "tuic")" || return 1
   local inbounds=""
   local inbound_map=""
   local protocols=()
@@ -70,11 +69,6 @@ build_sing_box_config() {
     fi
     sbd_inbounds_append inbounds inbound_map "hy2" "$port_hysteria2" \
       "$(singbox_fragment_hysteria2 "$uuid" "$port_hysteria2" "$tls_server_name" "$cert_file" "$key_file" "$archive_site_dir" "$hy2_obfs_mode" "$hy2_obfs_password")" || return 1
-  fi
-
-  if protocol_enabled "tuic" "${protocols[@]}"; then
-    sbd_inbounds_append inbounds inbound_map "tuic" "$port_tuic" \
-      "$(singbox_fragment_tuic "$uuid" "$port_tuic" "$tls_server_name" "$cert_file" "$key_file")" || return 1
   fi
 
   local endpoints

@@ -43,6 +43,9 @@ Usage:
   sing-box-deve.sh sys acme-apply <cert_path> <key_path>
   sing-box-deve.sh regen-nodes
   sing-box-deve.sh update [--script|--core|--all] [--source auto|primary|backup] [--force] [--yes] [--rollback]
+  sing-box-deve.sh update --bind-git /absolute/checkout [--yes]
+  sing-box-deve.sh update --check-source | --release [--yes]
+  sb --rollback-source  # Recover a missing/broken Git binding via the retained Release
   sing-box-deve.sh version
   sing-box-deve.sh protocol matrix [--enabled]
   sing-box-deve.sh settings show

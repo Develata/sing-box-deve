@@ -8,7 +8,7 @@ provider_set_port_info() {
   local whitelist cfg
   case "${engine:-sing-box}" in
     sing-box)
-      whitelist="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic"
+      whitelist="vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2"
       cfg="${SBD_CONFIG_DIR}/config.json"
       ;;
     xray)
@@ -27,7 +27,7 @@ provider_set_port_info() {
   if [[ "${engine}" == "sing-box" ]]; then
     jq -r '.inbounds[] | [.tag, (.listen_port // .port // "n/a")] | @tsv' "$cfg" | while IFS=$'\t' read -r tag port; do
       case "$tag" in
-        vless-reality|vless-ws|ss-2022|naive|hy2|tuic)
+        vless-reality|vless-ws|ss-2022|naive|hy2)
           log_info "$(msg "- ${tag}: ${port}" "- ${tag}: ${port}")"
           ;;
       esac

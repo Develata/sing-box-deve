@@ -47,7 +47,10 @@ provider_apply_egress() {
   provider_commit_domain_web_front "$runtime_protocols" || return 1
   persist_runtime_state "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols" || return 1
   provider_restart core || return 1
-  log_success "$(msg "出站模式已更新: ${OUTBOUND_PROXY_MODE}，UDP=${OUTBOUND_PROXY_UDP_MODE}" "Egress mode updated: ${OUTBOUND_PROXY_MODE}, UDP=${OUTBOUND_PROXY_UDP_MODE}")"
+  log_success "$(msg "上游配置已更新: ${OUTBOUND_PROXY_MODE}，UDP=${OUTBOUND_PROXY_UDP_MODE}；路由仍为 ${ROUTE_MODE:-direct}" "Upstream updated: ${OUTBOUND_PROXY_MODE}, UDP=${OUTBOUND_PROXY_UDP_MODE}; route remains ${ROUTE_MODE:-direct}")"
+  if [[ "${OUTBOUND_PROXY_MODE}" != direct && "${ROUTE_MODE:-direct}" == direct ]]; then
+    log_info "$(msg "默认流量仍直连。使用上游请执行 sb set-route global-proxy，或进入 5) 出站策略管理 → 流量路由；显式域名规则和 UDP 策略仍可覆盖默认路由。" "Default traffic remains direct. Run sb set-route global-proxy or open Egress Management > Traffic Routing to use the upstream; explicit domain rules and UDP policy can override the default route.")"
+  fi
 }
 
 provider_set_route() {

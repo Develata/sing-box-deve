@@ -58,6 +58,8 @@ jobs:
             status=$?
             [[ "$status" == 2 ]] || exit "$status"
           fi
-          printf 'Verified runtime for commit %s. Debian lifecycle acceptance completed over SSH; original deployment restoration and runtime SHA256 verified. See the attached sanitized receipt.\n' "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.txt"
+          awk -v tag="$tag" 'index($0, "## [" tag "]") == 1 { selected=1; next } selected && /^## / { exit } selected { print }' CHANGELOG.md > "$RUNNER_TEMP/release-notes.txt"
+          test -s "$RUNNER_TEMP/release-notes.txt"
+          printf '\nVerified runtime for commit %s. Debian lifecycle acceptance completed over SSH; original deployment restoration and runtime SHA256 verified. See the attached sanitized receipt.\n' "$GITHUB_SHA" >> "$RUNNER_TEMP/release-notes.txt"
           gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file "$RUNNER_TEMP/release-notes.txt" \
             "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz" "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz.sha256" "$RUNNER_TEMP/ssh-acceptance.json"

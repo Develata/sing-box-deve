@@ -65,6 +65,7 @@ if [[ ! -f "${PROJECT_ROOT}/lib/common.sh" ]]; then
 fi
 
 source "${PROJECT_ROOT}/lib/load.sh"
+sbd_git_source_guard || exit 1
 
 if [[ "${1:-}" == --self-test ]]; then exit 0; fi
 

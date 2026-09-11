@@ -39,6 +39,7 @@ run bash scripts/test-cli-smoke.sh
 run bash scripts/test-egress-udp.sh
 run python3 scripts/test-egress-link.py
 run bash scripts/test-egress-protocols.sh
+run bash scripts/test-retired-protocols.sh
 run bash scripts/test-client-artifacts.sh
 run bash scripts/test-runtime-env-codec.sh
 run bash scripts/test-config-lock.sh
@@ -54,6 +55,7 @@ run bash scripts/test-io-deadlines.sh
 run python3 scripts/test-runtime-archive.py
 run python3 scripts/test-release-receipt.py
 run bash scripts/test-runtime-release.sh
+run bash scripts/test-git-source.sh
 run python3 scripts/test-bounded-log.py
 run bash scripts/test-current-core-suite.sh
 

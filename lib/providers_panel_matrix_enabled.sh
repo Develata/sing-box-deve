@@ -13,8 +13,9 @@ provider_protocol_matrix_show_enabled() {
   [[ "$runtime_outbound_mode" != "direct" ]] && default_outbound_mode="proxy"
   [[ "$warp_active" == "true" && "$runtime_outbound_mode" == "direct" ]] && default_outbound_mode="warp"
   log_info "$(msg "运行态特性: WARP=${warp_mode} (active=${warp_active})" "Runtime feature state: WARP=${warp_mode} (active=${warp_active})")"
+  log_info "$(msg "表中展示已配置出口；实际流量由路由、域名规则和 UDP 策略决定。" "The table shows configured egress; routing, domain rules and UDP policy determine actual traffic.")"
   printf '%-4s %-18s %-8s %-8s %-16s %-4s %-8s %-10s %-12s %-8s
-'     "#" "$(msg "协议" "Protocol")" "$(msg "类型" "Type")" "$(msg "端口" "Port")" "Outbound" "TLS" "Reality" "MultiPort" "WARP" "Share"
+'     "#" "$(msg "协议" "Protocol")" "$(msg "类型" "Type")" "$(msg "端口" "Port")" "Egress config" "TLS" "Reality" "MultiPort" "WARP" "Share"
 
   for protocol in "${protocols[@]}"; do
     engine_supports_protocol "$engine" "$protocol" || continue

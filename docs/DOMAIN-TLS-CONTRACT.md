@@ -5,8 +5,8 @@
 `sing-box-deve` exposes three installation presets:
 
 - `reality-only`: deploy only `vless-reality`; no domain certificate is required.
-- `reality-plus-domain`: deploy `vless-reality,hysteria2,tuic,naive`; a trusted domain certificate is required.
-- `full`: deploy every supported sing-box public inbound (`vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2,tuic`); a trusted domain certificate is required because the set includes domain-certificate protocols.
+- `reality-plus-domain`: deploy `vless-reality,hysteria2,naive`; a trusted domain certificate is required.
+- `full`: deploy every supported sing-box public inbound (`vless-reality,vless-ws,shadowsocks-2022,naive,hysteria2`); a trusted domain certificate is required because the set includes domain-certificate protocols.
 
 Manual `--protocols` remains supported. The domain-certificate gate is protocol-driven, not wizard-only: if a selected protocol requires a trusted certificate, CLI and config rebuild flows must enforce the same gate.
 
@@ -15,7 +15,6 @@ Manual `--protocols` remains supported. The domain-certificate gate is protocol-
 The following public protocols require a user-controlled domain and a valid certificate:
 
 - `hysteria2`
-- `tuic`
 - `naive`
 
 Future ordinary TLS public protocols must be added to the same protocol attribute before exposure.

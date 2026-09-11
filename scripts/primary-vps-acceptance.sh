@@ -33,6 +33,9 @@ chmod 700 "$private_dir"
 probe_pid=""; result=failure; case_name=preflight
 cleanup() {
   local rc=$?
+  if [[ -e "$root_dir/.git.acceptance-saved" && ! -e "$root_dir/.git" ]]; then
+    mv "$root_dir/.git.acceptance-saved" "$root_dir/.git" || rc=1
+  fi
   [[ -z "$probe_pid" ]] || kill "$probe_pid" 2>/dev/null || true
   python3 - "$report_dir/receipt.json" "$result" "$case_name" "$ID" "$VERSION_ID" "$root_dir" "$source_sha" "$rc" <<'PY' || rc=1
 import datetime, json, pathlib, subprocess, sys
@@ -56,12 +59,31 @@ trap cleanup EXIT
 step() {
   case_name="$1"; shift
   echo "[CASE] $case_name"
-  timeout -k 5s 900s "$@" > "$private_dir/$case_name.log" 2>&1
+  timeout -k 5s 900s "$@" > "$private_dir/$case_name.log" 2>&1 || return $?
   printf '%s passed\n' "$case_name" >> "$report_dir/cases.txt"
 }
 cli="$root_dir/sing-box-deve.sh"
 step install-lite "$cli" install --provider vps --profile lite --engine sing-box --protocols vless-reality --yes
 cli=/usr/local/bin/sb
+# Source switching is script-only, including recovery without the Git directory.
+core_pid_before="$(systemctl show sing-box-deve -p MainPID --value)"
+sha256sum /opt/sing-box-deve/bin/sing-box /etc/sing-box-deve/config.json /opt/sing-box-deve/data/uuid > "$private_dir/source-preserved.sha256"
+step script-bind "$cli" update --bind-git "$root_dir" --yes
+[[ "$("$cli" --print-root)" == "$root_dir" ]]
+step script-source-check "$cli" update --check-source
+step script-source-repeat "$cli" update --bind-git "$root_dir" --yes
+# Temporarily hiding .git tests the fixed recovery entry without relocating the
+# running acceptance script. Restore it even if the rollback command fails.
+mv "$root_dir/.git" "$root_dir/.git.acceptance-saved"
+if step script-source-recovery "$cli" --rollback-source; then
+  mv "$root_dir/.git.acceptance-saved" "$root_dir/.git"
+else
+  mv "$root_dir/.git.acceptance-saved" "$root_dir/.git"
+  exit 1
+fi
+[[ "$("$cli" --print-root)" == /opt/sing-box-deve/releases/* ]]
+sha256sum -c "$private_dir/source-preserved.sha256" >/dev/null
+[[ "$core_pid_before" == "$(systemctl show sing-box-deve -p MainPID --value)" ]]
 # Probe through the generated client outbound, without adding routes or a TUN.
 PROJECT_ROOT="$root_dir"
 source "$PROJECT_ROOT/lib/load.sh"
@@ -125,8 +147,9 @@ step kernel-singbox "$cli" kernel set sing-box latest
 probe sbd-vless-reality
 step uninstall "$cli" uninstall --keep-settings --purge-managed-host-changes
 [[ ! -e /opt/sing-box-deve && ! -e /etc/sing-box-deve && ! -e /usr/local/bin/sb ]]
-backup="$(find /opt -maxdepth 1 -type d -name 'sing-box-deve.backup-*' | head -n1)"
-[[ -n "$backup" && -s "$backup/files/data/uuid" ]]
+backup="$(sed -n 's/^\[INFO\] Backup preserved and verified: //p' "$private_dir/uninstall.log")"
+[[ "$backup" == /opt/sing-box-deve.backup-* && "$backup" != *$'\n'* && -s "$backup/files/data/uuid" ]]
+cmp -s "$private_dir/original-uuid" "$backup/files/data/uuid"
 (cd "$backup"; sha256sum -c checksums.txt > /dev/null)
 case_name=complete
 result=success

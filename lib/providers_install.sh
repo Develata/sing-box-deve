@@ -164,11 +164,7 @@ persist_runtime_state() {
     sbd_write_env_kv outbound_proxy_port "${OUTBOUND_PROXY_PORT:-}" || exit 1
     sbd_write_env_kv outbound_proxy_user "${OUTBOUND_PROXY_USER:-}" || exit 1
     sbd_write_env_kv outbound_proxy_pass "${OUTBOUND_PROXY_PASS:-}" || exit 1
-    if [[ -L "$SBD_INSTALL_DIR/current" ]]; then
-      sbd_write_env_kv script_root "$SBD_INSTALL_DIR/current" || exit 1
-    else
-      sbd_write_env_kv script_root "$PROJECT_ROOT" || exit 1
-    fi
+    sbd_write_runtime_source || exit 1
     sbd_write_env_kv installed_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" || exit 1
   ) > "$tmp_runtime" || { rm -f "$tmp_runtime"; return 1; }
   sbd_seal_runtime_file "$tmp_runtime" || { rm -f "$tmp_runtime"; return 1; }

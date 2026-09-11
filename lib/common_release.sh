@@ -7,7 +7,7 @@ sbd_release_verify() {
     [[ "$file" == *.sh ]] || continue
     bash -n "$root/$file" || return 1
   done < "$root/runtime-files.txt"
-  sbd_run_deadline 30 bash "$root/sing-box-deve.sh" --self-test
+  sbd_run_deadline 30 env -u SBD_GIT_SOURCE_STAMP -u SBD_GIT_SOURCE_UID bash "$root/sing-box-deve.sh" --self-test
 }
 
 sbd_release_activate_archive() {
@@ -86,6 +86,7 @@ sbd_release_download_update() {
 }
 
 sbd_release_rollback() {
+  if sbd_source_is_git; then sbd_rollback_git_source; return $?; fi
   local previous current
   previous="$(readlink -f "$SBD_INSTALL_DIR/previous")" || return 1
   current="$(readlink -f "$SBD_INSTALL_DIR/current")" || return 1
@@ -128,6 +129,8 @@ sbd_release_migrate_legacy() (
 sbd_release_prune() {
   [[ ! -L "$(sbd_host_state_dir)/transactions/active" ]] || return 0
   local root="$SBD_INSTALL_DIR/releases" current previous dir count=0 protected=1 budget keep="${SBD_RELEASE_KEEP:-3}"
+  local -A source_state=()
+  sbd_read_source_state source_state || return 1
   [[ "$keep" =~ ^[1-9][0-9]*$ ]] || return 2
   current="$(readlink -f "$SBD_INSTALL_DIR/current")" || return 1
   previous="$(readlink -f "$SBD_INSTALL_DIR/previous" 2>/dev/null || true)"
@@ -136,6 +139,7 @@ sbd_release_prune() {
   while IFS= read -r dir; do
     [[ -d "$dir" && ! -L "$dir" ]] || continue
     [[ "$dir" != "$current" && "$dir" != "$previous" && ! -e "$SBD_INSTALL_DIR/release-pins/$(basename "$dir")" ]] || continue
+    [[ "$dir" != "${source_state[script_fallback_root]:-}" ]] || continue
     count=$((count + 1))
     (( count > budget )) || continue
     rm -rf -- "$dir" || return 1

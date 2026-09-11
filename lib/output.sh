@@ -84,7 +84,7 @@ print_nodes_with_qr() {
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     case "$line" in
-      vless://*|hysteria2://*|tuic://*|ss://*|naive+https://*)
+      vless://*|hysteria2://*://*|ss://*|naive+https://*)
         printf '%s\n' "$line"
         print_qr_code "$line"
         echo

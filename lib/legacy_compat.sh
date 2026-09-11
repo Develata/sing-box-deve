@@ -23,6 +23,7 @@ legacy_set_port_override() {
 }
 
 legacy_apply_install_defaults() {
+  [[ -z "${tupt:-}${SBD_PORT_TUIC:-}" ]] || die "TUIC is no longer supported; remove tupt/SBD_PORT_TUIC"
   legacy_env_detected || return 0
 
   PROVIDER="vps"
@@ -44,7 +45,6 @@ legacy_apply_install_defaults() {
   [[ -n "${vxpt:-}" ]] && add_legacy_proto "vless-xhttp" && legacy_set_port_override "vless-xhttp" "${vxpt}"
   [[ -n "${sspt:-}" ]] && add_legacy_proto "shadowsocks-2022" && legacy_set_port_override "shadowsocks-2022" "${sspt}"
   [[ -n "${hypt:-}" ]] && add_legacy_proto "hysteria2" && legacy_set_port_override "hysteria2" "${hypt}"
-  [[ -n "${tupt:-}" ]] && add_legacy_proto "tuic" && legacy_set_port_override "tuic" "${tupt}"
 
   if [[ -n "${argo:-}" ]]; then
     add_legacy_proto "argo"
@@ -76,7 +76,7 @@ legacy_apply_install_defaults() {
   for p in "${protocols[@]}"; do
     case "$p" in
       vless-xhttp) need_xray="true" ;;
-      shadowsocks-2022|hysteria2|tuic|warp) need_sing="true" ;;
+      shadowsocks-2022|hysteria2|warp) need_sing="true" ;;
     esac
   done
   if [[ "$need_xray" == "true" && "$need_sing" == "true" ]]; then

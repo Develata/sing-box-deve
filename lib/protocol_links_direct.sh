@@ -47,12 +47,6 @@ node_link_hysteria2() {
   echo "hysteria2://$uuid@$ip:${port}?security=tls&sni=$sni${obfs_q}#sbd-hysteria2"
 }
 
-node_link_tuic() {
-  local uuid="$1" ip="$2" port="$3" sni="$4"
-  ip="$(uri_authority_host "$ip")"
-  echo "tuic://$uuid:$uuid@$ip:${port}?congestion_control=bbr&sni=$sni#sbd-tuic"
-}
-
 node_link_warp_mode() {
   local mode="${1:-off}"
   echo "warp-mode://${mode}"

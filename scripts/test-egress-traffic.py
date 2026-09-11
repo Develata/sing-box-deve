@@ -152,7 +152,7 @@ def main():
                                  '-key', str(key), '-tls1_3', '-alpn', 'h2', '-quiet', '-www'], ready_port=cover_port)
             cases, inbounds = [], []
             for kind in egress.ENGINE_KINDS['sing-box']:
-                remote_port = port(kind in ('hysteria2', 'tuic'))
+                remote_port = port(kind == 'hysteria2')
                 inbound = {'type': kind, 'listen': HOST, 'listen_port': remote_port}
                 query = {'sni': 'localhost', 'insecure': 'true'}
                 if kind == 'vless-reality':
@@ -171,9 +171,6 @@ def main():
                                    obfs={'type': 'salamander', 'password': 'local-obfs'})
                     query.update(obfs='salamander', **{'obfs-password': 'local-obfs'})
                     link = f'hy2://local-pass@{HOST}:{remote_port}?{urlencode(query)}'
-                elif kind == 'tuic':
-                    inbound.update(users=[{'uuid': UID, 'password': 'local-pass'}], tls=tls)
-                    link = f'tuic://{UID}:local-pass@{HOST}:{remote_port}?{urlencode(query)}'
                 elif kind == 'shadowsocks-2022':
                     secret = base64.b64encode(bytes(range(16))).decode()
                     inbound.update(type='shadowsocks', method='2022-blake3-aes-128-gcm', password=secret)

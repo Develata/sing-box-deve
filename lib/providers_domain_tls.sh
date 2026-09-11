@@ -2,7 +2,7 @@
 
 protocol_requires_domain_cert() {
   case "$1" in
-    hysteria2|tuic|naive) return 0 ;;
+    hysteria2|naive) return 0 ;;
     *) return 1 ;;
   esac
 }

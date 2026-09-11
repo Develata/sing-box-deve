@@ -13,6 +13,10 @@ sbd_transaction_phase() {
 
 sbd_transaction_begin() {
   local kind="$1" root dir scope path binaries=sidecars
+  case "$kind" in
+    script-update|script-rollback) ;;
+    *) sbd_require_supported_runtime || return 1 ;;
+  esac
   root="$(sbd_host_state_dir)/transactions"
   [[ ! -e "$root/active" && ! -L "$root/active" ]] || { log_error "Unfinished transaction; run recover first"; return 1; }
   for scope in core argo firewall warp; do
@@ -61,7 +65,7 @@ sbd_restore_firewall_delta() {
 }
 
 sbd_transaction_recover() (
-  local root dir phase scope path
+  local root dir phase scope path script_only=false
   root="$(sbd_host_state_dir)/transactions"
   if [[ ! -L "$root/active" ]]; then
     [[ ! -e "$root/active" ]] || { log_error "Invalid transaction pointer"; return 1; }
@@ -80,28 +84,37 @@ sbd_transaction_recover() (
   sbd_uninstall_validate_roots || return 1
   [[ "$(sbd_transaction_roots)" == "$(cat "$dir/roots")" ]] || { log_error "Recovery roots differ from saved transaction"; return 1; }
   [[ "$(sbd_transaction_metadata "$dir")" == "$(cat "$dir/metadata.sha256")" ]] || { log_error "Transaction metadata is incomplete or corrupt"; return 1; }
+  case "$(cat "$dir/kind")" in script-update|script-rollback) script_only=true ;; esac
   sbd_state_verify "$dir/before" || return 1
   # Prepared has no runtime mutations; staging may have created host resources.
-  if [[ "$phase" != prepared && "$phase" != staging ]]; then
+  if [[ "$script_only" == false && "$phase" != prepared && "$phase" != staging ]]; then
     sbd_service_stop sing-box-deve-argo || return 1
     sbd_service_stop sing-box-deve || return 1
     sbd_service_stop sing-box-deve-warp-socks5 || return 1
     sbd_service_stop sing-box-deve-fw-replay || return 1
   fi
-  sbd_transaction_restore_firewall "$dir" || return 1
+  [[ "$script_only" == true ]] || sbd_transaction_restore_firewall "$dir" || return 1
   sbd_transaction_restore_selectors "$dir" || return 1
   sbd_host_transaction_restore "$dir" || return 1
   sbd_state_restore "$dir/before" || return 1
-  sbd_service_daemon_reload || return 1
-  sbd_web_front_restore_service "$dir" || return 1
-  sbd_restore_sysctl_runtime "$dir" || return 1
-  if [[ -f "$SBD_CONFIG_DIR/runtime.env" ]]; then
+  if [[ "$script_only" == false ]]; then
+    sbd_service_daemon_reload || return 1
+    sbd_web_front_restore_service "$dir" || return 1
+    sbd_restore_sysctl_runtime "$dir" || return 1
+  fi
+  if [[ "$script_only" == false && -f "$SBD_CONFIG_DIR/runtime.env" ]]; then
     CFG_RUNTIME_LOADED=false
     provider_cfg_load_runtime_exports || return 1
     fw_replay || return 1
-    write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
+    if sbd_runtime_uses_retired_protocol "${protocols:-}" "${outbound_proxy_mode:-}" "${outbound_proxy_link:-}"; then
+      # Script transactions never rewrote these artifacts. Keep them intact so
+      # an old deployment remains recoverable without resurrecting its renderer.
+      log_warn "$(msg "已恢复旧部署状态；保留旧节点产物，请先用升级前的脚本迁移已停用协议。" "Legacy runtime restored; node artifacts retained. Migrate retired protocols with the previous script first.")"
+    else
+      write_nodes_output "${engine:-sing-box}" "${protocols:-vless-reality}" || return 1
+    fi
   fi
-  if [[ "$phase" != prepared && "$phase" != staging ]]; then
+  if [[ "$script_only" == false && "$phase" != prepared && "$phase" != staging ]]; then
     sbd_transaction_restore_lifecycle "$dir" || { sbd_transaction_phase "$dir" recovery-failed; return 1; }
   fi
   if [[ -f "$dir/created-roots" ]]; then
@@ -137,7 +150,7 @@ sbd_transaction_run() (
   trap 'exit 143' TERM
   trap 'exit 129' HUP
   case "$kind" in host-change) sbd_transaction_phase "$dir" staging || exit 1 ;;
-    config-change|config-rollback) sbd_transaction_phase "$dir" committing || exit 1 ;; esac
+    config-change) sbd_transaction_phase "$dir" committing || exit 1 ;; esac
   "$@"
   rc=$?
   (( rc == 0 )) || exit "$rc"
