@@ -173,7 +173,7 @@ WARP 与所有上游出口目前不做隐式链式组合；只要 `WARP_MODE!=of
 ```bash
 # 已安装主机：从仅自己可读的文件导入出口，然后选择使用出口的路由
 sb set-egress --link-file /root/egress.link --udp proxy
-sb set-route --mode global-proxy
+sb set-route global-proxy
 # 也可在 sb menu → 出口设置中粘贴链接（输入不回显）
 ```
 

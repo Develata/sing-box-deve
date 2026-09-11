@@ -8,9 +8,9 @@
 
 ```bash
 sb set-egress --link-file /root/egress.link --udp proxy
-sb set-route --mode global-proxy
+sb set-route global-proxy
 # 停用出口前，先退出依赖出口的路由模式
-sb set-route --mode direct
+sb set-route direct
 sb set-egress --mode direct
 ```
 

@@ -89,8 +89,8 @@ step warp-socks-start "$cli" warp socks5-start 39081
 step upstream-socks "$cli" set-egress --mode socks --host 127.0.0.1 --port 39081 --udp direct
 step upstream-global-route "$cli" set-route global-proxy
 probe sbd-vless-reality true
-step upstream-reset "$cli" set-egress --mode direct
 step route-reset "$cli" set-route direct
+step upstream-reset "$cli" set-egress --mode direct
 step warp-socks-stop "$cli" warp socks5-stop
 step warp-global "$cli" warp mode global
 probe sbd-vless-reality true
