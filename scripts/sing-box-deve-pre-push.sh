@@ -52,6 +52,7 @@ run bash scripts/test-review-recovery.sh
 run bash scripts/test-install-recovery.sh
 run bash scripts/test-io-deadlines.sh
 run python3 scripts/test-runtime-archive.py
+run python3 scripts/test-release-receipt.py
 run bash scripts/test-runtime-release.sh
 run python3 scripts/test-bounded-log.py
 run bash scripts/test-current-core-suite.sh

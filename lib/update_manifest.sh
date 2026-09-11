@@ -187,6 +187,8 @@ UPDATE_MANIFEST_FILES=(
   "scripts/nohup-run.sh"
   "scripts/primary-vps-acceptance.sh"
   "scripts/runtime-archive.py"
+  "scripts/verify-release-receipt.py"
+  "scripts/test-release-receipt.py"
   "scripts/egress-link.py"
   "scripts/test-egress-link.py"
   "scripts/test-egress-protocols.sh"

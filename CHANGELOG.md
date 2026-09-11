@@ -11,7 +11,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) st
 ### Added
 
 - Added persistent upstream import from VLESS, Hysteria2, TUIC, Shadowsocks 2022 and Naive links through the CLI, menu and web generator; retained SOCKS/HTTP/HTTPS parameter configuration.
-- Added minimal runtime release archives with checksum verification and a same-commit Debian lifecycle acceptance gate.
+- Added minimal runtime release archives with checksum verification and a same-commit Debian SSH lifecycle acceptance/restoration gate, without requiring a self-hosted Actions runner.
 - Added native-core proxy traffic checks and real systemd lifecycle acceptance for installation, recovery, Argo, WARP, engine switching and uninstall.
 
 ### Changed

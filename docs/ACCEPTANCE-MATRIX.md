@@ -16,7 +16,7 @@
 | vps | full | temp/fixed | off/global | socks/http/https | 通过 | Debian 13：temp、global、SOCKS 通过；fixed、HTTP/HTTPS 待专项实机验证 |
 | serv00 | lite/full | off/temp/fixed | off | direct/socks/http/https | 通过 | 需凭据执行 |
 
-2026-09-11，提交 `f26a317e01b12455c4db82784b9c15042e270e20` 在 Debian 13 systemd VPS 上完成 29 项主路径检查：Lite 安装、Reality 转发、标识轮换与回滚、改端口、Full + 临时 Argo 重装和转发、内核更新、WARP SOCKS5 与全局出口、重启、Xray/sing-box 切换及保留设置卸载。退出码为 0，原部署、受管理防火墙规则及其他服务恢复核验通过。这是 SSH 实机回执；最终发布提交仍须取得下述 GitHub workflow 门禁记录。
+2026-09-11，提交 `f26a317e01b12455c4db82784b9c15042e270e20` 在 Debian 13 systemd VPS 上完成 29 项主路径检查：Lite 安装、Reality 转发、标识轮换与回滚、改端口、Full + 临时 Argo 重装和转发、内核更新、WARP SOCKS5 与全局出口、重启、Xray/sing-box 切换及保留设置卸载。退出码为 0，原部署、受管理防火墙规则及其他服务恢复核验通过。这是预发布 SSH 实机回执；最终发布提交的回执随 Release 资产提供。
 
 ## 3) 推荐实机验收命令
 
@@ -32,5 +32,5 @@ sudo ./sing-box-deve.sh panel --full
 
 - 生成矩阵报告：`bash scripts/acceptance-matrix.sh`
 - CI 和 Full Regression：统一执行 `scripts/sing-box-deve-pre-push.sh`
-- 实机流量/生命周期：`scripts/primary-vps-acceptance.sh` / `Primary VPS Acceptance` workflow
-- Release gate：核对同一 source SHA 的 Debian 实机 job 成功；静态检查或真实内核回环测试不能替代生命周期验收。Ubuntu 不计入本轮通过结论。
+- 实机流量/生命周期：通过 SSH 执行 `scripts/primary-vps-acceptance.sh`；自托管 runner workflow 为可选方式。
+- Release gate：核对最终 source SHA、干净源码、Debian SSH 实机成功回执、原部署恢复结果和运行包 SHA256；静态检查或真实内核回环测试不能替代生命周期验收。Ubuntu 不计入本轮通过结论。

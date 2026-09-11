@@ -6,7 +6,40 @@
 sudo SBD_DISPOSABLE_ACCEPTANCE=yes bash scripts/primary-vps-acceptance.sh /tmp/sbd-acceptance
 ```
 
-也可手动触发 `Primary VPS Acceptance` workflow。它使用 Debian 目标机，执行真实生命周期及客户端流量检查；本地 mock 或 current-core 配置测试不能替代其 receipt。配置与运行边界见 [RELIABILITY.md](RELIABILITY.md)。Ubuntu 不在本轮实机验证范围。
+上述命令通过已核验主机密钥的 SSH 连接执行，无需安装 Actions runner。源码应固定到最终发布提交，报告目录位于 checkout 之外且不能复用。也可手动触发可选的 `Primary VPS Acceptance` workflow；本地 mock 或 current-core 配置测试不能替代实机 receipt。配置与运行边界见 [RELIABILITY.md](RELIABILITY.md)。Ubuntu 不在本轮实机验证范围。
+
+## SSH 验收与发布门禁
+
+1. 完成源码修改、校验和更新、完整 pre-push 检查和提交，固定最终 SHA；源码变化后重新验收。
+2. 通过 SSH 在授权目标机核验该 SHA 和干净 checkout，验证原部署备份，启动独立于 SSH 会话的限时验收及失败恢复监督进程，再运行上述脚本。
+3. 监督进程恢复原部署，核验原文件/配置、防火墙和服务状态，写出恢复成功回执。恢复失败不得发布。
+4. 从目标机取得 `receipt.json`，构造下面的脱敏发布回执；运行包用同一源码的 `runtime-archive.py pack` 构建，核对本地与目标机的包摘要。原始日志、备份路径、凭据和节点链接不得放入回执。
+5. 验证回执，再通过 `gh workflow run release.yml --ref main --json` 提交输入对象 `{"acceptance_receipt":"<完整回执 JSON 字符串>"}`。工作流会重建运行包并核对摘要；main 必须仍指向验收 SHA。
+
+发布回执 schema 1 字段：
+
+| 字段 | 要求 |
+|---|---|
+| `schema` / `transport` | `1` / `"ssh"` |
+| `source_sha` | 最终发布提交的完整 SHA |
+| `runtime_sha256` | 待发布 `sing-box-deve-runtime.tar.gz` 的 SHA256 |
+| `acceptance` | 脚本生成的完整 `receipt.json`；必须 Debian、success、complete、退出码 0、源码保持干净且有通过用例 |
+| `restoration.result` / `restoration.source_sha` | `"success"` / 同一最终 SHA |
+| `restoration.finished_at` | 含时区的 ISO 时间，不能早于验收结束 |
+| `restoration.original_deployment_restored` | 原部署文件与运行状态已恢复，布尔 `true` |
+| `restoration.managed_firewall_restored` | 受管理防火墙规则已恢复，布尔 `true` |
+| `restoration.protected_services_restored` | 其他服务状态已核验，布尔 `true` |
+| `restoration.protected_config_unchanged` | 受保护配置已核验未变，布尔 `true` |
+| `restoration.backup_verified` | 原部署备份完整性已核验，布尔 `true` |
+
+所有字段均必填，不接受额外字段、重复 JSON key 或字符串形式的布尔值。一次性空白主机也应由监督进程验证其原始空白状态得到恢复。
+
+```bash
+python3 scripts/runtime-archive.py pack . /tmp/sing-box-deve-runtime.tar.gz
+python3 scripts/verify-release-receipt.py /tmp/ssh-acceptance.json . /tmp/sing-box-deve-runtime.tar.gz
+```
+
+回执由可信维护者从 SSH 验收和恢复证据生成；JSON 校验不构成独立签名。发布后检查 workflow 结果、tag 对应提交及下载资产摘要。不要在仓库内提交本次回执再沿用旧 SHA，这会改变最终提交。
 
 以下是补充人工验收项。目标：覆盖 `VPS/Serv00 × Lite/Full × Argo/WARP/上游代理` 的关键组合。
 

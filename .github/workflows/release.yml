@@ -3,14 +3,17 @@ name: Publish Runtime Release
 on:
   workflow_dispatch:
     inputs:
-      acceptance_run_id:
-        description: Successful Debian Primary VPS Acceptance run for this exact commit
+      acceptance_receipt:
+        description: Sanitized SSH acceptance and restoration JSON for this exact commit and runtime SHA256
         required: true
         type: string
 
 permissions:
   contents: read
-  actions: read
+
+concurrency:
+  group: runtime-release
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -20,37 +23,41 @@ jobs:
     environment: release
     permissions:
       contents: write
-      actions: read
     steps:
       - uses: actions/checkout@v6
-      - name: Require real acceptance for this commit
+      - name: Require SSH acceptance for this commit and runtime
         env:
-          GH_TOKEN: ${{ github.token }}
-          ACCEPTANCE_RUN_ID: ${{ inputs.acceptance_run_id }}
+          SSH_ACCEPTANCE_RECEIPT: ${{ inputs.acceptance_receipt }}
         run: |
           set -euo pipefail
-          [[ "$ACCEPTANCE_RUN_ID" =~ ^[0-9]+$ ]]
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN_ID" > "$RUNNER_TEMP/acceptance-run.json"
-          jq -e --arg sha "$GITHUB_SHA" '.head_sha == $sha and .conclusion == "success" and .path == ".github/workflows/primary-vps-acceptance.yml"' "$RUNNER_TEMP/acceptance-run.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN_ID/jobs" > "$RUNNER_TEMP/acceptance-jobs.json"
-          jq -e '[.jobs[] | select(.name == "acceptance (debian)")] | length == 1 and all(.[]; .conclusion == "success")' "$RUNNER_TEMP/acceptance-jobs.json"
+          printf '%s\n' "$SSH_ACCEPTANCE_RECEIPT" > "$RUNNER_TEMP/ssh-acceptance.json"
+          python3 scripts/runtime-archive.py pack . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
+          python3 scripts/verify-release-receipt.py "$RUNNER_TEMP/ssh-acceptance.json" . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
       - name: Install verification tools
         run: |
           sudo timeout -k 5s 300s apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=15
           sudo timeout -k 5s 300s apt-get install -y shellcheck python3-yaml
       - name: Verify and build minimal runtime
         run: |
+          set -euo pipefail
           bash scripts/sing-box-deve-pre-push.sh
           git diff --exit-code checksums.txt
           python3 scripts/runtime-archive.py pack . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
+          python3 scripts/verify-release-receipt.py "$RUNNER_TEMP/ssh-acceptance.json" . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
       - name: Publish immutable release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          ACCEPTANCE_RUN_ID: ${{ inputs.acceptance_run_id }}
         run: |
           set -euo pipefail
           tag="$(tr -d '[:space:]' < version)"
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          printf 'Verified runtime for commit %s. Primary VPS acceptance run: %s.\n' "$GITHUB_SHA" "$ACCEPTANCE_RUN_ID" > "$RUNNER_TEMP/release-notes.txt"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > "$RUNNER_TEMP/existing-tag"; then
+            echo '[ERROR] Release tag already exists; refusing to reuse it' >&2
+            exit 1
+          else
+            status=$?
+            [[ "$status" == 2 ]] || exit "$status"
+          fi
+          printf 'Verified runtime for commit %s. Debian lifecycle acceptance completed over SSH; original deployment restoration and runtime SHA256 verified. See the attached sanitized receipt.\n' "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.txt"
           gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file "$RUNNER_TEMP/release-notes.txt" \
-            "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz" "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz.sha256"
+            "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz" "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz.sha256" "$RUNNER_TEMP/ssh-acceptance.json"

@@ -21,18 +21,32 @@ done
 report_dir="${1:?A report directory is required}"
 mkdir -p "$report_dir"
 report_dir="$(cd "$report_dir" && pwd -P)"
+source_sha="$(git -C "$root_dir" rev-parse HEAD)"
+[[ -z "$(git -C "$root_dir" status --porcelain --untracked-files=all)" ]] || {
+  echo '[ERROR] Acceptance requires a clean source checkout' >&2; exit 2;
+}
+[[ ! -e "$report_dir/receipt.json" && ! -e "$report_dir/cases.txt" ]] || {
+  echo '[ERROR] Acceptance report already exists' >&2; exit 2;
+}
 private_dir="$(mktemp -d)"
 chmod 700 "$private_dir"
 probe_pid=""; result=failure; case_name=preflight
 cleanup() {
   local rc=$?
   [[ -z "$probe_pid" ]] || kill "$probe_pid" 2>/dev/null || true
-  python3 - "$report_dir/receipt.json" "$result" "$case_name" "$ID" "$VERSION_ID" "$root_dir" <<'PY'
+  python3 - "$report_dir/receipt.json" "$result" "$case_name" "$ID" "$VERSION_ID" "$root_dir" "$source_sha" "$rc" <<'PY' || rc=1
 import datetime, json, pathlib, subprocess, sys
-out, result, case, distro, version, root = sys.argv[1:]
+out, result, case, distro, version, root, original_sha, code = sys.argv[1:]
 sha = subprocess.check_output(['git', '-C', root, 'rev-parse', 'HEAD'], text=True).strip()
+clean = sha == original_sha and not subprocess.check_output(['git', '-C', root, 'status', '--porcelain', '--untracked-files=all'], text=True)
+cases = pathlib.Path(out).with_name('cases.txt')
+result = 'success' if result == 'success' and int(code) == 0 and clean else 'failure'
 json.dump(dict(schema=1, result=result, last_case=case, distro=distro, version=version,
-               source_sha=sha, finished_at=datetime.datetime.now(datetime.timezone.utc).isoformat()), open(out, 'w'), indent=2)
+               source_sha=original_sha, source_clean=bool(clean), exit_code=int(code),
+               cases=cases.read_text().splitlines() if cases.exists() else [],
+               finished_at=datetime.datetime.now(datetime.timezone.utc).isoformat()), open(out, 'w'), indent=2)
+if not clean:
+    sys.exit(1)
 PY
   echo "[INFO] Sanitized receipt: $report_dir/receipt.json"
   echo "[INFO] Private diagnostic logs remain on the disposable VM: $private_dir"
