@@ -86,7 +86,7 @@ print_nodes_with_qr() {
     case "$line" in
       vless://*|hysteria2://*|tuic://*|ss://*|naive+https://*)
         printf '%s\n' "$line"
-        qrencode -o - -t ANSIUTF8 "$line"
+        print_qr_code "$line"
         echo
         ;;
     esac
@@ -94,7 +94,13 @@ print_nodes_with_qr() {
 
   if [[ -f "$SBD_SUB_FILE" ]]; then
     echo "aggregate-base64://$(cat "$SBD_SUB_FILE")"
-    qrencode -o - -t ANSIUTF8 "aggregate-base64://$(cat "$SBD_SUB_FILE")"
+    print_qr_code "aggregate-base64://$(cat "$SBD_SUB_FILE")"
     echo
+  fi
+}
+
+print_qr_code() {
+  if ! printf '%s' "$1" | qrencode -o - -t ANSIUTF8; then
+    log_warn "$(msg "二维码生成失败，请使用上方文本链接" "QR rendering failed; use the text link above")"
   fi
 }

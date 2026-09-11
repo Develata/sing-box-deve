@@ -100,3 +100,20 @@ printf 'v9.9.10\n' > "$PROJECT_ROOT/version"
 [[ "$(sha256sum "$SBD_LAUNCHER_PATH")" == "$launcher_before" ]] || fail 'script update failure changed launcher'
 [[ "$("$SBD_LAUNCHER_PATH" --print-version)" == v9.9.9 ]] || fail 'script update failure broke launch'
 printf '[OK] script update publication failure recovery passed\n'
+
+# Optional QR rendering must not undo a successfully installed generation.
+source "$PROJECT_ROOT/lib/output.sh"
+SBD_NODES_FILE="$SBD_DATA_DIR/nodes.txt"
+SBD_SUB_FILE="$SBD_DATA_DIR/nodes-sub.txt"
+write_nodes_output() {
+  printf 'vless://11111111-1111-4111-8111-111111111111@example.invalid:443\n' > "$SBD_NODES_FILE"
+  printf 'example-subscription\n' > "$SBD_SUB_FILE"
+}
+qrencode() { cat >/dev/null; return 1; }
+generation=v9.0.2
+run_install vps lite sing-box vless-reality false > "$install_test/qr-output.log" 2>&1
+[[ "$(cat "$SBD_DATA_DIR/engine-version")" == v9.0.2 ]] || fail 'QR failure rolled back installed core'
+[[ "$("$SBD_LAUNCHER_PATH" --print-version)" == v9.9.10 ]] || fail 'QR failure rolled back installed script'
+grep -Fq 'vless://11111111-1111-4111-8111-111111111111@example.invalid:443' "$install_test/qr-output.log" || fail 'text node link missing after QR failure'
+grep -Fq 'aggregate-base64://example-subscription' "$install_test/qr-output.log" || fail 'text subscription missing after QR failure'
+printf '[OK] QR rendering failure preserves committed installation and text links\n'
