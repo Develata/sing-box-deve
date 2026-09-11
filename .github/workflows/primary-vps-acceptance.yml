@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_disposable:
-        description: Authorize installation, replacement and uninstall on fresh disposable Ubuntu/Debian runners
+        description: Authorize installation, replacement and uninstall on a disposable Debian runner
         type: boolean
         required: true
         default: false
@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        distro: [ubuntu, debian]
+        distro: [debian]
     runs-on: [self-hosted, Linux, sbd-disposable, '${{ matrix.distro }}']
     timeout-minutes: 60
     steps:

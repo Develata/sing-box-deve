@@ -77,6 +77,6 @@ ACME 自动安装要求已有可执行的 `/root/.acme.sh/acme.sh`，或者显�
 
 本地和 CI 统一执行 `bash scripts/sing-box-deve-pre-push.sh`：逐文件 Bash syntax、shellcheck、Node/schema、CLI/firewall、并发、失败注入、archive/迁移/SIGKILL、日志和真实 stable-core 配置矩阵。
 
-实机验收独立运行 `primary-vps-acceptance.sh`，使用标记为 `sbd-disposable` 的全新 Ubuntu/Debian runner。它会真实安装、重装、切换 core、运行 Reality/Argo 客户端流量、测试 WARP/上游 SOCKS、卸载并核验备份。需要显式授权，失败后保留私有诊断日志；provisioner 应销毁对应 VM。上传产物仅含无凭据的 receipt 与 case 结果。
+实机验收独立运行 `primary-vps-acceptance.sh`，本轮使用标记为 `sbd-disposable` 的 Debian runner，项目运行目录必须为空。它会真实安装、重装、切换 core、运行 Reality/Argo 客户端流量、测试 WARP/上游 SOCKS、卸载并核验备份。需要显式授权，失败后保留私有诊断日志；临时使用已有部署的主机时，provisioner 必须事先核验备份并在测试结束后恢复原部署。上传产物仅含无凭据的 receipt 与 case 结果。
 
-`Publish Runtime Release` 要求同一提交的两套实机 job 均成功，并再次通过完整本地 suite；不会因为静态 CI 通过就绕过实机 gate。真实域名 ACME、OpenRC、FreeBSD/Serv00 和长期负载仍需相应目标环境的额外证据。
+`Publish Runtime Release` 要求同一提交的 Debian 实机 job 成功，并再次通过完整本地 suite；静态 CI 通过不能替代实机 gate。Ubuntu 未在本轮实机验证，真实域名 ACME、OpenRC、FreeBSD/Serv00 和长期负载仍需相应目标环境的额外证据。

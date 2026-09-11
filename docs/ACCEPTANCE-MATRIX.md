@@ -1,6 +1,6 @@
 # 验收矩阵（V1）
 
-> 本矩阵分为静态验证与实机验证。Ubuntu/Debian VPS 是 release-blocking 路径；Serv00/Hostuno 为 best-effort。
+> 本矩阵分为静态验证与实机验证。本轮发布以 Debian VPS 实机验收为门禁；Ubuntu 不在本轮实机验证范围，Serv00/Hostuno 为 best-effort。
 
 ## 1) 组合矩阵范围
 
@@ -31,4 +31,4 @@ sudo ./sing-box-deve.sh panel --full
 - 生成矩阵报告：`bash scripts/acceptance-matrix.sh`
 - CI 和 Full Regression：统一执行 `scripts/sing-box-deve-pre-push.sh`
 - 实机流量/生命周期：`scripts/primary-vps-acceptance.sh` / `Primary VPS Acceptance` workflow
-- Release gate：核对同一 source SHA 的 Ubuntu 与 Debian 实机 job 成功；本轮状态仍为待目标机执行。
+- Release gate：核对同一 source SHA 的 Debian 实机 job 成功；静态检查或真实内核回环测试不能替代生命周期验收。Ubuntu 不计入本轮通过结论。

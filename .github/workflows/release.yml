@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       acceptance_run_id:
-        description: Successful Primary VPS Acceptance run for this exact commit (both distributions)
+        description: Successful Debian Primary VPS Acceptance run for this exact commit
         required: true
         type: string
 
@@ -33,7 +33,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN_ID" > "$RUNNER_TEMP/acceptance-run.json"
           jq -e --arg sha "$GITHUB_SHA" '.head_sha == $sha and .conclusion == "success" and .path == ".github/workflows/primary-vps-acceptance.yml"' "$RUNNER_TEMP/acceptance-run.json"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ACCEPTANCE_RUN_ID/jobs" > "$RUNNER_TEMP/acceptance-jobs.json"
-          jq -e '[.jobs[] | select(.name | startswith("acceptance ("))] | length == 2 and all(.[]; .conclusion == "success")' "$RUNNER_TEMP/acceptance-jobs.json"
+          jq -e '[.jobs[] | select(.name == "acceptance (debian)")] | length == 1 and all(.[]; .conclusion == "success")' "$RUNNER_TEMP/acceptance-jobs.json"
       - name: Install verification tools
         run: |
           sudo timeout -k 5s 300s apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=15

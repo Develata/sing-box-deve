@@ -1,12 +1,12 @@
 # 实机验收执行单
 
-自动化主路径：在全新的 disposable Ubuntu/Debian systemd VM 上运行：
+本轮自动化主路径：在 disposable Debian systemd VM 上运行，项目运行目录必须为空；临时使用已有部署的主机时，先取得替换授权并核验备份，测试结束后恢复原部署：
 
 ```bash
 sudo SBD_DISPOSABLE_ACCEPTANCE=yes bash scripts/primary-vps-acceptance.sh /tmp/sbd-acceptance
 ```
 
-也可手动触发 `Primary VPS Acceptance` workflow。它使用独立目标机，执行真实生命周期及客户端流量检查；本地 mock 或 current-core 配置测试不能替代其 receipt。配置与运行边界见 [RELIABILITY.md](RELIABILITY.md)。当前尚未取得本轮两套目标机执行结果。
+也可手动触发 `Primary VPS Acceptance` workflow。它使用 Debian 目标机，执行真实生命周期及客户端流量检查；本地 mock 或 current-core 配置测试不能替代其 receipt。配置与运行边界见 [RELIABILITY.md](RELIABILITY.md)。Ubuntu 不在本轮实机验证范围。
 
 以下是补充人工验收项。目标：覆盖 `VPS/Serv00 × Lite/Full × Argo/WARP/上游代理` 的关键组合。
 
