@@ -54,16 +54,23 @@ source "$PROJECT_ROOT/lib/load.sh"
 cp "$SBD_BIN_DIR/sing-box" "$private_dir/probe-core"
 probe() {
   local tag="$1" expect_warp="${2:-false}" outbound attempt ok=false
+  local attempts=5 deadline remaining request_timeout
+  # Quick Tunnel announces its hostname before recursive DNS necessarily resolves it.
+  [[ "$tag" != sbd-vless-argo ]] || attempts=180
+  deadline=$((SECONDS + 180))
   case_name="probe-$tag-$expect_warp"
   [[ -z "$probe_pid" ]] || { kill "$probe_pid" 2>/dev/null || true; wait "$probe_pid" 2>/dev/null || true; probe_pid=""; }
   outbound="$(singbox_client_proxy_outbounds | jq -ce --arg tag "$tag" '.[] | select(.tag == $tag) | if $tag == "sbd-vless-reality" then .server="127.0.0.1" else . end')"
   jq -n --argjson outbound "$outbound" '{log:{level:"warn"},
-    dns:{servers:[{type:"local",tag:"dns-local"}]},
+    dns:{servers:[{type:"local",tag:"dns-local"}],disable_cache:true},
     inbounds:[{type:"socks",listen:"127.0.0.1",listen_port:39080}],
     outbounds:[$outbound],route:{final:$outbound.tag}}' > "$private_dir/probe.json"
   "$private_dir/probe-core" run -c "$private_dir/probe.json" > "$private_dir/probe.log" 2>&1 & probe_pid=$!
-  for attempt in {1..5}; do
-    if curl -fsS --connect-timeout 5 --max-time 20 --socks5-hostname 127.0.0.1:39080 \
+  for ((attempt=1; attempt<=attempts && SECONDS<deadline; attempt++)); do
+    remaining=$((deadline - SECONDS))
+    request_timeout=20
+    (( remaining >= request_timeout )) || request_timeout="$remaining"
+    if curl -fsS --connect-timeout 5 --max-time "$request_timeout" --socks5-hostname 127.0.0.1:39080 \
       https://www.cloudflare.com/cdn-cgi/trace -o "$private_dir/trace" 2>/dev/null; then ok=true; break; fi
     sleep 1
   done
