@@ -3,7 +3,7 @@
 # A versioned, closed inventory: generated configs preserve primary port values;
 # identity and sidecar inputs must be restored before any rebuild.
 sbd_state_inventory() {
-  local name schema="${2:-3}"
+  local name schema="${2:-4}"
   for name in runtime.env config.yaml config.json xray-config.json settings.conf warp-socks5.json clash_custom_rules.list serv00.env serv00-run.sh; do printf 'config|%s\n' "$name"; done
   for name in uuid reality_private.key reality_public.key reality_short_id xray_private.key xray_public.key xray_short_id \
     xray_vless_decryption.key xray_vless_encryption.key ss2022_password hy2_obfs_password cert.pem private.key acme-cert.pem acme-key.pem \
@@ -13,6 +13,7 @@ sbd_state_inventory() {
   printf '%s\n' 'service|core' 'service|argo' 'service|firewall' 'service|warp'
   if [[ "${1:-false}" == true ]]; then
     printf '%s\n' 'bin|sing-box' 'bin|xray' 'bin|cloudflared'
+    [[ "$schema" != 4 ]] || printf '%s\n' 'bin|geoip.dat' 'bin|geosite.dat'
     [[ "$schema" == 2 ]] || printf '%s\n' 'bin|libcronet.so'
   elif [[ "${1:-false}" == sidecars ]]; then
     printf '%s\n' 'bin|cloudflared'
@@ -55,7 +56,7 @@ sbd_state_capture() {
       log_error "Unexpected state object: ${path}"; return 1
     fi
   done < "$dir/inventory"
-  printf '3\n' > "$dir/schema" || return 1
+  printf '4\n' > "$dir/schema" || return 1
   printf '%s\n' "$binaries" > "$dir/includes-binaries" || return 1
   (cd "$dir"; find files -type f -exec sha256sum {} + > checksums.txt) || return 1
   sbd_state_verify "$dir"
@@ -67,7 +68,7 @@ sbd_state_verify() {
     log_error "Snapshot lacks a complete state inventory: ${dir}"; return 1;
   }
   schema="$(<"$dir/schema")"
-  [[ "$schema" == 2 || "$schema" == 3 ]] || return 1
+  [[ "$schema" == 2 || "$schema" == 3 || "$schema" == 4 ]] || return 1
   [[ -z "$(find "$dir" -type l -print -quit)" ]] || return 1
   binaries="$(<"$dir/includes-binaries")"
   [[ "$binaries" == true || "$binaries" == false || "$binaries" == sidecars ]] || return 1

@@ -78,12 +78,10 @@ provider_vps_install() {
 
   local protocols=()
   protocols_to_array "$protocols_csv" protocols || return 1
-  local protocol mapping proto port
+  local protocol port
   for protocol in "${protocols[@]}"; do
-    mapping="$(protocol_port_map "$protocol")"
-    proto="${mapping%%:*}"
     port="$(get_protocol_port "$protocol")"
-    fw_apply_rule "$proto" "$port" || return 1
+    fw_apply_protocol_rule "$protocol" "$port" || return 1
   done
 
   validate_generated_config "$engine" "true" || return 1

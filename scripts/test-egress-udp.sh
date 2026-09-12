@@ -162,9 +162,9 @@ grep -q '^outbound_proxy_udp_mode="direct"$' "$runtime" || fail "cfg ip-pref los
 provider_cfg_set_domain_split direct.example proxy.example ""
 grep -q '^outbound_proxy_udp_mode="direct"$' "$runtime" || fail "cfg domain-split lost UDP mode"
 assert_jq "$config" '.route.rules[0] == {"network":"udp","outbound":"direct"}
-  and .route.rules[1].rule_set == ["geosite-cn","geoip-cn"]
-  and .route.rules[2].domain_suffix == ["direct.example"]
-  and .route.rules[3].domain_suffix == ["proxy.example"]' "UDP rule did not precede CN/domain rules"
+  and .route.rules[1].domain_suffix == ["direct.example"]
+  and .route.rules[2].domain_suffix == ["proxy.example"]
+  and .route.rules[3].rule_set == ["geosite-cn","geoip-cn"]' "Expected UDP override, explicit domains, then CN rules"
 provider_cfg_rebuild_runtime
 grep -q '^outbound_proxy_udp_mode="direct"$' "$runtime" || fail "cfg rebuild lost UDP mode"
 provider_cfg_set_domain_split "" "" ""

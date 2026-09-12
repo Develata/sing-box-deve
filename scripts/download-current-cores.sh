@@ -35,7 +35,7 @@ curl -fsSL --connect-timeout 5 --max-time 20 "$xr_dgst_url" -o "${out_dir}/${xr_
 xr_digest="$(awk -F'= *' '/SHA2?-?256/{print $2; exit}' "${out_dir}/${xr_asset}.dgst")"
 [[ -n "$xr_digest" ]] || { echo "Unable to parse Xray digest" >&2; exit 1; }
 printf '%s  %s\n' "$xr_digest" "${out_dir}/${xr_asset}" | sha256sum -c -
-unzip -oq "${out_dir}/${xr_asset}" xray -d "$out_dir"
+unzip -oq "${out_dir}/${xr_asset}" xray geoip.dat geosite.dat -d "$out_dir"
 xr_bin="${out_dir}/xray"
 
 chmod 0755 "$sb_bin" "$xr_bin"

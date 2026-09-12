@@ -50,6 +50,10 @@ run bash scripts/test-web-front-smoke.sh
 run bash scripts/test-source-graph.sh
 run bash scripts/test-reliability.sh
 run bash scripts/test-review-recovery.sh
+run bash scripts/test-review-fixes.sh
+run bash scripts/test-firewall-failures.sh
+run node scripts/test-serv00-app.cjs
+run node scripts/test-web-generator.cjs
 run bash scripts/test-install-recovery.sh
 run bash scripts/test-io-deadlines.sh
 run python3 scripts/test-runtime-archive.py

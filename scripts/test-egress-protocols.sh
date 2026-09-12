@@ -203,13 +203,17 @@ if (parse_set_egress_args --link 'hy2://secret@host:0'); then exit 1; fi
 # New binary snapshots restore the matching Naive library; v2 remains readable.
 printf 'library-v1\n' > "$SBD_BIN_DIR/libcronet.so"
 sbd_state_capture "$egress_root/snapshot-v3" true
+sbd_state_inventory true 3 > "$egress_root/snapshot-v3/inventory"
+rm "$egress_root/snapshot-v3/files/bin/geoip.dat.absent" "$egress_root/snapshot-v3/files/bin/geosite.dat.absent"
+(cd "$egress_root/snapshot-v3"; find files -type f -exec sha256sum {} + > checksums.txt)
+printf '3\n' > "$egress_root/snapshot-v3/schema"
 printf 'library-v2\n' > "$SBD_BIN_DIR/libcronet.so"
 sbd_state_restore "$egress_root/snapshot-v3"
 [[ "$(cat "$SBD_BIN_DIR/libcronet.so")" == library-v1 ]]
 sbd_state_capture "$egress_root/snapshot-v2" true
 # Recreate the closed v2 binary inventory, which predates the Cronet sidecar.
 sbd_state_inventory true 2 > "$egress_root/snapshot-v2/inventory"
-rm "$egress_root/snapshot-v2/files/bin/libcronet.so"
+rm "$egress_root/snapshot-v2/files/bin/libcronet.so" "$egress_root/snapshot-v2/files/bin/geoip.dat.absent" "$egress_root/snapshot-v2/files/bin/geosite.dat.absent"
 (cd "$egress_root/snapshot-v2"; find files -type f -exec sha256sum {} + > checksums.txt)
 printf '2\n' > "$egress_root/snapshot-v2/schema"
 sbd_state_verify "$egress_root/snapshot-v2"

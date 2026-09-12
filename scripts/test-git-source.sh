@@ -37,6 +37,8 @@ SBD_RUNTIME_DIR="$git_test/run"
 SBD_HOST_STATE_DIR="$git_test/control"
 SBD_BIN_DIR="$SBD_INSTALL_DIR/bin"
 SBD_DATA_DIR="$SBD_INSTALL_DIR/data"
+SBD_ARGO_TOKEN_FILE="$SBD_DATA_DIR/argo-token"
+SBD_ARGO_EXEC_FILE="$SBD_DATA_DIR/argo-exec"
 SBD_RULES_FILE="$SBD_STATE_DIR/firewall-rules.db"
 SBD_LAUNCHER_PATH="$git_test/bin/sb"
 SBD_SERVICE_FILE="$git_test/service/core"
@@ -53,6 +55,7 @@ sbd_service_stop() { fail 'source operation stopped a service'; }
 fw_replay() { fail 'source operation rewrote firewall'; }
 write_nodes_output() { fail 'source operation regenerated nodes'; }
 ensure_root() { :; }
+crontab() { return 1; }
 printf 'unchanged core\n' > "$SBD_BIN_DIR/sing-box"
 printf '{"preserve":"config"}\n' > "$SBD_CONFIG_DIR/config.json"
 printf 'unchanged identity\n' > "$SBD_DATA_DIR/uuid"
@@ -64,6 +67,7 @@ before="$(readlink -f "$SBD_INSTALL_DIR/current")"
 cp "$SBD_CONFIG_DIR/runtime.env" "$git_test/release.env"
 mkdir -p "$SBD_STATE_DIR/cfg-snapshots"
 sbd_state_capture "$SBD_STATE_DIR/cfg-snapshots/release-before-binding" false
+provider_warp_snapshot_lifecycle "$SBD_STATE_DIR/cfg-snapshots/release-before-binding"
 cfg_source_rollback() (
   provider_cfg_rebuild_runtime() { provider_cfg_load_runtime_exports; persist_runtime_state vps lite sing-box vless-reality; }
   sbd_service_stop() { :; }
@@ -102,6 +106,7 @@ cfg_source_rollback release-before-binding
 sbd_source_is_git || fail 'configuration rollback changed source mode'
 [[ "$(sbd_read_runtime_script_root)" == "$checkout" ]]
 sbd_state_capture "$SBD_STATE_DIR/cfg-snapshots/with-binding" false
+provider_warp_snapshot_lifecycle "$SBD_STATE_DIR/cfg-snapshots/with-binding"
 
 # Both version and same-version commits follow an actual git pull.
 stamp="$(sbd_git_source_verify "$checkout" "$owner")"

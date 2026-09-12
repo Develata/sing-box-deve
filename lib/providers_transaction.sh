@@ -11,7 +11,7 @@ sbd_transaction_phase() {
   sbd_sync_directory "$dir"
 }
 
-sbd_transaction_begin() {
+sbd_transaction_begin() (
   local kind="$1" root dir scope path binaries=sidecars
   case "$kind" in
     script-update|script-rollback) ;;
@@ -27,6 +27,9 @@ sbd_transaction_begin() {
   done
   (umask 077; mkdir -p "$root") || return 1
   dir="$(mktemp -d "$root/${kind}.XXXXXX")" || return 1
+  # Before publication no runtime mutation is allowed. Failed preparation owns
+  # only this private directory; never discard an active recovery journal.
+  trap 'if [[ "$(readlink "$root/active" 2>/dev/null)" != "$dir" ]]; then rm -rf -- "$dir"; fi' EXIT
   sbd_uninstall_validate_roots || return 1
   case "$kind" in install|core-update|kernel-set) binaries=true ;; script-update|script-rollback) binaries=false ;; esac
   sbd_state_capture "$dir/before" "$binaries" || return 1
@@ -46,10 +49,19 @@ sbd_transaction_begin() {
   sbd_transaction_phase "$dir" prepared || return 1
   sbd_atomic_symlink "$dir" "$root/active" || return 1
   printf '%s\n' "$dir"
-}
+)
 
 sbd_transaction_restore_firewall() {
-  sbd_restore_firewall_delta "$1/before/files/state/firewall-rules.db"
+  local dir="$1" backend proto port tag created saved
+  saved="$dir/before/files/state/firewall-rules.db"
+  sbd_restore_firewall_delta "$saved" || return 1
+  [[ -f "$dir/firewall-pending" ]] || return 0
+  while IFS='|' read -r backend proto port tag created; do
+    fw_validate_port_proto "$port" "$proto" || return 1
+    fw_validate_tag "$tag" || return 1
+    if [[ -f "$saved" ]] && grep -Fq "${backend}|${proto}|${port}|${tag}|" "$saved"; then continue; fi
+    fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag" || return 1
+  done < "$dir/firewall-pending"
 }
 
 sbd_restore_firewall_delta() {
@@ -212,7 +224,7 @@ sbd_service_probe() {
           active=active
         fi
       fi
-      if crontab -l 2>/dev/null | grep -qF "# sbd:$name"; then enabled=enabled; fi ;;
+      if crontab -l 2>/dev/null | grep -qE "# sbd:${name}$"; then enabled=enabled; fi ;;
     openrc)
       active=inactive; enabled=disabled
       if [[ -f "/etc/init.d/$name" ]]; then
@@ -225,6 +237,37 @@ sbd_service_probe() {
   printf '%s %s\n' "$active" "$enabled"
 }
 
+# Restore one previously validated service state after its files are restored.
+sbd_restore_service_lifecycle() {
+  local name="$1" active="$2" enabled="$3"
+  if [[ "$active" == active ]]; then
+    case "$name" in
+      sing-box-deve) safe_service_restart || return 1 ;;
+      sing-box-deve-argo) provider_restart argo || return 1 ;;
+      sing-box-deve-warp-socks5)
+        sbd_service_restart "$name" "$SBD_BIN_DIR/sing-box run -c $SBD_CONFIG_DIR/warp-socks5.json" || return 1
+        sbd_service_wait_active "$name" 10 || return 1 ;;
+      sing-box-deve-fw-replay) fw_replay || return 1 ;;
+    esac
+  fi
+  if [[ "$enabled" == enabled ]]; then
+    case "$SBD_INIT_SYSTEM" in
+      systemd) sbd_service_op systemctl enable "$name.service" >/dev/null || return 1 ;;
+      openrc) sbd_service_op rc-update add "$name" default || return 1 ;;
+      nohup) : ;;
+    esac
+  else
+    case "$SBD_INIT_SYSTEM" in
+      systemd)
+        [[ -f "$(sbd_state_path service "$(case "$name" in sing-box-deve) echo core ;; sing-box-deve-argo) echo argo ;; sing-box-deve-warp-socks5) echo warp ;; *) echo firewall ;; esac)")" ]] || return 0
+        sbd_service_op systemctl disable "$name.service" >/dev/null || return 1 ;;
+      openrc) [[ ! -f "/etc/init.d/$name" ]] || sbd_service_op rc-update del "$name" default || return 1 ;;
+      nohup) nohup_remove_crontab "$name" || return 1 ;;
+    esac
+  fi
+  return 0
+}
+
 sbd_transaction_restore_lifecycle() {
   local dir="$1" name active enabled expected=0
   [[ -f "$dir/lifecycle" ]] || return 1
@@ -232,31 +275,7 @@ sbd_transaction_restore_lifecycle() {
     case "$name" in sing-box-deve|sing-box-deve-argo|sing-box-deve-warp-socks5|sing-box-deve-fw-replay) ;; *) return 1 ;; esac
     case "$active:$enabled" in active:enabled|active:disabled|inactive:enabled|inactive:disabled) ;; *) return 1 ;; esac
     expected=$((expected + 1))
-    if [[ "$active" == active ]]; then
-      case "$name" in
-        sing-box-deve) safe_service_restart || return 1 ;;
-        sing-box-deve-argo) provider_restart argo || return 1 ;;
-        sing-box-deve-warp-socks5)
-          sbd_service_restart "$name" "$SBD_BIN_DIR/sing-box run -c $SBD_CONFIG_DIR/warp-socks5.json" || return 1
-          sbd_service_wait_active "$name" 10 || return 1 ;;
-        sing-box-deve-fw-replay) fw_replay || return 1 ;;
-      esac
-    fi
-    if [[ "$enabled" == enabled ]]; then
-      case "$SBD_INIT_SYSTEM" in
-        systemd) sbd_service_op systemctl enable "$name.service" >/dev/null || return 1 ;;
-        openrc) sbd_service_op rc-update add "$name" default || return 1 ;;
-        nohup) : ;;
-      esac
-    else
-      case "$SBD_INIT_SYSTEM" in
-        systemd)
-          [[ -f "$(sbd_state_path service "$(case "$name" in sing-box-deve) echo core ;; sing-box-deve-argo) echo argo ;; sing-box-deve-warp-socks5) echo warp ;; *) echo firewall ;; esac)")" ]] || continue
-          sbd_service_op systemctl disable "$name.service" >/dev/null || return 1 ;;
-        openrc) [[ ! -f "/etc/init.d/$name" ]] || sbd_service_op rc-update del "$name" default || return 1 ;;
-        nohup) nohup_remove_crontab "$name" || return 1 ;;
-      esac
-    fi
+    sbd_restore_service_lifecycle "$name" "$active" "$enabled" || return 1
   done < "$dir/lifecycle"
   [[ "$expected" == 4 ]] || return 1
   if [[ "$SBD_INIT_SYSTEM" == nohup ]]; then

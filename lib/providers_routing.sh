@@ -144,35 +144,14 @@ build_singbox_route_json() {
     ensure_sing_route_rulesets_local >&2
   fi
 
-  if [[ "$mode" == "direct" && "$primary_tag" == "warp-out" ]] && warp_mode_targets_singbox "${WARP_MODE:-off}"; then
-    local base_rules="" base_final="direct"
-    case "${WARP_MODE:-off}" in
-      global|s|sx|xs)
-        base_final="warp-out"
-        ;;
-      s4|s4x4|s4x6|sx4|xs4|x4s|s4x|x4s4|x4s6)
-        base_rules='{"ip_cidr":["0.0.0.0/0"],"outbound":"warp-out"}'
-        ;;
-      s6|s6x4|s6x6|sx6|xs6|x6s|s6x|x6s4|x6s6)
-        base_rules='{"ip_cidr":["::/0"],"outbound":"warp-out"}'
-        ;;
-      *)
-        base_final="direct"
-        ;;
-    esac
-    rules=""
-    [[ -n "$base_rules" ]] && rules+="${rules:+,}${base_rules}"
-    if [[ -n "$rules" ]]; then
-      echo "{\"rules\":[${rules}],\"final\":\"${base_final}\"}"
-    else
-      echo "{\"final\":\"${base_final}\"}"
-    fi
-    return 0
-  fi
-
   case "$mode" in
     direct)
-      final="direct"
+      if [[ "$primary_tag" == warp-out ]] && warp_mode_targets_singbox "${WARP_MODE:-off}"; then
+        local base
+        base="$(build_singbox_warp_route_json)" || return 1
+        final="$(jq -r '.final' <<< "$base")" || return 1
+        rules="$(jq -r '(.rules // []) | map(tojson) | join(",")' <<< "$base")" || return 1
+      fi
       ;;
     global-proxy)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=global-proxy requires proxy or warp"
@@ -192,10 +171,10 @@ build_singbox_route_json() {
       ;;
   esac
 
+  custom="$(build_custom_domain_rules_singbox "$primary_tag")"
+  [[ -n "$custom" ]] && rules="${custom}${rules:+,${rules}}"
   udp_rule="$(build_singbox_proxy_udp_rule)"
   [[ -n "$udp_rule" ]] && rules="${udp_rule}${rules:+,${rules}}"
-  custom="$(build_custom_domain_rules_singbox "$primary_tag")"
-  [[ -n "$custom" ]] && rules+="${rules:+,}${custom}"
 
   if [[ -z "$rule_set" && -z "$rules" ]]; then
     echo "{\"final\":\"${final}\"}"
@@ -215,6 +194,9 @@ build_xray_routing_fragment() {
 
   case "$mode" in
     direct)
+      if [[ "$primary_tag" == warp-out ]] && warp_mode_targets_xray "${WARP_MODE:-off}"; then
+        catch_all='{"type":"field","network":"tcp,udp","outboundTag":"warp-out"}'
+      fi
       ;;
     global-proxy)
       [[ "$primary_tag" != "direct" ]] || die "ROUTE_MODE=global-proxy requires proxy or warp"
@@ -232,10 +214,10 @@ build_xray_routing_fragment() {
       ;;
   esac
 
+  custom="$(build_custom_domain_rules_xray "$primary_tag")"
+  [[ -n "$custom" ]] && rules="${custom}${rules:+,${rules}}"
   udp_rule="$(build_xray_proxy_udp_rule)"
   [[ -n "$udp_rule" ]] && rules="${udp_rule}${rules:+,${rules}}"
-  custom="$(build_custom_domain_rules_xray "$primary_tag")"
-  [[ -n "$custom" ]] && rules+="${rules:+,}${custom}"
   [[ -n "$catch_all" ]] && rules+="${rules:+,}${catch_all}"
   [[ -n "$rules" ]] || return 0
 

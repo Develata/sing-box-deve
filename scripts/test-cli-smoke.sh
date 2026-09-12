@@ -223,6 +223,8 @@ EOF
 provider_restart() { :; }
 detect_public_ip() { printf '%s\n' '203.0.113.1'; }
 fw_detect_backend() { FW_BACKEND="iptables"; }
+# This fixture models the backend; real failure handling has separate tests.
+fw_remove_rule_by_record() { :; }
 fw_apply_rule() { local proto="$1" port="$2" service="${3:-core}"; fw_record_rule "$FW_BACKEND" "$proto" "$port" "$(fw_tag "$service" "$proto" "$port")"; }
 AUTO_YES=true
 mkdir -p "$SBD_STATE_DIR"

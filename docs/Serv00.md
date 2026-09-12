@@ -46,24 +46,35 @@ export SERV00_BOOTSTRAP_CMD='bash "$HOME/reviewed-backend/install.sh"'
 
 Serv00 环境下提供 Node.js Web 管理服务，支持以下端点：
 
-| 路径 | 功能 |
-|------|------|
-| `/up` | 触发保活（运行 serv00keep.sh） |
-| `/re` | 重启核心引擎进程 |
-| `/rp` | 重置节点端口 |
-| `/jc` | 查看当前系统进程 |
-| `/list/:uuid` | 查看节点与订阅信息 |
-| `/health` | 健康检查 |
+| 路径 | 方法 | 功能与权限 |
+|------|------|------|
+| `/up` | POST | 保活，需要管理令牌 |
+| `/re` | POST | 重启既有 Serv00 后端核心进程，需要管理令牌 |
+| `/rp` | POST | 重置端口，需要管理令牌 |
+| `/jc` | GET | 查看进程，需要管理令牌 |
+| `/list/:uuid` | GET | 查看节点，必须匹配 `SBD_UUID` |
+| `/health` | GET | 公开存活检查，不执行管理操作 |
 
-部署方法：
+部署方法（Node.js 18 或更新版本）：
 
 ```bash
-# 在 Serv00 上
 cd ~/sing-box-deve/scripts
+umask 077
+# 首次生成；后续启动复用该私有文件。
+test -s ~/.sbd-serv00-admin-token || openssl rand -hex 32 > ~/.sbd-serv00-admin-token
+export SBD_SERV00_ADMIN_TOKEN="$(cat ~/.sbd-serv00-admin-token)"
 node serv00-app.js &
 ```
 
-设置环境变量 `SBD_UUID` 来保护 `/list` 端点。
+管理令牌独立于节点 UUID，至少 32 字节；缺失或过短会禁用全部管理端点。默认只监听 `127.0.0.1`，由同机 HTTPS 反向代理转发；需要自行绑定其他接口时设置 `SBD_SERV00_HOST`。另设 `SBD_UUID` 才能读取节点列表。管理操作共享执行锁，忙时返回 409，失败返回 500，单次子命令最多等待 120 秒。
+
+原先无鉴权的 GET `/up`、`/re`、`/rp` 不再可用。主动保活请求改为：
+
+```bash
+curl --fail --max-time 130 -X POST \
+  -H "Authorization: Bearer ${SBD_SERV00_ADMIN_TOKEN}" \
+  http://127.0.0.1:3000/up
+```
 
 ## 5) 保活方案
 
@@ -76,12 +87,14 @@ bash ~/sing-box-deve/scripts/serv00keep.sh
 */5 * * * * bash ~/sing-box-deve/scripts/serv00keep.sh >> /tmp/keepalive.log 2>&1
 ```
 
-### 方案二：GitHub Actions 保活
+Web 服务启动时以及每 135 分钟在本地执行一次保活；以下远程 GET 请求仅检查 Web 服务存活。需要主动触发管理操作时，使用上面的带令牌 POST 请求。
+
+### 方案二：GitHub Actions 存活检查
 
 使用 `ssh-keepalive.yml` 工作流，在 Secrets 中设置 `KEEPALIVE_URLS`：
 
 ```
-http://user.serv00.net/up http://user2.serv00.net/up
+https://user.serv00.net/health https://user2.serv00.net/health
 ```
 
 ### 方案三：VPS / 路由器远程保活
@@ -90,13 +103,13 @@ http://user.serv00.net/up http://user2.serv00.net/up
 
 ```bash
 # 单次执行
-KP_URLS="http://user.serv00.net/up" bash scripts/kp.sh
+KP_URLS="https://user.serv00.net/health" bash scripts/kp.sh
 
 # 循环模式（默认每 135 分钟）
-KP_URLS="http://user.serv00.net/up" bash scripts/kp.sh --loop
+KP_URLS="https://user.serv00.net/health" bash scripts/kp.sh --loop
 
 # 安装为 crontab
-KP_URLS="http://user.serv00.net/up" bash scripts/kp.sh --install-cron
+KP_URLS="https://user.serv00.net/health" bash scripts/kp.sh --install-cron
 ```
 
 ### 方案四：GitHub Actions SSH 部署

@@ -51,14 +51,12 @@ provider_set_port() {
 provider_set_port_unlocked() {
   ensure_root
   provider_cfg_load_runtime_exports || return 1
-  local protocol="$1" new_port="$2" tag fw_proto cfg tmp old_port old_records
+  local protocol="$1" new_port="$2" tag cfg tmp old_port old_records
   local record_backend record_proto record_port record_tag answer
   if [[ ! "$new_port" =~ ^[1-9][0-9]{0,4}$ ]] || (( new_port > 65535 )); then
     log_error "Port must be between 1 and 65535"; return 1
   fi
   tag="$(protocol_inbound_tag "$protocol")" || return 1
-  fw_proto="$(protocol_port_map "$protocol")" || return 1
-  fw_proto="${fw_proto%%:*}"
   case "$engine" in
     sing-box) cfg="$SBD_CONFIG_DIR/config.json" ;;
     xray) cfg="$SBD_CONFIG_DIR/xray-config.json" ;;
@@ -79,14 +77,18 @@ provider_set_port_unlocked() {
   validate_generated_config "$engine" false || return 1
   fw_detect_backend || return 1
   load_install_context || create_install_context "${provider:?Runtime provider missing}" "${profile:?Runtime profile missing}" "$engine" "${protocols:?Runtime protocols missing}" || return 1
-  old_records="$(fw_records_for_endpoint "$FW_BACKEND" "$fw_proto" "$old_port" core)" || return 1
-  fw_apply_rule "$fw_proto" "$new_port" || return 1
+  old_records="$(fw_records_for_protocol_endpoint "" "$protocol" "$old_port")" || return 1
+  fw_apply_protocol_rule "$protocol" "$new_port" || return 1
   provider_restart core || return 1
+  if [[ "$protocol" == vless-ws && "${ARGO_MODE:-off}" == temp ]]; then
+    configure_argo_tunnel "$protocols" "$engine" || return 1
+    persist_runtime_state "$provider" "$profile" "$engine" "$protocols" || return 1
+  fi
   write_nodes_output "$engine" "$protocols" || return 1
   if [[ -n "$old_records" ]]; then
     answer=Y
     if [[ "${AUTO_YES:-false}" != true ]]; then
-      read -r -p "Remove old port firewall rule ${fw_proto}/${old_port}? [Y/n]: " answer || answer=Y
+      read -r -p "Remove old port firewall rule ${protocol}/${old_port}? [Y/n]: " answer || answer=Y
     fi
     if [[ "${answer:-Y}" =~ ^[Yy]$ ]]; then
       while IFS='|' read -r record_backend record_proto record_port record_tag; do

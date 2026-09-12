@@ -141,7 +141,7 @@ nohup_register_crontab() {
   local svc_name="$1" exec_cmd="$2" log_file="$3" tag="# sbd:${1}"
   local existing runner entry
   existing="$(crontab -l 2>/dev/null || true)"
-  existing="$(printf '%s\n' "$existing" | grep -vF "$tag" || true)"
+  existing="$(printf '%s\n' "$existing" | awk -v tag="$tag" 'substr($0, length($0)-length(tag)+1) != tag')" || return 1
   # Boot uses the same PID/identity writer as an interactive restart.
   local runtime_root="$PROJECT_ROOT"
   [[ ! -L "$SBD_INSTALL_DIR/current" ]] || runtime_root="$SBD_INSTALL_DIR/current"
@@ -154,7 +154,7 @@ nohup_remove_crontab() {
   local svc_name="$1" tag="# sbd:${1}" existing updated
   existing="$(crontab -l 2>/dev/null || true)"
   [[ -n "$existing" ]] || return 0
-  updated="$(printf '%s\n' "$existing" | grep -vF "$tag" || true)"
+  updated="$(printf '%s\n' "$existing" | awk -v tag="$tag" 'substr($0, length($0)-length(tag)+1) != tag')" || return 1
   printf '%s\n' "$updated" | crontab -
 }
 

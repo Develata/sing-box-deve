@@ -32,7 +32,7 @@ provider_restart_unlocked() {
 
   if [[ "$target" == "core" || "$target" == "all" ]]; then
     if [[ -f "$SBD_SERVICE_FILE" ]] || sbd_service_unit_exists "sing-box-deve"; then
-      safe_service_restart
+      safe_service_restart || return 1
       log_success "$(msg "sing-box-deve 服务已重启" "sing-box-deve service restarted")"
     else
       log_warn "$(msg "服务未安装" "Service not installed")"
@@ -55,8 +55,8 @@ provider_restart_unlocked() {
         log_info "$(msg "已从 runtime.env 迁移旧版 Argo nohup 启动命令" \
           "Migrated legacy Argo nohup command from runtime.env")"
       fi
-      sbd_service_restart "sing-box-deve-argo" "$argo_exec"
-      sbd_service_wait_active "sing-box-deve-argo" 10
+      sbd_service_restart "sing-box-deve-argo" "$argo_exec" || return 1
+      sbd_service_wait_active "sing-box-deve-argo" 10 || return 1
       log_success "$(msg "sing-box-deve argo 服务已重启" "sing-box-deve argo service restarted")"
     else
       log_warn "$(msg "未找到 Argo 服务文件" "Argo service file not found")"
@@ -89,12 +89,16 @@ provider_logs() {
 }
 
 provider_regen_nodes() {
+  sbd_with_mutation_lock provider_regen_nodes_unlocked "$@"
+}
+
+provider_regen_nodes_unlocked() {
   ensure_root
   [[ -f "${SBD_CONFIG_DIR}/runtime.env" ]] || die "No runtime state found"
   sbd_load_runtime_env "${SBD_CONFIG_DIR}/runtime.env" || return 1
   local runtime_engine="${engine:-sing-box}"
   local runtime_protocols="${protocols:-vless-reality}"
-  write_nodes_output "$runtime_engine" "$runtime_protocols"
+  write_nodes_output "$runtime_engine" "$runtime_protocols" || return 1
   log_success "$(msg "节点已重生成: $SBD_NODES_FILE" "Nodes regenerated: $SBD_NODES_FILE")"
 }
 

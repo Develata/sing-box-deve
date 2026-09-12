@@ -24,6 +24,9 @@ load_install_context() { : "${install_id:=new}"; return 0; }
 
 # shellcheck source=../lib/security.sh
 source "${PROJECT_ROOT}/lib/security.sh"
+source "${PROJECT_ROOT}/lib/common_io.sh"
+# Stateful in-process backend substitute; real deadline behavior is tested separately.
+fw_command() { "$@"; }
 
 FW_BACKEND="iptables"
 declare -A BACKEND_RULES=()

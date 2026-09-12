@@ -275,6 +275,8 @@ function collectValues() {
     argoDomain: fieldValue("argoDomain"),
     argoToken: fieldValue("argoToken"),
     warpMode: byId("warpMode").value,
+    warpPrivateKey: fieldValue("warpPrivateKey"),
+    warpPeerPublicKey: fieldValue("warpPeerPublicKey"),
     outMode: byId("outboundProxyMode").value,
     outLink: fieldValue("outboundProxyLink"),
     outRoute: byId("outboundRouteMode").value,
@@ -332,7 +334,9 @@ function buildCommand() {
     if (v.outUser) pushArg(args, "--outbound-proxy-user", v.outUser);
     if (v.outPass) pushArg(args, "--outbound-proxy-pass", v.outPass);
   }
-  output.value = "bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) " + args.join(" ");
+  var env = v.warpMode === "off" ? "" : "WARP_PRIVATE_KEY=" + shQuote(v.warpPrivateKey) +
+    " WARP_PEER_PUBLIC_KEY=" + shQuote(v.warpPeerPublicKey) + " ";
+  output.value = env + "bash <(curl -fsSL https://raw.githubusercontent.com/Develata/sing-box-deve/main/sing-box-deve.sh) " + args.join(" ");
   byId("resultHint").textContent = "生成安装命令：";
   showToast("✅ 命令已生成");
 }
@@ -350,6 +354,7 @@ function buildEnvTemplate() {
     "web_front_mode=" + v.webFrontMode, "hy2_obfs_mode=" + v.hy2ObfsMode, "hy2_obfs_password=" + v.hy2ObfsPassword, "",
     "# Argo", "argo_mode=" + v.argoMode, "argo_domain=" + v.argoDomain, "argo_token=" + v.argoToken,
     "ARGO_CDN_ENDPOINTS=" + v.cdnEps, "", "# WARP", "warp_mode=" + v.warpMode,
+    "WARP_PRIVATE_KEY=" + JSON.stringify(v.warpPrivateKey), "WARP_PEER_PUBLIC_KEY=" + JSON.stringify(v.warpPeerPublicKey),
     "", "# Outbound proxy", "outbound_proxy_mode=" + (v.outMode === "link" ? "direct" : v.outMode), "outbound_proxy_udp_mode=" + v.outUdpMode,
     "outbound_proxy_host=" + v.outHost,
     "outbound_proxy_port=" + v.outPort, "outbound_proxy_user=" + v.outUser, "outbound_proxy_pass=" + v.outPass

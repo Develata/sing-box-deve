@@ -10,71 +10,80 @@ fw_replay() {
   while IFS='|' read -r backend proto port tag _created; do
     [[ -n "$backend" && -n "$proto" && -n "$port" && -n "$tag" ]] || continue
     if ! ( fw_validate_port_proto "$port" "$proto"; fw_validate_tag "$tag" ); then
-      log_warn "$(msg "跳过非法防火墙规则记录: ${backend}|${proto}|${port}|${tag}" "Skipping invalid firewall rule record: ${backend}|${proto}|${port}|${tag}")"
-      continue
+      log_warn "$(msg "非法防火墙规则记录: ${backend}|${proto}|${port}|${tag}" "Invalid firewall rule record: ${backend}|${proto}|${port}|${tag}")"
+      return 1
     fi
-    fw_apply_rule_to_backend "$backend" "$proto" "$port" "$tag" >/dev/null 2>&1 || true
+    fw_apply_rule_to_backend "$backend" "$proto" "$port" "$tag" || return 1
   done < "$SBD_RULES_FILE"
   log_success "$(msg "托管防火墙规则重放完成" "Managed firewall rules replayed")"
 }
 
 fw_remove_rule_by_record() {
-  local backend="$1" proto="$2" port="$3" tag="$4"
-
+  local backend="$1" proto="$2" port="$3" tag="$4" output item rc
+  fw_validate_port_proto "$port" "$proto" || return 1
+  fw_validate_tag "$tag" || return 1
+  sbd_positive_seconds "${SBD_FIREWALL_TIMEOUT:-15}" || return 2
   case "$backend" in
     ufw)
-      local rule_numbers
-      rule_numbers="$(ufw status numbered 2>/dev/null | grep -F "$tag" | sed -E 's/^\[ *([0-9]+)\].*/\1/' | grep -E '^[0-9]+$' | sort -rn || true)"
-      if [[ -n "$rule_numbers" ]]; then
-        local num ufw_num
-        while read -r num; do
-          ufw_num="$num"
-          if [[ -n "$ufw_num" ]]; then
-            ufw --force delete "$ufw_num" >/dev/null || true
-          fi
-        done <<< "$rule_numbers"
-      fi
-      ;;
+      output="$(fw_command ufw status numbered)" || return 1
+      output="$(awk -v tag="$tag" '$NF == tag' <<< "$output" | sed -nE 's/^\[ *([0-9]+)\].*/\1/p' | sort -rn)" || return 1
+      while read -r item; do
+        [[ -n "$item" ]] || continue
+        fw_command ufw --force delete "$item" >/dev/null || return 1
+      done <<< "$output" ;;
     nftables)
-      local handles h
-      handles="$(nft -a list chain inet sing_box_deve input 2>/dev/null | grep -F "$tag" | awk '{print $NF}')"
-      if [[ -n "$handles" ]]; then
-        while read -r h; do
-          if [[ -n "$h" ]]; then
-            nft delete rule inet sing_box_deve input handle "$h" >/dev/null 2>&1 || true
-          fi
-        done <<< "$handles"
-      fi
-      ;;
+      output="$(fw_nft_chain_output)" || {
+        rc=$?; (( rc == 1 )) && return 0; return 1;
+      }
+      output="$(awk -v tag="\"$tag\"" '{for(i=1;i<=NF;i++) if($i=="comment" && $(i+1)==tag) print $NF}' <<< "$output")" || return 1
+      while read -r item; do
+        [[ -n "$item" ]] || continue
+        [[ "$item" =~ ^[0-9]+$ ]] || return 1
+        fw_command nft delete rule inet sing_box_deve input handle "$item" || return 1
+      done <<< "$output" ;;
     firewalld)
-      firewall-cmd --permanent --remove-port="${port}/${proto}" >/dev/null 2>&1 || true
-      firewall-cmd --remove-port="${port}/${proto}" >/dev/null 2>&1 || true
-      ;;
+      local scope flags
+      for scope in runtime permanent; do
+        flags=()
+        [[ "$scope" != permanent ]] || flags=(--permanent)
+        if fw_command firewall-cmd "${flags[@]}" --query-port="${port}/${proto}" >/dev/null 2>&1; then
+          fw_command firewall-cmd "${flags[@]}" --remove-port="${port}/${proto}" >/dev/null || return 1
+          if fw_command firewall-cmd "${flags[@]}" --query-port="${port}/${proto}" >/dev/null 2>&1; then return 1
+          else rc=$?; (( rc == 1 )) || return 1; fi
+        else rc=$?; (( rc == 1 )) || return 1; fi
+      done ;;
     iptables)
-      while iptables -C SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1; do
-        iptables -D SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || true
+      local deadline=$((SECONDS + ${SBD_FIREWALL_TIMEOUT:-15})) remaining
+      while (( SECONDS < deadline )); do
+        remaining=$((deadline - SECONDS))
+        if SBD_FIREWALL_TIMEOUT="$remaining" fw_backend_rule_present "$backend" "$proto" "$port" "$tag"; then
+          remaining=$((deadline - SECONDS))
+          (( remaining > 0 )) || break
+          SBD_FIREWALL_TIMEOUT="$remaining" fw_command iptables -D SING_BOX_DEVE_INPUT -p "$proto" --dport "$port" -m comment --comment "$tag" -j ACCEPT >/dev/null 2>&1 || return 1
+        else rc=$?; (( rc == 1 )) && return 0; return 1; fi
       done
-      ;;
-    *)
-      log_warn "$(msg "移除时跳过未知后端: $backend" "Skipping unknown backend during remove: $backend")"
-      ;;
+      log_error "Firewall rule removal timed out: $tag"
+      return 1 ;;
+    *) return 1 ;;
   esac
+  if fw_backend_rule_present "$backend" "$proto" "$port" "$tag"; then return 1
+  else rc=$?; (( rc == 1 )); fi
 }
 
 fw_clear_managed_rules() {
   if [[ ! -s "$SBD_RULES_FILE" ]]; then
     fw_cleanup_nftables_table
-    return 0
+    return $?
   fi
 
   local backend proto port tag _created last_backend=""
   while IFS='|' read -r backend proto port tag _created; do
     [[ -z "$backend" ]] && continue
-    fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag"
+    fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag" || return 1
     last_backend="$backend"
   done < "$SBD_RULES_FILE"
 
-  : > "$SBD_RULES_FILE"
+  : > "$SBD_RULES_FILE" || return 1
   if [[ "$last_backend" == "nftables" ]]; then
     fw_cleanup_nftables_table
   fi
@@ -91,22 +100,31 @@ fw_clear_legacy_iptables_core_rules() {
   command -v iptables >/dev/null 2>&1 || return 0
   [[ -s "$SBD_RULES_FILE" ]] || return 0
 
-  local port proto
+  local port proto deadline remaining rc
+  sbd_positive_seconds "${SBD_FIREWALL_TIMEOUT:-15}" || return 2
   while read -r port; do
     [[ -n "$port" ]] || continue
     for proto in tcp udp; do
-      while iptables -C INPUT -p "$proto" --dport "$port" -j ACCEPT >/dev/null 2>&1; do
-        iptables -D INPUT -p "$proto" --dport "$port" -j ACCEPT >/dev/null 2>&1 || break
-        log_info "$(msg "已移除旧版直写防火墙规则: ${proto}/${port}" "Removed legacy direct firewall rule: ${proto}/${port}")"
+      deadline=$((SECONDS + ${SBD_FIREWALL_TIMEOUT:-15}))
+      while true; do
+        remaining=$((deadline - SECONDS))
+        (( remaining > 0 )) || return 1
+        if SBD_FIREWALL_TIMEOUT="$remaining" fw_command iptables -C INPUT -p "$proto" --dport "$port" -j ACCEPT >/dev/null 2>&1; then
+          remaining=$((deadline - SECONDS))
+          (( remaining > 0 )) || return 1
+          SBD_FIREWALL_TIMEOUT="$remaining" fw_command iptables -D INPUT -p "$proto" --dport "$port" -j ACCEPT >/dev/null 2>&1 || return 1
+          log_info "Removed legacy direct firewall rule: ${proto}/${port}"
+        else rc=$?; (( rc == 1 )) || return 1; break; fi
       done
     done
   done < <(fw_collect_core_ports)
+  return 0
 }
 
 fw_cleanup_nftables_table() {
   if command -v nft >/dev/null 2>&1; then
-    nft delete chain inet sing_box_deve input 2>/dev/null || true
-    nft delete table inet sing_box_deve 2>/dev/null || true
+    fw_command nft delete chain inet sing_box_deve input 2>/dev/null || true
+    fw_command nft delete table inet sing_box_deve 2>/dev/null || true
   fi
 }
 
@@ -116,18 +134,18 @@ fw_rollback() {
   fi
 
   log_warn "$(msg "正在回滚托管防火墙规则" "Rolling back managed firewall rules")"
-  fw_clear_managed_rules
+  fw_clear_managed_rules || return 1
 
   if [[ -s "$SBD_FW_SNAPSHOT_FILE" ]]; then
     local backend proto port tag _created
     while IFS='|' read -r backend proto port tag _created; do
       [[ -z "$backend" ]] && continue
       if ! ( fw_validate_port_proto "$port" "$proto"; fw_validate_tag "$tag" ); then
-        log_warn "$(msg "跳过非法防火墙快照记录: ${backend}|${proto}|${port}|${tag}" "Skipping invalid firewall snapshot record: ${backend}|${proto}|${port}|${tag}")"
-        continue
+        log_warn "$(msg "非法防火墙快照记录: ${backend}|${proto}|${port}|${tag}" "Invalid firewall snapshot record: ${backend}|${proto}|${port}|${tag}")"
+        return 1
       fi
-      fw_apply_rule_to_backend "$backend" "$proto" "$port" "$tag" >/dev/null 2>&1 || true
-      printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "rollback" >> "$SBD_RULES_FILE"
+      fw_apply_rule_to_backend "$backend" "$proto" "$port" "$tag" || return 1
+      printf '%s|%s|%s|%s|%s\n' "$backend" "$proto" "$port" "$tag" "rollback" >> "$SBD_RULES_FILE" || return 1
     done < "$SBD_FW_SNAPSHOT_FILE"
   fi
 

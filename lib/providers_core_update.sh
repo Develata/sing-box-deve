@@ -57,7 +57,7 @@ provider_core_candidate_install() {
 }
 
 provider_core_candidate_binary_commit() {
-  local target_engine="$1" candidate_root="$2" candidate live tmp
+  local target_engine="$1" candidate_root="$2" candidate live tmp asset
   candidate="${candidate_root}/bin/${target_engine}"
   live="${SBD_BIN_DIR}/${target_engine}"
   [[ -x "$candidate" ]] || return 1
@@ -71,6 +71,14 @@ provider_core_candidate_binary_commit() {
     else
       rm -f -- "$SBD_BIN_DIR/libcronet.so" || return 1
     fi
+  fi
+  if [[ "$target_engine" == xray ]]; then
+    for asset in geoip.dat geosite.dat; do
+      [[ -s "$candidate_root/bin/$asset" ]] || { log_error "Xray release missing $asset"; return 1; }
+      tmp="$(mktemp "$SBD_BIN_DIR/$asset.candidate.XXXXXX")" || return 1
+      cp -p "$candidate_root/bin/$asset" "$tmp" || { rm -f "$tmp"; return 1; }
+      mv -f "$tmp" "$SBD_BIN_DIR/$asset" || { rm -f "$tmp"; return 1; }
+    done
   fi
   tmp="$(mktemp "${live}.candidate.XXXXXX")" || return 1
   cp -p "$candidate" "$tmp" || { rm -f "$tmp"; return 1; }

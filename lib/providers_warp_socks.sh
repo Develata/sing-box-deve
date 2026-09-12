@@ -128,6 +128,48 @@ provider_warp_socks5_status() {
   fi
 }
 
+provider_warp_snapshot_lifecycle() {
+  local dir="$1"
+  sbd_service_probe sing-box-deve-warp-socks5 > "$dir/warp-lifecycle" || return 1
+  crontab -l 2>/dev/null | grep -E '# sbd:sing-box-deve-warp-socks5$' > "$dir/warp-cron" || [[ ! -s "$dir/warp-cron" ]] || return 1
+  (cd "$dir" && sha256sum warp-lifecycle warp-cron > warp-lifecycle.sha256)
+}
+
+provider_warp_snapshot_verify() {
+  local dir="$1" expected actual status
+  [[ "$(<"$dir/schema")" == 4 ]] || return 0
+  [[ -f "$dir/warp-lifecycle" && -f "$dir/warp-cron" && -f "$dir/warp-lifecycle.sha256" ]] || return 1
+  expected="$(cd "$dir" && sha256sum warp-lifecycle warp-cron)" || return 1
+  actual="$(cat "$dir/warp-lifecycle.sha256")" || return 1
+  [[ "$actual" == "$expected" ]] || return 1
+  status="$(<"$dir/warp-lifecycle")"
+  case "$status" in 'active enabled'|'active disabled'|'inactive enabled'|'inactive disabled') ;; *) return 1 ;; esac
+}
+
+provider_warp_snapshot_restore() {
+  local dir="$1" fallback="$2" active enabled cron
+  if [[ "$(<"$dir/schema")" == 4 ]]; then
+    provider_warp_snapshot_verify "$dir" || return 1
+    read -r active enabled < "$dir/warp-lifecycle" || return 1
+  else
+    # Legacy snapshots lack lifecycle metadata. Preserve the prior state when
+    # restoring a sidecar config, and keep absent sidecars stopped.
+    read -r active enabled <<< "$fallback"
+    log_warn "Legacy snapshot: WARP lifecycle inferred from current service state"
+  fi
+  if [[ ! -f "$SBD_CONFIG_DIR/warp-socks5.json" ]]; then active=inactive; enabled=disabled; fi
+  sbd_service_daemon_reload || return 1
+  sbd_restore_service_lifecycle sing-box-deve-warp-socks5 "$active" "$enabled" || return 1
+  if [[ "$SBD_INIT_SYSTEM" == nohup && "$enabled" == enabled ]]; then
+    if [[ "$(<"$dir/schema")" == 4 ]]; then
+      cron="$(crontab -l 2>/dev/null || true)"
+      { printf '%s\n' "$cron" | sed '/# sbd:sing-box-deve-warp-socks5$/d'; cat "$dir/warp-cron"; } | crontab - || return 1
+    else
+      nohup_register_crontab sing-box-deve-warp-socks5 "$SBD_BIN_DIR/sing-box run -c $SBD_CONFIG_DIR/warp-socks5.json" "$SBD_LOG_DIR/sing-box-deve-warp-socks5.log" || return 1
+    fi
+  fi
+}
+
 provider_warp_unlock_probe() {
   local url="$1" socks_port="$2"
   if [[ -n "$socks_port" ]]; then

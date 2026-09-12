@@ -28,6 +28,10 @@ sbd_port_used_in_list() {
 
 sbd_port_is_in_use() {
   local proto="$1" port="$2"
+  if [[ "$proto" == 'tcp udp' ]]; then
+    sbd_port_is_in_use tcp "$port" || sbd_port_is_in_use udp "$port"
+    return $?
+  fi
   case "$proto" in
     tcp)
       command -v ss >/dev/null 2>&1 || return 1
@@ -91,11 +95,10 @@ prepare_initial_install_ports() {
 
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
-  local used_ports="" p mapping proto chosen env_key
+  local used_ports="" p proto chosen env_key
   for p in "${protocols[@]}"; do
     protocol_needs_local_listener "$p" || continue
-    mapping="$(protocol_port_map "$p")"
-    proto="${mapping%%:*}"
+    proto="$(protocol_transports "$p")" || return 1
     if [[ "$mode" == "manual" ]]; then
       chosen="$(sbd_port_map_get "$map_csv" "$p" 2>/dev/null || true)"
       [[ -n "$chosen" ]] || die "PORT_MODE=manual requires port-map entry: ${p}:<port>"
@@ -135,7 +138,7 @@ prepare_incremental_protocol_ports() {
   protocols_to_array "$current_csv" current
   protocols_to_array "$target_csv" target
 
-  local used_ports="" p current_port mapping proto chosen env_key
+  local used_ports="" p current_port proto chosen env_key
   for p in "${current[@]}"; do
     protocol_needs_local_listener "$p" || continue
     current_port="$(resolve_protocol_port_for_engine "$engine" "$p" 2>/dev/null || true)"
@@ -146,8 +149,7 @@ prepare_incremental_protocol_ports() {
   for p in "${target[@]}"; do
     protocol_enabled "$p" "${current[@]}" && continue
     protocol_needs_local_listener "$p" || continue
-    mapping="$(protocol_port_map "$p")"
-    proto="${mapping%%:*}"
+    proto="$(protocol_transports "$p")" || return 1
 
     if [[ "$mode" == "manual" ]]; then
       chosen="$(sbd_port_map_get "$map_csv" "$p" 2>/dev/null || true)"

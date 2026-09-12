@@ -31,7 +31,13 @@ export SBD_NODES_FILE SBD_NODES_BASE_FILE SBD_SUB_FILE SBD_NODE_MODEL_FILE
 export SBD_SHARE_RAW_FILE SBD_SHARE_BASE64_FILE SBD_SHARE_GROUP_DIR
 mkdir -p "$SBD_STATE_DIR" "$SBD_CONFIG_DIR" "$SBD_BIN_DIR" "$SBD_DATA_DIR" "$SBD_CACHE_DIR"
 install -m 0755 "$SBD_TEST_SINGBOX_BIN" "${SBD_BIN_DIR}/sing-box"
-install -m 0755 "$SBD_TEST_XRAY_BIN" "${SBD_BIN_DIR}/xray"
+# Exercise the installer against the same verified release ZIP used by this suite.
+# Empty bin/cache paths prove CN routing does not depend on host Xray assets.
+unset XRAY_LOCATION_ASSET
+(
+  download_file() { cp "$(dirname "$SBD_TEST_XRAY_BIN")/${1##*/}" "$2"; }
+  install_xray_binary v-fixture
+)
 printf '11111111-1111-4111-8111-111111111111\n' > "${SBD_DATA_DIR}/uuid"
 
 export ARGO_MODE=off WARP_MODE=off ROUTE_MODE=direct IP_PREFERENCE=auto
@@ -103,3 +109,9 @@ jq -e '.app == "SFA" and (.subscription_base64 | length > 0)' "${SBD_DATA_DIR}/s
 jq -e '.app == "SFI" and (.subscription_base64 | length > 0)' "${SBD_DATA_DIR}/sfi_client.json" >/dev/null
 
 printf '[OK] current stable core configuration matrix passed\n'
+
+for ROUTE_MODE in cn-direct cn-proxy; do
+  OUTBOUND_PROXY_MODE=socks OUTBOUND_PROXY_HOST=192.0.2.10 OUTBOUND_PROXY_PORT=1080
+  build_xray_config vless-reality
+  validate_generated_config xray false
+done

@@ -76,6 +76,9 @@ sbd_print_env_file_redacted() {
       value="${raw#*=}"
       lower_key="${key,,}"
       case "$lower_key" in
+        outbound_proxy_link)
+          printf '%s=<redacted>\n' "$key"
+          ;;
         *token*|*password*|*pass*|*private_key*|*secret*)
           printf '%s=%s\n' "$key" "$(sbd_mask_secret "$value")"
           ;;

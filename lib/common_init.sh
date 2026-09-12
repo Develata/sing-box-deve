@@ -38,6 +38,9 @@ init_user_mode_paths() {
   SBD_NODES_BASE_FILE="${SBD_DATA_DIR}/nodes-base.txt"
   SBD_SUB_FILE="${SBD_DATA_DIR}/nodes-sub.txt"
   SBD_NODE_MODEL_FILE="${SBD_DATA_DIR}/nodes-model.json"
+  SBD_SHARE_RAW_FILE="${SBD_DATA_DIR}/jhdy.txt"
+  SBD_SHARE_BASE64_FILE="${SBD_DATA_DIR}/jh_sub.txt"
+  SBD_SHARE_GROUP_DIR="${SBD_DATA_DIR}/share-groups"
   SBD_ARGO_TOKEN_FILE="${SBD_DATA_DIR}/argo-token"
   SBD_ARGO_EXEC_FILE="${SBD_DATA_DIR}/argo-exec"
 
@@ -268,7 +271,7 @@ sbd_service_unit_exists() {
   case "$SBD_INIT_SYSTEM" in
     systemd)  sbd_service_op systemctl list-unit-files "${svc_name}.service" 2>/dev/null | grep -q "^${svc_name}.service" ;;
     openrc)   [[ -f "/etc/init.d/${svc_name}" ]] ;;
-    nohup)    [[ -f "${SBD_RUNTIME_DIR}/${svc_name}.pid" ]] || crontab -l 2>/dev/null | grep -q "# sbd:${svc_name}" ;;
+    nohup)    [[ -f "${SBD_RUNTIME_DIR}/${svc_name}.pid" ]] || crontab -l 2>/dev/null | grep -qE "# sbd:${svc_name}$" ;;
   esac
 }
 
@@ -279,7 +282,7 @@ sbd_service_is_enabled() {
   case "$SBD_INIT_SYSTEM" in
     systemd)  sbd_service_op systemctl is-enabled --quiet "${svc_name}.service" 2>/dev/null ;;
     openrc)   sbd_service_op rc-update show default 2>/dev/null | grep -q "$svc_name" ;;
-    nohup)    crontab -l 2>/dev/null | grep -q "# sbd:${svc_name}" ;;
+    nohup)    crontab -l 2>/dev/null | grep -qE "# sbd:${svc_name}$" ;;
   esac
 }
 

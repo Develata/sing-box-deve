@@ -67,3 +67,9 @@ TLS 默认验证证书。sing-box 的 HY2、VLESS TLS 可显式使用链接的 `
 - [Xray v26.3.27 传输配置源码](https://github.com/XTLS/Xray-core/blob/v26.3.27/infra/conf/transport_internet.go)：以固定版本确认 `hysteriaSettings.auth` 和 `finalmask.udp` 字段，避免滚动文档的新字段误用于旧内核。
 
 `test-egress-link.py` 检查链接解析边界，`test-egress-protocols.sh` 检查生成、持久化、拒绝路径和事务恢复；`test-egress-traffic.py` 使用本机回环服务检查真实内核 TCP/UDP 转发。配置检查与回环通信不能替代公网延迟、CDN、真实证书链和各供应商链接扩展的实机验证。
+
+## 分流优先级与 Xray 数据
+
+显式 UDP 策略优先，其次是自定义域名规则，再是国内分流或 WARP 地址族规则，最后使用默认出站。WARP 的默认路由同样保留自定义直连、代理、屏蔽域名；Xray 的 `global` / `x*` 模式会生成指向 WARP 的默认规则。
+
+Xray 的 `cn-direct` / `cn-proxy` 需要 `geoip.dat` 与 `geosite.dat`。核心安装/更新从同一份已校验的官方发布包安装这两个文件，随核心一起回滚。旧安装缺失文件时先执行 `sb update --core`，再切换国内分流；单独更新脚本不会补装核心数据。

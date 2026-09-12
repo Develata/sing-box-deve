@@ -160,9 +160,10 @@ install_xray_binary() {
     if ! command -v unzip >/dev/null 2>&1; then
       sbd_apt_get install -y unzip >/dev/null || return 1
     fi
-    unzip -o "$archive" xray -d "$cache_dir" >/dev/null || return 1
+    unzip -o "$archive" xray geoip.dat geosite.dat -d "$cache_dir" >/dev/null || return 1
     install -m 0755 "${cache_dir}/xray" "${SBD_BIN_DIR}/xray" || return 1
-    rm -f "${cache_dir}/xray" "$archive" "$dgst" 2>/dev/null || true
+    install -m 0644 "${cache_dir}/geoip.dat" "${cache_dir}/geosite.dat" "$SBD_BIN_DIR/" || return 1
+    rm -f "${cache_dir}/geoip.dat" "${cache_dir}/geosite.dat" "${cache_dir}/xray" "$archive" "$dgst" 2>/dev/null || true
   else
     if [[ -x "${SBD_BIN_DIR}/xray" ]]; then
       log_warn "$(msg "下载 xray ${tag} 失败，复用本地已有二进制" "Failed to download xray ${tag}; reusing existing local binary")"

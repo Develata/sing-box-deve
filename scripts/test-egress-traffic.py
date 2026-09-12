@@ -103,16 +103,23 @@ class Cores:
         while time.monotonic() < deadline:
             if proc.poll() is not None:
                 raise RuntimeError(name + ' exited: ' + (self.directory / (name + '.log')).read_text())
-            if ready_port:
+            # sing-box 1.14 publishes its initial network environment asynchronously
+            # after Start. Starting HY2 during that update aborts its first connection.
+            # See upstream route/network_environment.go and box.go at v1.14.0.
+            output = (self.directory / (name + '.log')).read_text()
+            started = config is None or 'loglevel' in config.get('log', {}) or (
+                'sing-box started (' in output and (
+                    'updated default interface ' not in output or 'updated network environment:' in output))
+            if ready_port and started:
                 try:
                     with socket.create_connection((HOST, ready_port), timeout=.1):
                         return proc
                 except OSError:
                     pass
-            elif time.monotonic() + 7.5 > deadline:
+            elif not ready_port and started and time.monotonic() + 7.5 > deadline:
                 return proc
             time.sleep(.05)
-        raise RuntimeError(name + ' failed to listen')
+        raise RuntimeError(name + ' failed readiness (listener/start/network): ' + (self.directory / (name + '.log')).read_text())
 
     def close(self):
         for proc, log in reversed(self.processes):
@@ -142,7 +149,7 @@ def main():
         try:
             cert, key = root / 'cert.pem', root / 'key.pem'
             subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
-                            '-subj', '/CN=localhost', '-addext', 'subjectAltName=DNS:localhost',
+                            '-subj', '/CN=localhost', '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1',
                             '-keyout', str(key), '-out', str(cert)], check=True, capture_output=True)
             tls = {'enabled': True, 'server_name': 'localhost', 'certificate_path': str(cert), 'key_path': str(key)}
             reality_keys = subprocess.check_output([sb, 'generate', 'reality-keypair'], text=True)
@@ -178,7 +185,7 @@ def main():
                     link = f'ss://{auth}@{HOST}:{remote_port}'
                 else:
                     inbound.update(users=[{'username': 'local-user', 'password': 'local-pass'}], tls=tls, network='tcp')
-                    link = f'naive+https://local-user:local-pass@{HOST}:{remote_port}?sni=localhost'
+                    link = f'naive+https://local-user:local-pass@{HOST}:{remote_port}?sni=127.0.0.1'
                 inbounds.append(inbound)
                 cases.append((kind, link))
                 if kind == 'vless-reality':
@@ -186,7 +193,7 @@ def main():
                     cases.append((kind, f'vless://{NO_FLOW_UID}@{HOST}:{remote_port}?{urlencode(query)}'))
                 if kind == "naive":
                     cases.append((kind, link + "&uot=true"))
-            cores.start('singbox-server', [sb, 'run', '-c'], {'log': {'level': 'error'}, 'inbounds': inbounds,
+            cores.start('singbox-server', [sb, 'run', '-c'], {'log': {'level': 'info'}, 'inbounds': inbounds,
                          'outbounds': [{'type': 'direct', 'tag': 'direct'}]}, ready_port=inbounds[0]['listen_port'])
             xhttp_port = port()
             project = str(Path(__file__).resolve().parents[1])
@@ -219,7 +226,7 @@ def main():
                         if kind == 'naive':
                             # Test CA only; production links still require normal verified TLS.
                             outbound['tls']['certificate_path'] = str(cert)
-                        config = {'log': {'level': 'error'}, 'inbounds': [{'type': 'socks', 'listen': HOST,
+                        config = {'log': {'level': 'info'}, 'inbounds': [{'type': 'socks', 'listen': HOST,
                                   'listen_port': local_port}], 'outbounds': [outbound], 'route': {'final': 'proxy-out'}}
                     else:
                         config = {'log': {'loglevel': 'error'}, 'inbounds': [{'protocol': 'socks', 'listen': HOST,

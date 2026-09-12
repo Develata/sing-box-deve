@@ -28,8 +28,7 @@ provider_multi_ports_validate_target() {
 
 provider_multi_ports_reject_conflict() {
   local protocol="$1" port="$2" transport cfg all_ports
-  transport="$(protocol_port_map "$protocol")"
-  transport="${transport%%:*}"
+  transport="$(protocol_transports "$protocol")" || return 1
   if sbd_port_is_in_use "$transport" "$port"; then
     die "Port already in use (${transport}): ${port}"
   fi
@@ -50,7 +49,7 @@ provider_multi_ports_add() {
 
 provider_multi_ports_add_unlocked() {
   ensure_root
-  local protocol="$1" port="$2" mapping proto
+  local protocol="$1" port="$2"
   local runtime_provider runtime_profile runtime_engine runtime_protocols
   provider_cfg_load_runtime_exports || return 1
   runtime_provider="${provider:-vps}"
@@ -64,15 +63,13 @@ provider_multi_ports_add_unlocked() {
     return 0
   }
   multi_ports_store_add "$protocol" "$port"
-  mapping="$(protocol_port_map "$protocol")"
-  proto="${mapping%%:*}"
   fw_detect_backend
   load_install_context || create_install_context "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider="$runtime_provider"
   profile="$runtime_profile"
   engine="$runtime_engine"
   protocols="$runtime_protocols"
-  if ! ( fw_apply_rule "$proto" "$port" ); then
+  if ! ( fw_apply_protocol_rule "$protocol" "$port" ); then
     multi_ports_store_remove "$protocol" "$port"
     die "Failed to apply firewall rule for multi real-port: ${protocol}:${port}"
   fi
@@ -85,30 +82,9 @@ provider_multi_ports_add_unlocked() {
 }
 
 provider_multi_ports_remove_firewall() {
-  local protocol="$1" port="$2" mapping proto tag tmp_file backend p t created
-  local runtime_provider runtime_profile runtime_engine runtime_protocols
-  runtime_provider="${provider:-vps}"
-  runtime_profile="${profile:-lite}"
-  runtime_engine="${engine:-sing-box}"
-  runtime_protocols="${protocols:-vless-reality}"
-  mapping="$(protocol_port_map "$protocol")"
-  proto="${mapping%%:*}"
-  load_install_context || create_install_context "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
-  provider="$runtime_provider"
-  profile="$runtime_profile"
-  engine="$runtime_engine"
-  protocols="$runtime_protocols"
-  tag="$(fw_tag "core" "$proto" "$port")"
-  [[ -f "$SBD_RULES_FILE" ]] || return 0
-  tmp_file="$(mktemp)"
-  while IFS='|' read -r backend p _port t created; do
-    if [[ "$t" == "$tag" && "$_port" == "$port" ]]; then
-      fw_remove_rule_by_record "$backend" "$p" "$_port" "$t"
-      continue
-    fi
-    printf '%s|%s|%s|%s|%s\n' "$backend" "$p" "$_port" "$t" "$created" >> "$tmp_file"
-  done < "$SBD_RULES_FILE"
-  mv "$tmp_file" "$SBD_RULES_FILE"
+  local records
+  records="$(fw_records_for_protocol_endpoint "" "$1" "$2")" || return 1
+  provider_cfg_protocol_close_firewall_records "$records"
 }
 
 provider_multi_ports_remove() {
@@ -130,7 +106,7 @@ provider_multi_ports_remove_unlocked() {
     return 0
   fi
   multi_ports_store_remove "$protocol" "$port"
-  provider_multi_ports_remove_firewall "$protocol" "$port"
+  provider_multi_ports_remove_firewall "$protocol" "$port" || return 1
   provider="$runtime_provider"
   profile="$runtime_profile"
   engine="$runtime_engine"
@@ -153,7 +129,7 @@ provider_multi_ports_clear_unlocked() {
   runtime_protocols="${protocols:-vless-reality}"
   while IFS='|' read -r protocol port; do
     [[ -n "$protocol" && -n "$port" ]] || continue
-    provider_multi_ports_remove_firewall "$protocol" "$port"
+    provider_multi_ports_remove_firewall "$protocol" "$port" || return 1
   done < <(multi_ports_store_records)
   multi_ports_store_clear
   provider="$runtime_provider"

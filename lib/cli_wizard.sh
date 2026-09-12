@@ -99,11 +99,10 @@ wizard() {
       PORT_MODE="manual"
       MANUAL_PORT_MAP=""
       RANDOM_MAIN_PORT="false"
-      local used_ports="" p mapping proto default_port chosen
+      local used_ports="" p proto default_port chosen
       for p in "${wizard_protocols[@]}"; do
         protocol_needs_local_listener "$p" || continue
-        mapping="$(protocol_port_map "$p")"
-        proto="${mapping%%:*}"
+        proto="$(protocol_transports "$p")" || return 1
         default_port="$(get_protocol_port "$p")"
         while true; do
           prompt_with_default "$(msg "输入协议 ${p} 的端口 (1-65535)" "Input port for protocol ${p} (1-65535)")" "$default_port" chosen

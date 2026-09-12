@@ -17,6 +17,7 @@ provider_cfg_snapshot_create() {
   id="$(date -u +"%Y%m%dT%H%M%SZ")-$(rand_hex_8)"
   dir="${SBD_CFG_SNAPSHOT_DIR}/${id}"
   sbd_state_capture "$dir" false || return 1
+  provider_warp_snapshot_lifecycle "$dir" || return 1
 
   cat > "$dir/meta.env" <<EOF_META
 snapshot_id=${id}
@@ -190,7 +191,7 @@ provider_cfg_apply_with_snapshot_unlocked() {
 provider_cfg_rollback_unlocked() {
   ensure_root
   provider_cfg_snapshot_paths_sync
-  local id="${1:-latest}" target_dir runtime_file
+  local id="${1:-latest}" target_dir runtime_file warp_status
   runtime_file="$(provider_cfg_runtime_file)"
   if [[ "$id" == "latest" ]]; then
     [[ -f "$SBD_CFG_SNAPSHOT_LATEST_FILE" ]] || die "No cfg snapshot found"
@@ -201,12 +202,16 @@ provider_cfg_rollback_unlocked() {
   target_dir="${SBD_CFG_SNAPSHOT_DIR}/${id}"
   [[ -d "$target_dir" ]] || die "Snapshot not found: ${id}"
   sbd_state_verify "$target_dir" || return 1
+  provider_warp_snapshot_verify "$target_dir" || return 1
+  warp_status="$(sbd_service_probe sing-box-deve-warp-socks5)" || return 1
   sbd_require_supported_runtime "$target_dir/files/config/runtime.env" || return 1
   local -A live_source=()
   sbd_read_source_state live_source || return 1
   sbd_transaction_phase "$SBD_ACTIVE_TRANSACTION" committing || return 1
   sbd_restore_firewall_delta "$target_dir/files/state/firewall-rules.db" || return 1
+  sbd_service_stop sing-box-deve-warp-socks5 || return 1
   sbd_state_restore "$target_dir" || return 1
+  provider_warp_snapshot_restore "$target_dir" "$warp_status" || return 1
   sbd_update_runtime_script_root "${live_source[script_root]:-$SBD_INSTALL_DIR/current}" \
     "${live_source[script_source]:-release}" "${live_source[script_source_uid]:-}" "${live_source[script_fallback_root]:-}" || return 1
   CFG_RUNTIME_LOADED=false

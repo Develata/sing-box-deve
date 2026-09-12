@@ -26,6 +26,7 @@ printf 'tuic://test-only@192.0.2.1:10443\n' > "$SBD_NODES_FILE"
 fail() { printf '[FAIL] %s\n' "$*" >&2; exit 1; }
 unexpected_mutation() { touch "$retired_root/unexpected"; return 1; }
 ensure_root() { :; }
+crontab() { return 1; }
 sbd_service_probe() { printf 'active enabled\n'; }
 sbd_service_stop() { unexpected_mutation; }
 sbd_service_daemon_reload() { :; }
@@ -89,6 +90,7 @@ sha256sum -c "$retired_root/files.sha256" >/dev/null
 provider_cfg_snapshot_paths_sync
 mkdir -p "$SBD_CFG_SNAPSHOT_DIR"
 sbd_state_capture "$SBD_CFG_SNAPSHOT_DIR/old-tuic" false
+provider_warp_snapshot_lifecycle "$SBD_CFG_SNAPSHOT_DIR/old-tuic"
 write_test_runtime vless-reality direct ''
 before="$(sha256sum "$SBD_CONFIG_DIR/runtime.env")"
 if sbd_with_mutation_lock sbd_transaction_run config-rollback provider_cfg_rollback_unlocked old-tuic; then

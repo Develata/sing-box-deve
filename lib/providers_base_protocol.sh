@@ -15,6 +15,17 @@ protocol_port_map() {
   esac
 }
 
+# All listener transports; protocol_port_map retains the default port contract.
+protocol_transports() {
+  local mapping
+  if [[ "$1" == shadowsocks-2022 ]]; then
+    echo "tcp udp"
+  else
+    mapping="$(protocol_port_map "$1")" || return 1
+    echo "${mapping%%:*}"
+  fi
+}
+
 get_protocol_port() {
   local proto="$1" mapping default_port key
   mapping="$(protocol_port_map "$proto")"

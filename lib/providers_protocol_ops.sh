@@ -135,29 +135,26 @@ provider_cfg_protocol_open_firewall_for_csv() {
   fi
   fw_detect_backend
 
-  local target=() p mapping proto port tag preexisting applied_records=""
+  local target=() p transports proto port tag preexisting applied_records=""
   protocols_to_array "$target_csv" target
   for p in "${target[@]}"; do
     protocol_needs_local_listener "$p" || continue
-    mapping="$(protocol_port_map "$p")"
-    proto="${mapping%%:*}"
-    port="$(resolve_protocol_port_for_engine "${engine:-sing-box}" "$p" 2>/dev/null || get_protocol_port "$p")"
-    tag="$(fw_tag "core" "$proto" "$port")"
-    preexisting="false"
-    fw_rule_exists_record "$tag" && preexisting="true"
-    if ! ( fw_apply_rule "$proto" "$port" ); then
-      if [[ "$rollback_new" == "true" ]]; then
-        provider_cfg_protocol_close_firewall_records "$applied_records" || true
+    transports="$(protocol_transports "$p")" || return 1
+    port="$(resolve_protocol_port_for_engine "${engine:-sing-box}" "$p" 2>/dev/null || get_protocol_port "$p")" || return 1
+    for proto in $transports; do
+      preexisting="$(fw_record_tag_for_endpoint "$FW_BACKEND" "$proto" "$port" core)"
+      if ! fw_apply_rule "$proto" "$port"; then
+        if [[ "$rollback_new" == true ]]; then
+          provider_cfg_protocol_close_firewall_records "$applied_records" || return 1
+        fi
+        return 1
       fi
-      return 1
-    fi
-    if [[ "$preexisting" != "true" ]]; then
-      if [[ -n "$applied_records" ]]; then
-        applied_records+=$'\n'
+      tag="$(fw_record_tag_for_endpoint "$FW_BACKEND" "$proto" "$port" core)"
+      if [[ -z "$preexisting" && -n "$tag" ]]; then
+        applied_records+="${applied_records:+$'\n'}${FW_BACKEND}|${proto}|${port}|${tag}"
+        SBD_LAST_ADDED_FW_RECORDS="$applied_records"
       fi
-      applied_records+="${FW_BACKEND}|${proto}|${port}|${tag}"
-      SBD_LAST_ADDED_FW_RECORDS="$applied_records"
-    fi
+    done
   done
 }
 
@@ -179,16 +176,13 @@ provider_cfg_protocol_firewall_records_for_removed() {
     create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
 
-  local removed=() p mapping proto port tag
+  local removed=() p port
   protocols_to_array "$drop_csv" removed
   for p in "${removed[@]}"; do
     protocol_needs_local_listener "$p" || continue
-    mapping="$(protocol_port_map "$p")"
-    proto="${mapping%%:*}"
     port="$(resolve_protocol_port_for_engine "${engine:-sing-box}" "$p" 2>/dev/null || true)"
     [[ "$port" =~ ^[0-9]+$ ]] || continue
-    tag="$(fw_tag "core" "$proto" "$port")"
-    awk -F'|' -v t="$tag" '$4 == t {print $1 "|" $2 "|" $3 "|" $4; exit}' "$SBD_RULES_FILE"
+    fw_records_for_protocol_endpoint "" "$p" "$port" || return 1
   done
 }
 
@@ -199,8 +193,8 @@ provider_cfg_protocol_close_firewall_records() {
   local backend proto port tag
   while IFS='|' read -r backend proto port tag; do
     [[ -n "$backend" && -n "$proto" && -n "$port" && -n "$tag" ]] || continue
-    fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag"
-    fw_remove_record_by_tag "$tag"
+    fw_remove_rule_by_record "$backend" "$proto" "$port" "$tag" || return 1
+    fw_remove_record_by_tag "$tag" || return 1
     log_success "$(msg "已移除协议防火墙规则: ${proto}/${port}" "Removed protocol firewall rule: ${proto}/${port}")"
   done <<< "$records"
 }
