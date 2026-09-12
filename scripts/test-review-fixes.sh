@@ -192,6 +192,28 @@ run_case ws_port_retargets_temporary_argo '
   [[ "$(cat "$review_root/argo-target")" == 9444 ]]
   [[ -e "$review_root/runtime-persisted" ]]
 '
+run_case migrated_context_preserves_runtime '
+  ensure_root() { :; }
+  AUTO_YES=true
+  SBD_CONTEXT_FILE="$SBD_STATE_DIR/context.env"
+  printf "install_id=old\nprovider=vps\nprofile=full\nengine=xray\nprotocols=tuic\n" > "$SBD_CONTEXT_FILE"
+  printf "provider=vps\nprofile=lite\nengine=sing-box\nprotocols=shadowsocks-2022\n" > "$SBD_CONFIG_DIR/runtime.env"
+  printf "{\"inbounds\":[{\"type\":\"shadowsocks\",\"tag\":\"ss-2022\",\"listen_port\":2443}]}\n" > "$SBD_CONFIG_DIR/config.json"
+  validate_generated_config() { [[ "$1" == sing-box ]]; }
+  fw_detect_backend() { FW_BACKEND=iptables; }
+  fw_records_for_endpoint() { :; }
+  fw_apply_rule() { [[ "$2" == 2444 && "$engine" == sing-box && "$protocols" == shadowsocks-2022 ]]; }
+  provider_multi_ports_reject_conflict() { :; }
+  provider_restart() { :; }
+  write_nodes_output() { [[ "$1" == sing-box && "$2" == shadowsocks-2022 ]]; }
+  provider_set_port_unlocked shadowsocks-2022 2444
+  [[ "$(jq -r .inbounds[0].listen_port "$SBD_CONFIG_DIR/config.json")" == 2444 ]]
+  provider_cfg_protocol_open_firewall_for_csv shadowsocks-2022
+  [[ "$engine" == sing-box && "$protocols" == shadowsocks-2022 && "$profile" == lite ]]
+  fw_tag core tcp 2444 > "$review_root/context-tag"
+  [[ "$(cat "$review_root/context-tag")" == MYBOX:old:core:tcp:2444 ]]
+  [[ "$engine" == sing-box && "$protocols" == shadowsocks-2022 ]]
+'
 run_case cfg_rollback_reconciles_warp_process '
   SBD_ARGO_TOKEN_FILE="$SBD_DATA_DIR/argo-token"
   SBD_ARGO_EXEC_FILE="$SBD_DATA_DIR/argo-exec"

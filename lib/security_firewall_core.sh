@@ -71,11 +71,11 @@ fw_snapshot_create() {
   log_info "$(msg "已创建防火墙快照: $SBD_FW_SNAPSHOT_FILE" "Firewall snapshot created: $SBD_FW_SNAPSHOT_FILE")"
 }
 
-fw_tag() {
+fw_tag() (
   local service="$1" proto="$2" port="$3"
   load_install_context || die "$(msg "防火墙标记缺少安装上下文" "Install context missing for firewall tagging")"
   echo "MYBOX:${install_id:-unknown}:${service}:${proto}:${port}"
-}
+)
 
 fw_endpoint_suffix_from_tag() {
   local tag="$1" rest service tag_proto tag_port

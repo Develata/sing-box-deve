@@ -64,7 +64,7 @@ provider_multi_ports_add_unlocked() {
   }
   multi_ports_store_add "$protocol" "$port"
   fw_detect_backend
-  load_install_context || create_install_context "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
+  (load_install_context) || create_install_context "$runtime_provider" "$runtime_profile" "$runtime_engine" "$runtime_protocols"
   provider="$runtime_provider"
   profile="$runtime_profile"
   engine="$runtime_engine"

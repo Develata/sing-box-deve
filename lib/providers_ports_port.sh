@@ -76,7 +76,8 @@ provider_set_port_unlocked() {
   sbd_commit_file_with_backups "$cfg" "$tmp" 600 || return 1
   validate_generated_config "$engine" false || return 1
   fw_detect_backend || return 1
-  load_install_context || create_install_context "${provider:?Runtime provider missing}" "${profile:?Runtime profile missing}" "$engine" "${protocols:?Runtime protocols missing}" || return 1
+  # The installation baseline can predate protocol/engine changes.
+  (load_install_context) || create_install_context "${provider:?Runtime provider missing}" "${profile:?Runtime profile missing}" "$engine" "${protocols:?Runtime protocols missing}" || return 1
   old_records="$(fw_records_for_protocol_endpoint "" "$protocol" "$old_port")" || return 1
   fw_apply_protocol_rule "$protocol" "$new_port" || return 1
   provider_restart core || return 1

@@ -130,7 +130,7 @@ provider_cfg_protocol_open_firewall_for_csv() {
   SBD_LAST_ADDED_FW_RECORDS=""
   mkdir -p "$SBD_STATE_DIR"
   touch "$SBD_RULES_FILE"
-  if ! load_install_context; then
+  if ! (load_install_context); then
     create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
   fw_detect_backend
@@ -172,7 +172,7 @@ provider_cfg_protocol_firewall_records_for_removed() {
   [[ -n "$drop_csv" ]] || return 0
   mkdir -p "$SBD_STATE_DIR"
   touch "$SBD_RULES_FILE"
-  if ! load_install_context; then
+  if ! (load_install_context); then
     create_install_context "${provider:-vps}" "${profile:-lite}" "${engine:-sing-box}" "${protocols:-vless-reality}"
   fi
 
