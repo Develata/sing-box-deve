@@ -55,7 +55,11 @@ provider_restart_unlocked() {
         log_info "$(msg "已从 runtime.env 迁移旧版 Argo nohup 启动命令" \
           "Migrated legacy Argo nohup command from runtime.env")"
       fi
-      sbd_service_restart "sing-box-deve-argo" "$argo_exec" || return 1
+      local -a argo_argv=()
+      if [[ "$SBD_INIT_SYSTEM" == nohup ]]; then
+        sbd_decode_command_argv "$argo_exec" argo_argv || return 1
+      fi
+      sbd_service_restart "sing-box-deve-argo" "${argo_argv[@]}" || return 1
       sbd_service_wait_active "sing-box-deve-argo" 10 || return 1
       log_success "$(msg "sing-box-deve argo 服务已重启" "sing-box-deve argo service restarted")"
     else

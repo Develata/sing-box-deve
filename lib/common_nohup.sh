@@ -49,11 +49,11 @@ nohup_rotate_log() {
 }
 
 nohup_start_service() {
-  local svc_name="$1" exec_cmd="$2" new_pid identity executable observed attempt startup_identity=""
+  local svc_name="$1" new_pid identity executable observed attempt startup_identity=""
+  shift
   [[ "$svc_name" =~ ^[A-Za-z0-9_-]+$ ]] || return 2
   local log_file="${SBD_DATA_DIR}/${svc_name}.log" pid_file="${SBD_RUNTIME_DIR}/${svc_name}.pid"
-  local -a argv
-  read -r -a argv <<< "$exec_cmd"
+  local -a argv=("$@")
   (( ${#argv[@]} > 0 )) || return 2
   executable="$(command -v "${argv[0]}")" || return 1
   executable="$(readlink -f "$executable")" || return 1
@@ -65,7 +65,7 @@ nohup_start_service() {
   [[ -f "$PROJECT_ROOT/scripts/bounded-log.py" ]] || return 1
   (
     if [[ -n "${SBD_MUTATION_LOCK_FD:-}" ]]; then exec {SBD_MUTATION_LOCK_FD}>&-; fi
-    exec nohup "${argv[@]}" > >(exec python3 "$PROJECT_ROOT/scripts/bounded-log.py" "$log_file" "${SBD_LOG_MAX_BYTES:-10485760}") 2>&1
+    exec nohup "${argv[@]}" < /dev/null > >(exec python3 "$PROJECT_ROOT/scripts/bounded-log.py" "$log_file" "${SBD_LOG_MAX_BYTES:-10485760}") 2>&1
   ) &
   new_pid=$!
   identity=""
@@ -93,7 +93,7 @@ nohup_start_service() {
     log_error "nohup service failed to start: ${svc_name}; see ${log_file}"
     return 1
   fi
-  if ! nohup_register_crontab "$svc_name" "$exec_cmd" "$log_file"; then
+  if ! nohup_register_crontab "$svc_name" "${argv[@]}"; then
     nohup_stop_service "$svc_name" || true
     log_error "Unable to register nohup service at boot: ${svc_name}"
     return 1
@@ -138,16 +138,57 @@ nohup_stop_service() {
 }
 
 nohup_register_crontab() {
-  local svc_name="$1" exec_cmd="$2" log_file="$3" tag="# sbd:${1}"
-  local existing runner entry
+  local svc_name="$1" tag="# sbd:${1}"
+  shift
+  local existing entry arg
+  [[ "$svc_name" =~ ^[A-Za-z0-9_-]+$ ]] || return 2
+  # Cron treats percent and newlines specially even inside shell quotes.
+  for arg in "$PROJECT_ROOT" "$SBD_INSTALL_DIR" "$SBD_RUNTIME_DIR" "$SBD_DATA_DIR" "$@"; do
+    [[ "$arg" != *$'\n'* && "$arg" != *$'\r'* && "$arg" != *%* ]] || return 2
+  done
   existing="$(crontab -l 2>/dev/null || true)"
   existing="$(printf '%s\n' "$existing" | awk -v tag="$tag" 'substr($0, length($0)-length(tag)+1) != tag')" || return 1
   # Boot uses the same PID/identity writer as an interactive restart.
   local runtime_root="$PROJECT_ROOT"
   [[ ! -L "$SBD_INSTALL_DIR/current" ]] || runtime_root="$SBD_INSTALL_DIR/current"
-  printf -v runner '%q' "${runtime_root}/scripts/nohup-run.sh"
-  printf -v entry '@reboot %s %q %q %q %q %s' "$runner" "$svc_name" "$exec_cmd" "$SBD_RUNTIME_DIR" "$SBD_DATA_DIR" "$tag"
+  entry="$(sbd_join_command_argv /bin/bash "${runtime_root}/scripts/nohup-run.sh" --argv "$svc_name" "$SBD_RUNTIME_DIR" "$SBD_DATA_DIR" "$@")" || return 1
+  entry="@reboot $entry $tag"
   printf '%s\n%s\n' "$existing" "$entry" | crontab -
+}
+
+# POSIX quoting for generated unit/cron strings. Internal launches use argv.
+sbd_join_command_argv() {
+  local arg separator=""
+  for arg in "$@"; do
+    if [[ "$arg" =~ ^[a-zA-Z0-9_./:=,@%+-]+$ ]]; then printf '%s%s' "$separator" "$arg"
+    else printf "%s'%s'" "$separator" "${arg//\'/\'\\\'\'}"; fi
+    separator=' '
+  done
+}
+
+# Only persisted legacy command strings cross this nonexecuting decode boundary.
+sbd_decode_command_argv() {
+  local text="$1" temporary
+  local -n decoded_argv="$2"
+  temporary="$(mktemp)" || return 1
+  if ! sbd_run_deadline 5 python3 - "$text" > "$temporary" <<'PY'
+import shlex, sys
+try:
+    text = sys.argv[1]
+    if any(c in text for c in '$`;|&<>()\n\r\0') or len(text) > 65536:
+        raise ValueError('ambiguous legacy command; rebuild it from runtime settings')
+    args = shlex.split(text, posix=True)
+    if not args or not args[0]:
+        raise ValueError('empty command')
+    sys.stdout.buffer.write(b''.join(arg.encode() + b'\0' for arg in args))
+except ValueError as error:
+    print(f'[ERROR] {error}', file=sys.stderr)
+    sys.exit(1)
+PY
+  then rm -f "$temporary"; return 1; fi
+  # shellcheck disable=SC2034 # nameref output is consumed by the caller
+  mapfile -d '' -t decoded_argv < "$temporary"
+  rm -f "$temporary"
 }
 
 nohup_remove_crontab() {

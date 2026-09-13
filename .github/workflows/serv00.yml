@@ -19,8 +19,11 @@ jobs:
       - uses: actions/checkout@v6
       - name: Install SSH client tools
         run: |
-          sudo timeout -k 5s 300s apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=15
-          sudo timeout -k 5s 300s apt-get install -y sshpass jq
+          sudo env PROJECT_ROOT="$PWD" SBD_HOST_STATE_DIR="$RUNNER_TEMP/sbd-package-control" bash -eu -o pipefail <<'SH'
+          source "$PROJECT_ROOT/lib/common.sh"
+          sbd_with_mutation_lock sbd_apt_get update
+          sbd_with_mutation_lock sbd_apt_get install -y sshpass jq
+          SH
       - name: Deploy verified backend with pinned host keys
         env:
           SERV00_ACCOUNTS_JSON: ${{ secrets.SERV00_ACCOUNTS_JSON }}

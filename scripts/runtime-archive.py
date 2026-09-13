@@ -3,17 +3,19 @@
 import gzip
 import hashlib
 import io
+import json
 import os
 from pathlib import Path, PurePosixPath
 import shutil
 import sys
 import tarfile
+import tempfile
 
 PREFIX = "sing-box-deve-runtime"
 LIMIT_BYTES = 64 * 1024 * 1024
 LIMIT_FILES = 2048
 ROOT_FILES = {"sing-box-deve.sh", "version", "LICENSE", "runtime-files.txt", "checksums.txt"}
-RUNTIME_SCRIPTS = {"scripts/runtime-archive.py", "scripts/nohup-run.sh", "scripts/bounded-log.py", "scripts/egress-link.py"}
+RUNTIME_SCRIPTS = {"scripts/runtime-archive.py", "scripts/nohup-run.sh", "scripts/bounded-log.py", "scripts/egress-link.py", "scripts/package-run.py"}
 
 
 def allowed(name):
@@ -131,10 +133,83 @@ def fsync_tree(root):
             os.close(fd)
 
 
+def script_file(root, name):
+    """A manifest path must not traverse a symlink, including a parent."""
+    path = root / name
+    if (not name or PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts
+            or str(PurePosixPath(name)) != name or "\\" in name
+            or path.resolve() != path.absolute()):
+        raise ValueError("unsafe script snapshot path")
+    return path
+
+
+def script_digest(path):
+    checksum = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
+
+
+def backup_script(source, destination):
+    source, destination = Path(source), Path(destination)
+    # Closed, checksum-proven files only; never copy caches, logs or a Git tree.
+    sums = {}
+    for line in (source / "checksums.txt").read_text().splitlines():
+        checksum, name = line.split("  ", 1)
+        if name in sums or name == "script-backup.json" or len(checksum) != 64:
+            raise ValueError("installed script checksum mismatch")
+        sums[name] = checksum
+    sums["checksums.txt"] = script_digest(script_file(source, "checksums.txt"))
+    if not {"sing-box-deve.sh", "lib/common.sh", "version"} <= set(sums):
+        raise ValueError("incomplete installed script")
+    if len(sums) > LIMIT_FILES or sum(script_file(source, n).stat().st_size for n in sums) > LIMIT_BYTES:
+        raise ValueError("installed script snapshot exceeds bounds")
+    if any(script_digest(script_file(source, name)) != checksum for name, checksum in sums.items()):
+        raise ValueError("installed script checksum mismatch")
+    destination.mkdir()
+    for name in sums:
+        target = script_file(destination, name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(script_file(source, name), target)
+    (destination / "script-backup.json").write_text(json.dumps(sums, sort_keys=True))
+    restore_script(destination, source, check=True)
+
+
+def restore_script(source, destination, check=False):
+    source, destination = Path(source), Path(destination)
+    sums = json.loads((source / "script-backup.json").read_text())
+    if not isinstance(sums, dict) or not 0 < len(sums) <= LIMIT_FILES:
+        raise ValueError("invalid script snapshot inventory")
+    for name, checksum in sums.items():
+        if script_digest(script_file(source, name)) != checksum:
+            raise ValueError("script recovery snapshot corrupt")
+        target = script_file(destination, name)
+        if target.exists() and (not target.is_file() or script_digest(target) != checksum):
+            raise ValueError(f"script changed outside uninstall: {target}")
+    if check:
+        return
+    for name in sums:
+        target = script_file(destination, name)
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # Copy privately, then publish exclusively. A failed/interrupted
+            # copy cannot masquerade as a conflicting administrator edit.
+            fd, temporary = tempfile.mkstemp(prefix=target.name + ".recover.", dir=target.parent)
+            os.close(fd)
+            try:
+                shutil.copy2(script_file(source, name), temporary)
+                os.link(temporary, target)
+            finally:
+                os.unlink(temporary)
+
+
 if __name__ == "__main__":
     try:
         command, *args = sys.argv[1:]
-        {"pack-legacy": lambda *a: pack(*a, legacy=True), "pack": pack, "extract": extract, "verify": verify, "fsync": fsync_tree}[command](*args)
+        {"pack-legacy": lambda *a: pack(*a, legacy=True), "pack": pack, "extract": extract, "verify": verify, "fsync": fsync_tree,
+         "backup-script": backup_script, "restore-script": restore_script,
+         "check-script": lambda *a: restore_script(*a, check=True)}[command](*args)
     except (ValueError, OSError, KeyError, tarfile.TarError, TypeError) as error:
         print(f"[ERROR] {error}", file=sys.stderr)
         sys.exit(1)

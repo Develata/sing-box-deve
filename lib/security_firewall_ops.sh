@@ -83,7 +83,9 @@ fw_clear_managed_rules() {
     last_backend="$backend"
   done < "$SBD_RULES_FILE"
 
-  : > "$SBD_RULES_FILE" || return 1
+  # Uninstall deletes the root only after verification. Keeping its ledger
+  # intact until then makes a partial backend removal directly replayable.
+  [[ "${1:-}" == retain-records ]] || : > "$SBD_RULES_FILE" || return 1
   if [[ "$last_backend" == "nftables" ]]; then
     fw_cleanup_nftables_table
   fi
@@ -122,10 +124,9 @@ fw_clear_legacy_iptables_core_rules() {
 }
 
 fw_cleanup_nftables_table() {
-  if command -v nft >/dev/null 2>&1; then
-    fw_command nft delete chain inet sing_box_deve input 2>/dev/null || true
-    fw_command nft delete table inet sing_box_deve 2>/dev/null || true
-  fi
+  # Table/chain names alone do not prove ownership. Like the iptables chain,
+  # retain containers; deleting a table could remove unrelated rules in it.
+  return 0
 }
 
 fw_rollback() {
@@ -134,7 +135,7 @@ fw_rollback() {
   fi
 
   log_warn "$(msg "正在回滚托管防火墙规则" "Rolling back managed firewall rules")"
-  fw_clear_managed_rules || return 1
+  fw_clear_managed_rules clear-records || return 1
 
   if [[ -s "$SBD_FW_SNAPSHOT_FILE" ]]; then
     local backend proto port tag _created

@@ -14,7 +14,7 @@ sbd_transaction_phase() {
 sbd_transaction_begin() (
   local kind="$1" root dir scope path binaries=sidecars
   case "$kind" in
-    script-update|script-rollback) ;;
+    script-update|script-rollback|uninstall) ;;
     *) sbd_require_supported_runtime || return 1 ;;
   esac
   root="$(sbd_host_state_dir)/transactions"
@@ -29,13 +29,14 @@ sbd_transaction_begin() (
   dir="$(mktemp -d "$root/${kind}.XXXXXX")" || return 1
   # Before publication no runtime mutation is allowed. Failed preparation owns
   # only this private directory; never discard an active recovery journal.
-  trap 'if [[ "$(readlink "$root/active" 2>/dev/null)" != "$dir" ]]; then rm -rf -- "$dir"; fi' EXIT
+  trap 'if [[ ! -e "$root/active" && ! -L "$root/active" ]]; then rm -rf -- "$dir"; fi' EXIT
   sbd_uninstall_validate_roots || return 1
-  case "$kind" in install|core-update|kernel-set) binaries=true ;; script-update|script-rollback) binaries=false ;; esac
+  case "$kind" in install|core-update|kernel-set|uninstall) binaries=true ;; script-update|script-rollback) binaries=false ;; esac
   sbd_state_capture "$dir/before" "$binaries" || return 1
   sbd_transaction_capture_lifecycle "$dir" || return 1
   sbd_transaction_roots > "$dir/roots" || return 1
   sbd_transaction_capture_selectors "$dir" || return 1
+  [[ "$kind" != uninstall ]] || sbd_uninstall_prepare_recovery "$dir" || return 1
   for scope in config data bin state run install; do
     case "$scope" in
       config) path="$SBD_CONFIG_DIR" ;; data) path="$SBD_DATA_DIR" ;;
@@ -81,6 +82,10 @@ sbd_transaction_recover() (
   root="$(sbd_host_state_dir)/transactions"
   if [[ ! -L "$root/active" ]]; then
     [[ ! -e "$root/active" ]] || { log_error "Invalid transaction pointer"; return 1; }
+    for dir in "$root"/uninstall.*; do
+      [[ -d "$dir" && ! -L "$dir" && -f "$dir/phase" ]] || continue
+      [[ "$(cat "$dir/phase")" != complete ]] || sbd_uninstall_finalize "$dir" || return 1
+    done
     return 0
   fi
   dir="$(readlink -f "$root/active")" || return 1
@@ -88,6 +93,10 @@ sbd_transaction_recover() (
   phase="$(<"$dir/phase")"
   case "$phase" in prepared|staging|committing|recovery-failed|complete|recovered) ;; *) return 1 ;; esac
   if [[ "$phase" == complete || "$phase" == recovered ]]; then
+    if [[ "$phase" == complete && "$(cat "$dir/kind")" == uninstall ]]; then
+      sbd_uninstall_finalize "$dir" || return 1
+      return 0
+    fi
     rm -f "$root/active" || return 1
     sbd_sync_directory "$root"
     return $?
@@ -98,6 +107,18 @@ sbd_transaction_recover() (
   [[ "$(sbd_transaction_metadata "$dir")" == "$(cat "$dir/metadata.sha256")" ]] || { log_error "Transaction metadata is incomplete or corrupt"; return 1; }
   case "$(cat "$dir/kind")" in script-update|script-rollback) script_only=true ;; esac
   sbd_state_verify "$dir/before" || return 1
+  if [[ "$(cat "$dir/kind")" == uninstall ]]; then
+    if ! sbd_uninstall_restore "$dir" "$phase"; then
+      sbd_transaction_phase "$dir" recovery-failed || return 1
+      log_error "Uninstall recovery incomplete. After resolving the reported conflict, run: bash $dir/recover.sh"
+      return 1
+    fi
+    sbd_transaction_phase "$dir" recovered || return 1
+    rm -f "$root/active" || return 1
+    sbd_sync_directory "$root" || return 1
+    sbd_transaction_prune "$dir"
+    return $?
+  fi
   # Prepared has no runtime mutations; staging may have created host resources.
   if [[ "$script_only" == false && "$phase" != prepared && "$phase" != staging ]]; then
     sbd_service_stop sing-box-deve-argo || return 1
@@ -170,6 +191,7 @@ sbd_transaction_run() (
     [[ ! -d "$scope" ]] || sbd_sync_directory "$scope" || exit 1
   done
   sbd_transaction_phase "$dir" complete || exit 1
+  if [[ "$kind" == uninstall ]]; then sbd_uninstall_finalize "$dir"; exit $?; fi
   rm -f "$(sbd_host_state_dir)/transactions/active" || exit 1
   sbd_sync_directory "$(sbd_host_state_dir)/transactions" || exit 1
   sbd_transaction_prune "$dir" || exit 1
@@ -245,7 +267,7 @@ sbd_restore_service_lifecycle() {
       sing-box-deve) safe_service_restart || return 1 ;;
       sing-box-deve-argo) provider_restart argo || return 1 ;;
       sing-box-deve-warp-socks5)
-        sbd_service_restart "$name" "$SBD_BIN_DIR/sing-box run -c $SBD_CONFIG_DIR/warp-socks5.json" || return 1
+        sbd_service_restart "$name" "$SBD_BIN_DIR/sing-box" run -c "$SBD_CONFIG_DIR/warp-socks5.json" || return 1
         sbd_service_wait_active "$name" 10 || return 1 ;;
       sing-box-deve-fw-replay) fw_replay || return 1 ;;
     esac
@@ -328,5 +350,11 @@ sbd_transaction_metadata() (
   if [[ -e created-roots ]]; then
     [[ -f created-roots && ! -L created-roots ]] || return 1
     sha256sum created-roots || return 1
+  fi
+  if [[ "$(cat kind)" == uninstall ]]; then
+    for file in uninstall-scripts uninstall-services uninstall-managed-services uninstall-legacy uninstall-payload.sha256 recover.sh; do
+      [[ -f "$file" && ! -L "$file" ]] || return 1
+      sha256sum "$file" || return 1
+    done
   fi
 )

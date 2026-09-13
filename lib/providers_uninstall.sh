@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
 uninstall_disable_unit() {
-  sbd_service_disable_oneshot "${1%.service}"
+  local status
+  sbd_service_disable_oneshot "${1%.service}" || return 1
+  status="$(sbd_service_probe "${1%.service}")" || return 1
+  case "$status" in 'inactive disabled'|'inactive enabled') return 0 ;; esac
+  log_error "Service did not reach a verified inactive state: ${1}"
+  return 1
 }
 
 sbd_managed_unit_file() {
@@ -33,13 +38,14 @@ EOF
 
 uninstall_remove_legacy_engine_units() {
   [[ "${SBD_USER_MODE:-false}" != true ]] || return 0
+  [[ "$SBD_INIT_SYSTEM" == systemd ]] || return 0
   local unit file
   for unit in sing-box.service xray.service; do
     file="${SBD_SYSTEMD_DIR:-/etc/systemd/system}/${unit}"
     [[ -f "$file" ]] || continue
     if sbd_managed_unit_file "$file"; then
       uninstall_disable_unit "$unit" || return 1
-      rm -f -- "$file" || return 1
+      sbd_host_file_remove "$file" || return 1
     else
       log_warn "Keeping service with unproven ownership: ${file}"
     fi
@@ -54,8 +60,8 @@ uninstall_remove_managed_global_bins() {
     [[ -e "$p" || -L "$p" ]] || continue
     real="$(readlink -f "$p" 2>/dev/null || true)"
     if [[ -L "$p" && "$real" == "$SBD_INSTALL_DIR/"* ]] || sbd_managed_launcher "$p"; then
-      rm -f -- "$p" || return 1
-      sbd_host_forget_file "$p" || return 1
+      if [[ "${1:-}" == capture ]]; then sbd_host_record_removal "$p" || return 1
+      else sbd_host_file_remove "$p" || return 1; fi
     else
       log_warn "Keeping command with unproven ownership: ${p}"
     fi
@@ -90,7 +96,7 @@ sbd_uninstall_backup() {
 }
 
 provider_uninstall() {
-  sbd_with_mutation_lock provider_uninstall_unlocked "$@"
+  sbd_with_mutation_lock sbd_transaction_run uninstall provider_uninstall_unlocked "$@"
 }
 
 provider_uninstall_unlocked() {
@@ -113,21 +119,27 @@ provider_uninstall_unlocked() {
       log_error "Service ownership unproven; uninstall aborted: $file"; return 1;
     }
   done
+  sbd_transaction_phase "$SBD_ACTIVE_TRANSACTION" committing || return 1
+  # All helpers remain available even if final deletion removes this runtime.
+  # shellcheck disable=SC2034 # consumed by sourced lifecycle helpers
+  PROJECT_ROOT="$SBD_ACTIVE_TRANSACTION/rescue"
+  log_info "Interrupted uninstall recovery entry: bash $SBD_ACTIVE_TRANSACTION/recover.sh"
   log_warn "Uninstall requested; removing verified managed runtime resources"
-  for svc in sing-box-deve sing-box-deve-argo sing-box-deve-fw-replay sing-box-deve-warp-socks5; do
+  while IFS= read -r svc; do
     # Stop before deleting PID files; a stop failure must leave recovery state.
     uninstall_disable_unit "${svc}.service" || return 1
-    if sbd_service_is_active "$svc"; then log_error "Service still active: ${svc}"; return 1; fi
-  done
+  done < "$SBD_ACTIVE_TRANSACTION/uninstall-managed-services"
   uninstall_remove_legacy_engine_units || return 1
   for file in "${service_files[@]}"; do
-    [[ ! -f "$file" ]] || rm -f -- "$file" || return 1
-    sbd_host_forget_file "$file" || return 1
+    if [[ -e "$file" || -L "$file" ]]; then
+      sbd_managed_unit_file "$file" || return 1
+      sbd_host_file_remove "$file" || return 1
+    fi
   done
-  uninstall_remove_managed_global_bins || return 1
+  uninstall_remove_managed_global_bins remove || return 1
   sbd_service_daemon_reload || return 1
   if fw_detect_backend_optional; then
-    fw_clear_managed_rules || return 1
+    fw_clear_managed_rules retain-records || return 1
   elif [[ -s "$SBD_RULES_FILE" ]]; then
     log_error "Firewall backend unavailable; keeping ownership records for recovery"
     return 1
@@ -138,6 +150,7 @@ provider_uninstall_unlocked() {
     sbd_host_purge || return 1
   fi
   sbd_uninstall_validate_roots || return 1
+  sbd_uninstall_check_survivors "$SBD_ACTIVE_TRANSACTION" || return 1
   rm -rf -- "$SBD_CONFIG_DIR" "$SBD_STATE_DIR" "$SBD_RUNTIME_DIR" "$SBD_INSTALL_DIR" || return 1
   verify_uninstall || return 1
   [[ -z "$backup" ]] || log_info "Backup preserved and verified: ${backup}"

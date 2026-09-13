@@ -49,11 +49,9 @@ sbd_with_mutation_lock sbd_release_rollback
 [[ "$("$SBD_LAUNCHER_PATH" --print-version)" == v9.0.0 ]] || fail 'release rollback failed'
 # Simulate SIGKILL at the only version selector replacement boundary.
 (
-  original_atomic="$(declare -f sbd_atomic_symlink)"
-  eval "${original_atomic/sbd_atomic_symlink/sbd_test_atomic}"
-  sbd_atomic_symlink() {
-    sbd_test_atomic "$@" || return 1
-    [[ "$2" != "$SBD_INSTALL_DIR/current" ]] || kill -KILL "$BASHPID"
+  mv() {
+    command mv "$@" || return 1
+    [[ "${*: -1}" != "$SBD_INSTALL_DIR/current" ]] || kill -KILL "$BASHPID"
   }
   sbd_with_mutation_lock sbd_release_activate_archive "$release_test/runtime.tar.gz" "$release_sum"
 ) && fail 'injected kill did not execute'

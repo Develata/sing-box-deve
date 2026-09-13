@@ -126,22 +126,22 @@ write_systemd_service() {
   local engine="$1"
   local config_path
   local binary_path
-  local exec_args
+  local -a exec_args
   local exec_cmd
   case "$engine" in
     sing-box)
       config_path="${SBD_CONFIG_DIR}/config.json"
       binary_path="${SBD_BIN_DIR}/sing-box"
-      exec_args="run -c ${config_path}"
+      exec_args=(run -c "$config_path")
       ;;
     xray)
       config_path="${SBD_CONFIG_DIR}/xray-config.json"
       binary_path="${SBD_BIN_DIR}/xray"
-      exec_args="run -config ${config_path}"
+      exec_args=(run -config "$config_path")
       ;;
     *) die "Unsupported engine for service: $engine" ;;
   esac
-  exec_cmd="${binary_path} ${exec_args}"
+  exec_cmd="$(sbd_join_command_argv "$binary_path" "${exec_args[@]}")" || return 1
 
   detect_init_system 2>/dev/null || true
 
@@ -179,7 +179,7 @@ EOF
       ;;
 
     nohup)
-      nohup_start_service "sing-box-deve" "$exec_cmd"
+      nohup_start_service "sing-box-deve" "$binary_path" "${exec_args[@]}"
       ;;
   esac
 }

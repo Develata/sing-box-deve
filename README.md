@@ -303,6 +303,8 @@ root 默认路径：
 ./sing-box-deve.sh uninstall --keep-settings
 ```
 
+卸载使用持久恢复事务；`--keep-settings` 用户备份在成功后保留。中断恢复入口、包管理超时/修复限制和 exact-SHA 实机发布规则见 [可靠性与恢复边界](docs/RELIABILITY.md)。
+
 完成安装后可等价使用：
 
 ```bash

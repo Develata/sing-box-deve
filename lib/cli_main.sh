@@ -4,6 +4,11 @@ source "${PROJECT_ROOT}/lib/cli_usage.sh"
 
 main() {
   local cmd="${1:-help}"
+  local unfinished
+  unfinished="$(sbd_host_state_dir)/transactions/active" || return 1
+  if [[ -L "$unfinished" && -f "$unfinished/kind" && "$(cat "$unfinished/kind")" == uninstall ]]; then
+    sbd_with_mutation_lock sbd_transaction_recover || return 1
+  fi
   if [[ "$cmd" == "help" ]] && declare -F legacy_env_detected >/dev/null 2>&1 && legacy_env_detected; then
     parse_install_args
     run_install "$PROVIDER" "$PROFILE" "$ENGINE" "$PROTOCOLS" "$DRY_RUN"

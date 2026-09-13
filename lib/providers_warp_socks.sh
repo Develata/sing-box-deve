@@ -102,7 +102,7 @@ EOF
     sbd_host_file_publish "$SBD_WARP_SOCKS_SERVICE_FILE" "$service_tmp" || return 1
   fi
 
-  sbd_service_enable_and_start "sing-box-deve-warp-socks5" "$exec_cmd" || return 1
+  sbd_service_enable_and_start "sing-box-deve-warp-socks5" "$SBD_BIN_DIR/sing-box" run -c "$SBD_WARP_SOCKS_CONFIG_FILE" || return 1
   sbd_service_wait_active sing-box-deve-warp-socks5 10 || return 1
   printf '%s\n' "$port" > "$SBD_WARP_SOCKS_PORT_FILE" || return 1
   log_success "$(msg "WARP Socks5 已启动: 127.0.0.1:${port}" "WARP Socks5 started: 127.0.0.1:${port}")"
@@ -165,7 +165,7 @@ provider_warp_snapshot_restore() {
       cron="$(crontab -l 2>/dev/null || true)"
       { printf '%s\n' "$cron" | sed '/# sbd:sing-box-deve-warp-socks5$/d'; cat "$dir/warp-cron"; } | crontab - || return 1
     else
-      nohup_register_crontab sing-box-deve-warp-socks5 "$SBD_BIN_DIR/sing-box run -c $SBD_CONFIG_DIR/warp-socks5.json" "$SBD_LOG_DIR/sing-box-deve-warp-socks5.log" || return 1
+      nohup_register_crontab sing-box-deve-warp-socks5 "$SBD_BIN_DIR/sing-box" run -c "$SBD_CONFIG_DIR/warp-socks5.json" || return 1
     fi
   fi
 }

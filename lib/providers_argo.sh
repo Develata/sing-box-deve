@@ -41,8 +41,7 @@ argo_write_token_file() {
 }
 
 argo_fixed_exec_command() {
-  printf '%s tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token-file %s' \
-    "${SBD_BIN_DIR}/cloudflared" "$SBD_ARGO_TOKEN_FILE"
+  sbd_join_command_argv "$SBD_BIN_DIR/cloudflared" tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token-file "$SBD_ARGO_TOKEN_FILE"
 }
 
 argo_ensure_fixed_token_file() {
@@ -61,19 +60,27 @@ argo_ensure_fixed_token_file() {
 }
 
 argo_build_exec_command() {
+  local -a argv=()
+  argo_build_exec_argv argv "$@" || return 1
+  sbd_join_command_argv "${argv[@]}"
+}
+
+# shellcheck disable=SC2034 # argo_argv writes through a caller-owned nameref
+argo_build_exec_argv() {
+  local -n argo_argv="$1"
+  shift
   local protocols_csv="$1" engine="${2:-sing-box}" target_port
   local protocols=()
   protocols_to_array "$protocols_csv" protocols
   protocol_enabled "vless-ws" "${protocols[@]}" || die "Argo requires vless-ws protocol"
   case "${ARGO_MODE:-off}" in
     fixed)
-      argo_ensure_fixed_token_file
-      argo_fixed_exec_command
+      argo_ensure_fixed_token_file || return 1
+      argo_argv=("$SBD_BIN_DIR/cloudflared" tunnel --no-autoupdate --edge-ip-version auto --protocol http2 run --token-file "$SBD_ARGO_TOKEN_FILE")
       ;;
     temp)
       target_port="$(resolve_protocol_port_for_engine "$engine" "vless-ws")"
-      printf '%s tunnel --url http://127.0.0.1:%s --edge-ip-version auto --no-autoupdate --protocol http2' \
-        "${SBD_BIN_DIR}/cloudflared" "$target_port"
+      argo_argv=("$SBD_BIN_DIR/cloudflared" tunnel --url "http://127.0.0.1:$target_port" --edge-ip-version auto --no-autoupdate --protocol http2)
       ;;
     *)
       die "Cannot build Argo command for ARGO_MODE=${ARGO_MODE:-off}"
@@ -122,16 +129,18 @@ configure_argo_tunnel() {
   fi
 
   local exec_cmd
+  local -a argv=()
   if [[ "$mode" == "fixed" ]]; then
     argo_write_token_file "$token" || return 1
-    exec_cmd="$(argo_build_exec_command "$protocols_csv" "$engine")"
+    argo_build_exec_argv argv "$protocols_csv" "$engine" || return 1
   else
     mode="temp"
     rm -f "$SBD_ARGO_TOKEN_FILE"
     rm -f "${SBD_DATA_DIR}/argo_domain" || return 1
     : > "$argo_log" || return 1
-    exec_cmd="$(argo_build_exec_command "$protocols_csv" "$engine")"
+    argo_build_exec_argv argv "$protocols_csv" "$engine" || return 1
   fi
+  exec_cmd="$(sbd_join_command_argv "${argv[@]}")" || return 1
   argo_write_exec_command "$exec_cmd" || return 1
 
   local service_tmp
@@ -161,7 +170,7 @@ WantedBy=multi-user.target
 EOF
   sbd_host_file_publish "$SBD_ARGO_SERVICE_FILE" "$service_tmp" || return 1
 
-  sbd_service_enable_and_start "sing-box-deve-argo" "$exec_cmd" || return 1
+  sbd_service_enable_and_start "sing-box-deve-argo" "${argv[@]}" || return 1
 
   echo "$mode" > "${SBD_DATA_DIR}/argo_mode"
   [[ -n "$domain" ]] && echo "$domain" > "${SBD_DATA_DIR}/argo_domain"

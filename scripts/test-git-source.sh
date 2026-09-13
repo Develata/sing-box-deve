@@ -191,6 +191,7 @@ update_command --bind-git "$git_test/worktree" --yes >/dev/null
 (
   SBD_GLOBAL_BIN_DIR="$git_test/bin" SBD_SYSTEMD_DIR="$git_test/service"
   uninstall_disable_unit() { :; }
+  sbd_service_probe() { printf 'inactive disabled\n'; }
   sbd_service_is_active() { return 1; }
   sbd_service_daemon_reload() { :; }
   fw_detect_backend_optional() { return 1; }

@@ -224,13 +224,14 @@ systemd_reload_and_enable() {
 }
 
 safe_service_restart() {
-  local runtime_engine="${engine:-sing-box}" exec_cmd
+  local runtime_engine="${engine:-sing-box}"
+  local -a argv
   case "$runtime_engine" in
-    sing-box) exec_cmd="${SBD_BIN_DIR}/sing-box run -c ${SBD_CONFIG_DIR}/config.json" ;;
-    xray) exec_cmd="${SBD_BIN_DIR}/xray run -config ${SBD_CONFIG_DIR}/xray-config.json" ;;
+    sing-box) argv=("${SBD_BIN_DIR}/sing-box" run -c "${SBD_CONFIG_DIR}/config.json") ;;
+    xray) argv=("${SBD_BIN_DIR}/xray" run -config "${SBD_CONFIG_DIR}/xray-config.json") ;;
     *) log_error "Unsupported runtime engine: ${runtime_engine}"; return 1 ;;
   esac
-  sbd_service_restart "sing-box-deve" "$exec_cmd" || return 1
+  sbd_service_restart "sing-box-deve" "${argv[@]}" || return 1
   sbd_service_wait_active "sing-box-deve" 10
 }
 

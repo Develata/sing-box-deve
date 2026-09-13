@@ -141,7 +141,7 @@ EOF
 # Generic service operations that dispatch to the correct init system
 sbd_service_enable_and_start() {
   local svc_name="$1"
-  local exec_cmd="$2"
+  shift
 
   detect_init_system
 
@@ -152,10 +152,10 @@ sbd_service_enable_and_start() {
       sbd_service_op systemctl restart "${svc_name}.service"
       ;;
     openrc)
-      write_openrc_service "$svc_name" "$exec_cmd"
+      write_openrc_service "$svc_name" "$(sbd_join_command_argv "$@")"
       ;;
     nohup)
-      nohup_start_service "$svc_name" "$exec_cmd"
+      nohup_start_service "$svc_name" "$@"
       ;;
   esac
 }
@@ -180,7 +180,7 @@ sbd_service_stop() {
 
 sbd_service_restart() {
   local svc_name="$1"
-  local exec_cmd="${2:-}"
+  shift
 
   detect_init_system
 
@@ -192,8 +192,8 @@ sbd_service_restart() {
       sbd_service_op rc-service "$svc_name" restart
       ;;
     nohup)
-      if [[ -n "$exec_cmd" ]]; then
-        nohup_start_service "$svc_name" "$exec_cmd"
+      if (( $# > 0 )); then
+        nohup_start_service "$svc_name" "$@"
       else
         log_error "$(msg "nohup 模式下重启需要完整命令" "nohup mode restart requires full command")"
         return 1
@@ -289,7 +289,7 @@ sbd_service_is_enabled() {
 # Enable a oneshot service (fw-replay) — runs once at boot
 sbd_service_enable_oneshot() {
   local svc_name="$1"
-  local exec_cmd="$2"
+  shift
   detect_init_system
   case "$SBD_INIT_SYSTEM" in
     systemd)
@@ -298,7 +298,7 @@ sbd_service_enable_oneshot() {
       sbd_service_op systemctl enable "${svc_name}.service" >/dev/null 2>&1 || return 1
       ;;
     openrc|nohup)
-      nohup_register_crontab "$svc_name" "$exec_cmd" "/dev/null"
+      nohup_register_crontab "$svc_name" "$@"
       ;;
   esac
 }

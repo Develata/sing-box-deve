@@ -72,14 +72,26 @@ sbd_host_transaction_restore() {
     [[ -d "$journal" && ! -L "$journal" ]] || return 1
     IFS= read -r path < "$journal/path" || return 1
     record="$(sbd_host_file_record "$path")" || return 1
-    [[ "$(basename "$record")" == "$(basename "$journal")" && ! -L "$path" ]] || return 1
-    if [[ -f "$journal/before" ]] && cmp -s "$path" "$journal/before"; then :
+    [[ "$(basename "$record")" == "$(basename "$journal")" ]] || return 1
+    [[ "$(realpath -m "$(dirname "$path")")" == "$(dirname "$path")" ]] || return 1
+    if [[ -f "$journal/link-before" ]]; then
+      if [[ -L "$path" && "$(readlink "$path")" == "$(cat "$journal/link-before")" ]]; then :
+      elif [[ ! -e "$path" && ! -L "$path" && -f "$journal/expected-absent" ]]; then
+        mkdir -p "$(dirname "$path")" || return 1
+        ln -s "$(cat "$journal/link-before")" "$path" || return 1
+      else log_error "Host link changed during recovery: $path"; return 1; fi
+    elif [[ -L "$path" ]]; then return 1
+    elif [[ -f "$journal/before" ]] && cmp -s "$path" "$journal/before"; then :
     elif [[ -f "$journal/absent" && ! -e "$path" ]]; then :
     else
-      [[ -f "$path" && -f "$journal/expected" ]] || return 1
-      hash="$(sha256sum "$path")" || return 1
-      grep -Fxq -- "${hash%% *}" "$journal/expected" || { log_error "Host resource changed during recovery: $path"; return 1; }
+      if [[ ! -e "$path" && -f "$journal/expected-absent" ]]; then :
+      else
+        [[ -f "$path" && -f "$journal/expected" ]] || return 1
+        hash="$(sha256sum "$path")" || return 1
+        grep -Fxq -- "${hash%% *}" "$journal/expected" || { log_error "Host resource changed during recovery: $path"; return 1; }
+      fi
       if [[ -f "$journal/before" ]]; then
+        mkdir -p "$(dirname "$path")" || return 1
         tmp="$(mktemp "${path}.recover.XXXXXX")" || return 1
         cp -p "$journal/before" "$tmp" && mv -f "$tmp" "$path" || return 1
       elif [[ -f "$journal/absent" ]]; then rm -f -- "$path" || return 1
@@ -88,6 +100,35 @@ sbd_host_transaction_restore() {
     rm -rf -- "$record" || return 1
     [[ ! -d "$journal/ledger" ]] || cp -a "$journal/ledger" "$record" || return 1
   done
+}
+
+# Caller proves ownership immediately before removal. The existing host journal
+# records deletion as an expected state, including owned launcher symlinks.
+sbd_host_record_removal() {
+  local path="$1" record journal
+  record="$(sbd_host_file_record "$path")" || return 1
+  [[ "$(realpath -m "$(dirname "$path")")" == "$(dirname "$path")" ]] || return 1
+  if [[ -n "${SBD_ACTIVE_TRANSACTION:-}" ]]; then
+    journal="$SBD_ACTIVE_TRANSACTION/host/$(basename "$record")"
+    if [[ ! -e "$journal" ]]; then
+      (umask 077; mkdir -p "$journal") || return 1
+      printf '%s\n' "$path" > "$journal/path" || return 1
+      if [[ -L "$path" ]]; then readlink "$path" > "$journal/link-before" || return 1
+      elif [[ -f "$path" ]]; then cp -p "$path" "$journal/before" || return 1
+      elif [[ ! -e "$path" ]]; then : > "$journal/absent" || return 1
+      else return 1; fi
+      [[ ! -d "$record" ]] || cp -a "$record" "$journal/ledger" || return 1
+    fi
+    : > "$journal/expected-absent" || return 1
+    sbd_sync_directory "$journal" || return 1
+  fi
+  return 0
+}
+
+sbd_host_file_remove() {
+  sbd_host_record_removal "$1" || return 1
+  rm -f -- "$1" || return 1
+  sbd_host_forget_file "$1"
 }
 
 sbd_host_file_commit() {
@@ -123,9 +164,9 @@ sbd_host_purge() {
     if [[ -f "$record/before" ]]; then
       tmp="$(mktemp "${path}.restore.XXXXXX")" || return 1
       cp -p "$record/before" "$tmp" || return 1
-      mv -f "$tmp" "$path" || return 1
+      sbd_host_file_publish "$path" "$tmp" || return 1
     elif [[ -f "$record/absent" ]]; then
-      rm -f -- "$path" || return 1
+      sbd_host_file_remove "$path" || return 1
     else
       return 1
     fi

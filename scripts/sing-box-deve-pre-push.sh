@@ -56,6 +56,9 @@ run node scripts/test-serv00-app.cjs
 run node scripts/test-web-generator.cjs
 run bash scripts/test-install-recovery.sh
 run bash scripts/test-io-deadlines.sh
+run bash scripts/test-package-recovery.sh
+run bash scripts/test-nohup-argv.sh
+run bash scripts/test-uninstall-transaction.sh
 run python3 scripts/test-runtime-archive.py
 run python3 scripts/test-release-receipt.py
 run bash scripts/test-runtime-release.sh

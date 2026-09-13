@@ -14,6 +14,7 @@ concurrency:
 jobs:
   keepalive:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       # KEEPALIVE_URLS: space or comma separated
       # Example: "http://user1.serv00.net/up http://user2.serv00.net/up https://sap-app.cfapps.ap21.hana.ondemand.com/UUID"

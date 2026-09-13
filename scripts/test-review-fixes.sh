@@ -65,7 +65,7 @@ run_case cron_service_names_are_exact '
   cron_file="$review_root/crontab"
   printf "@reboot core # sbd:sing-box-deve\n@reboot argo # sbd:sing-box-deve-argo\n@reboot warp # sbd:sing-box-deve-warp-socks5\n@reboot other # other\n" > "$cron_file"
   crontab() { case "$1" in -l) cat "$cron_file" ;; -) cat > "$cron_file" ;; esac; }
-  nohup_register_crontab sing-box-deve "/bin/sleep 60" "$review_root/core.log"
+  nohup_register_crontab sing-box-deve /bin/sleep 60
   [[ "$(wc -l < "$cron_file")" == 4 ]]
   nohup_remove_crontab sing-box-deve
   [[ "$(wc -l < "$cron_file")" == 3 ]]

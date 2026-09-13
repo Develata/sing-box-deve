@@ -32,7 +32,7 @@ cmd="$(argo_fixed_exec_command)"
 
 install_cloudflared_binary() { mkdir -p "$SBD_BIN_DIR"; }
 resolve_protocol_port_for_engine() { printf '8444\n'; }
-sbd_service_enable_and_start() { captured_exec="$2"; }
+sbd_service_enable_and_start() { shift; captured_exec="$(sbd_join_command_argv "$@")"; }
 captured_exec=""
 ARGO_MODE=fixed
 ARGO_TOKEN="$token"
@@ -62,7 +62,7 @@ rm -f "$SBD_ARGO_EXEC_FILE" "$SBD_ARGO_TOKEN_FILE"
 : > "$SBD_ARGO_SERVICE_FILE"
 SBD_INIT_SYSTEM="nohup"
 captured_restart_exec=""
-sbd_service_restart() { printf '%s\n' "$2" > "$tmp_dir/captured-restart"; }
+sbd_service_restart() { shift; sbd_join_command_argv "$@" > "$tmp_dir/captured-restart"; }
 sbd_service_wait_active() { return 0; }
 provider_restart argo
 captured_restart_exec="$(cat "$tmp_dir/captured-restart")"

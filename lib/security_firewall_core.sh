@@ -175,7 +175,7 @@ WantedBy=multi-user.target
 EOF
     sbd_host_file_publish "$SBD_FW_REPLAY_SERVICE_FILE" "$service_tmp" || return 1
   fi
-  sbd_service_enable_oneshot "sing-box-deve-fw-replay" "${script_cmd} fw replay"
+  sbd_service_enable_oneshot "sing-box-deve-fw-replay" "$script_cmd" fw replay
 }
 
 fw_rule_exists_record() {

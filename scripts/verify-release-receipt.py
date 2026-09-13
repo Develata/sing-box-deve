@@ -77,7 +77,7 @@ def main(receipt_path, source, archive_path):
     subprocess.run(["git", "-C", str(source), "diff", "--quiet", "HEAD", "--"], check=True, timeout=30)
     # Unrelated developer scratch files may remain; packaging inputs must be clean.
     inputs = ["sing-box-deve.sh", "version", "LICENSE", "lib", "providers", "rulesets",
-              "scripts/runtime-archive.py", "scripts/nohup-run.sh", "scripts/bounded-log.py", "scripts/egress-link.py"]
+              "scripts/runtime-archive.py", "scripts/nohup-run.sh", "scripts/bounded-log.py", "scripts/egress-link.py", "scripts/package-run.py"]
     dirty = subprocess.check_output(["git", "-C", str(source), "status", "--porcelain", "--ignored",
                                      "--untracked-files=all", "--", *inputs], text=True, timeout=30)
     require(not dirty, "runtime packaging inputs are dirty")

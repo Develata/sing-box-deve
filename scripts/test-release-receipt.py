@@ -87,6 +87,18 @@ with tempfile.TemporaryDirectory() as directory:
     evidence = root / "receipt.json"
     evidence.write_text(json.dumps(actual))
     gate["main"](evidence, source, archive)
+    # Even an unchanged runtime archive cannot transfer A's acceptance to B.
+    git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-qm", "new target SHA")
+    try:
+        gate["main"](evidence, source, archive)
+    except ValueError as error:
+        assert "source SHA" in str(error)
+        rejected += 1
+    else:
+        raise AssertionError("old receipt accepted for a new release commit")
+    for block in (actual, actual["acceptance"], actual["restoration"]):
+        block["source_sha"] = git("rev-parse", "HEAD")
+    evidence.write_text(json.dumps(actual))
     for mutation in ("sidecar", "tracked", "untracked-runtime", "ignored-runtime"):
         if mutation == "sidecar":
             sidecar.write_text("wrong digest\n")

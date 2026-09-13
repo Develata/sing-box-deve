@@ -123,4 +123,23 @@ run_case nft_query_error_does_not_erase_ownership '
   fw_clear_managed_rules
   [[ ! -s "$SBD_RULES_FILE" ]]
 '
+run_case uninstall_keeps_foreign_nft_rules '
+  SBD_RULES_FILE="$review_root/nft-uninstall-rules"
+  printf "nftables|tcp|443|MYBOX:test:core:tcp:443|date\n" > "$SBD_RULES_FILE"
+  touch "$review_root/nft-owned" "$review_root/nft-foreign"
+  fw_command() {
+    case "$*" in
+      "nft list tables") echo "table inet sing_box_deve" ;;
+      "nft list table inet sing_box_deve") echo "chain input {" ;;
+      "nft -a list chain inet sing_box_deve input")
+        echo "tcp dport 22 accept comment \"user-ssh\" # handle 1"
+        [[ ! -f "$review_root/nft-owned" ]] || echo "tcp dport 443 accept comment \"MYBOX:test:core:tcp:443\" # handle 2" ;;
+      "nft delete rule inet sing_box_deve input handle 2") rm "$review_root/nft-owned" ;;
+      *) touch "$review_root/unexpected-nft-delete"; return 42 ;;
+    esac
+  }
+  fw_clear_managed_rules retain-records
+  [[ ! -e "$review_root/nft-owned" && -e "$review_root/nft-foreign" && -s "$SBD_RULES_FILE" ]]
+  [[ ! -e "$review_root/unexpected-nft-delete" ]]
+'
 (( failures == 0 ))

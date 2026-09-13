@@ -35,8 +35,11 @@ jobs:
           python3 scripts/verify-release-receipt.py "$RUNNER_TEMP/ssh-acceptance.json" . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
       - name: Install verification tools
         run: |
-          sudo timeout -k 5s 300s apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=15
-          sudo timeout -k 5s 300s apt-get install -y shellcheck python3-yaml
+          sudo env PROJECT_ROOT="$PWD" SBD_HOST_STATE_DIR="$RUNNER_TEMP/sbd-package-control" bash -eu -o pipefail <<'SH'
+          source "$PROJECT_ROOT/lib/common.sh"
+          sbd_with_mutation_lock sbd_apt_get update
+          sbd_with_mutation_lock sbd_apt_get install -y shellcheck python3-yaml
+          SH
       - name: Verify and build minimal runtime
         run: |
           set -euo pipefail

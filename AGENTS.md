@@ -12,7 +12,7 @@ bash scripts/sing-box-deve-pre-push.sh
 
 This is mandatory even for small fixes. In particular, always include:
 
-- `bash scripts/test-module-size.sh` — catches the max-400-lines shell-file gate used by GitHub CI;
+- `bash scripts/test-module-size.sh` — warning-only maintenance reminder (default 600 lines), never a correctness gate;
 - shell syntax: `bash -n sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh`;
 - shellcheck over `sing-box-deve.sh lib/*.sh providers/*.sh scripts/*.sh`;
 - Node syntax for web-generator files;
