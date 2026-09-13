@@ -9,20 +9,37 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  checks:
+  verify:
+    name: verify (${{ matrix.stage }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [lint, regression]
     steps:
-      - uses: actions/checkout@v6
-      - name: Install verification tools
-        run: |
-          sudo env PROJECT_ROOT="$PWD" SBD_HOST_STATE_DIR="$RUNNER_TEMP/sbd-package-control" bash -eu -o pipefail <<'SH'
-          source "$PROJECT_ROOT/lib/common.sh"
-          sbd_with_mutation_lock sbd_apt_get update
-          sbd_with_mutation_lock sbd_apt_get install -y shellcheck python3-yaml
-          SH
-      - name: Run the repository pre-push suite
-        run: bash scripts/sing-box-deve-pre-push.sh
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-verification
+      - name: Run the repository verification stage
+        env:
+          VERIFICATION_STAGE: ${{ matrix.stage }}
+        run: bash scripts/sing-box-deve-pre-push.sh "$VERIFICATION_STAGE"
       - name: Check committed checksum inventory
         run: git diff --exit-code checksums.txt
+
+  # Preserve the existing required check name; skipped/cancelled jobs cannot pass.
+  checks:
+    if: always()
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require both verification stages
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: test "$VERIFY_RESULT" = success

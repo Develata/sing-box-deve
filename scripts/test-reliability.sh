@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SC2329 directives mark overrides called by sourced lifecycle code, or guards
+# that fail if a forbidden service/filesystem operation is attempted.
 # shellcheck disable=SC1091,SC2034,SC2317,SC2178
 set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -161,13 +163,21 @@ unset SBD_ACTIVE_TRANSACTION
 
 # Port change failure restores both generated port and firewall ledger.
 (
+  # shellcheck disable=SC2329
   provider_cfg_load_runtime_exports() { provider=vps; profile=lite; engine=sing-box; protocols=vless-reality; }
+  # shellcheck disable=SC2329
   provider_multi_ports_reject_conflict() { return 0; }
+  # shellcheck disable=SC2329
   validate_generated_config() { return 0; }
+  # shellcheck disable=SC2329
   fw_detect_backend() { FW_BACKEND=iptables; }
+  # shellcheck disable=SC2329
   load_install_context() { return 0; }
+  # shellcheck disable=SC2329
   fw_apply_rule() { printf 'iptables|tcp|%s|MYBOX:test:core:tcp:%s|now\n' "$2" "$2" > "$SBD_RULES_FILE"; }
+  # shellcheck disable=SC2329
   fw_remove_rule_by_record() { printf 'removed\n' > "$test_root/port-fw-undo"; }
+  # shellcheck disable=SC2329
   provider_restart() { return 1; }
   printf '{"inbounds":[{"tag":"vless-reality","listen_port":12345}]}\n' > "$SBD_CONFIG_DIR/config.json"
   if provider_set_port vless-reality 23456; then fail 'failed port restart reported success'; fi

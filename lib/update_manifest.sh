@@ -215,6 +215,12 @@ UPDATE_MANIFEST_FILES=(
   "scripts/test-runtime-release.sh"
   "scripts/test-git-source.sh"
   "scripts/test-source-graph.sh"
+  "scripts/test-source-graph-checker.py"
+  "scripts/test-ci-config.py"
+  "scripts/test-core-download.py"
+  "scripts/requirements-ci.txt"
+  ".github/actions/setup-verification/action.yml"
+  ".github/dependabot.yml"
 )
 
 # Files that need executable permission after update

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SC2329 directives mark overrides called by sourced lifecycle code, or guards
+# that fail if a forbidden service/filesystem operation is attempted.
 # The stale-menu case intentionally changes PROJECT_ROOT only in a subshell.
 # shellcheck disable=SC1091,SC2030,SC2031,SC2034,SC2317
 set -euo pipefail
@@ -69,9 +71,13 @@ mkdir -p "$SBD_STATE_DIR/cfg-snapshots"
 sbd_state_capture "$SBD_STATE_DIR/cfg-snapshots/release-before-binding" false
 provider_warp_snapshot_lifecycle "$SBD_STATE_DIR/cfg-snapshots/release-before-binding"
 cfg_source_rollback() (
+  # shellcheck disable=SC2329
   provider_cfg_rebuild_runtime() { provider_cfg_load_runtime_exports; persist_runtime_state vps lite sing-box vless-reality; }
+  # shellcheck disable=SC2329
   sbd_service_stop() { :; }
+  # shellcheck disable=SC2329
   sbd_service_daemon_reload() { :; }
+  # shellcheck disable=SC2329
   write_nodes_output() { :; }
   sbd_with_mutation_lock sbd_transaction_run config-rollback provider_cfg_rollback_unlocked "$1" >/dev/null
 )
@@ -190,10 +196,15 @@ update_command --bind-git "$git_test/worktree" --yes >/dev/null
 # The real deletion path operates only on this fixture's managed directories.
 (
   SBD_GLOBAL_BIN_DIR="$git_test/bin" SBD_SYSTEMD_DIR="$git_test/service"
+  # shellcheck disable=SC2329
   uninstall_disable_unit() { :; }
+  # shellcheck disable=SC2329
   sbd_service_probe() { printf 'inactive disabled\n'; }
+  # shellcheck disable=SC2329
   sbd_service_is_active() { return 1; }
+  # shellcheck disable=SC2329
   sbd_service_daemon_reload() { :; }
+  # shellcheck disable=SC2329
   fw_detect_backend_optional() { return 1; }
   provider_uninstall false >/dev/null
 )

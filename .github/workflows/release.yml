@@ -24,7 +24,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Require SSH acceptance for this commit and runtime
         env:
           SSH_ACCEPTANCE_RECEIPT: ${{ inputs.acceptance_receipt }}
@@ -33,13 +33,7 @@ jobs:
           printf '%s\n' "$SSH_ACCEPTANCE_RECEIPT" > "$RUNNER_TEMP/ssh-acceptance.json"
           python3 scripts/runtime-archive.py pack . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
           python3 scripts/verify-release-receipt.py "$RUNNER_TEMP/ssh-acceptance.json" . "$RUNNER_TEMP/sing-box-deve-runtime.tar.gz"
-      - name: Install verification tools
-        run: |
-          sudo env PROJECT_ROOT="$PWD" SBD_HOST_STATE_DIR="$RUNNER_TEMP/sbd-package-control" bash -eu -o pipefail <<'SH'
-          source "$PROJECT_ROOT/lib/common.sh"
-          sbd_with_mutation_lock sbd_apt_get update
-          sbd_with_mutation_lock sbd_apt_get install -y shellcheck python3-yaml
-          SH
+      - uses: ./.github/actions/setup-verification
       - name: Verify and build minimal runtime
         run: |
           set -euo pipefail

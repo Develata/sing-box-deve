@@ -119,6 +119,10 @@ ACME 自动安装要求已有可执行的 `/root/.acme.sh/acme.sh`，或者显�
 
 本地和 CI 统一执行 `bash scripts/sing-box-deve-pre-push.sh`：逐文件 Bash syntax、shellcheck、Node/schema、CLI/firewall、并发、失败注入、archive/迁移/SIGKILL、日志和真实 stable-core 配置矩阵。
 
+CI 把同一入口的 `lint`、`regression` 阶段放到独立 runner 并行执行；`checks` 汇总门禁只接受两者成功，失败、跳过或取消都不能通过。本地 pre-push、Full Regression 和 release 仍运行完整套件。每项检查输出耗时；PR 的过时运行会取消，main 不采用主动取消策略。并行缩短等待，不代表减少总计算量。ShellCheck 保留原逐文件与跨 source 分析调用；source graph 检测改为批量查询函数定义位置，并对嵌套加载中被后续成功状态掩盖的重名保持失败。
+
+验证工具版本集中在 `scripts/requirements-ci.txt` 和共用 setup action，本地拒绝与清单不符的 ShellCheck。CI 不再用 apt 安装旧版 ShellCheck；隔离安装工具有总时限、有限重试和非交互约束。Actions 固定 commit SHA，Dependabot 每周提出更新 PR；升级规则、Node/Python 支持通道和自托管 runner 要求见 [CONTRIBUTING.md](../CONTRIBUTING.md#verification-tools-and-updates)。最新工具的新增诊断仍须实际运行并逐项处理，版本号更新本身不是验证证据。
+
 实机验收通过 SSH 独立运行 `primary-vps-acceptance.sh`，使用 Debian systemd VPS，项目运行目录必须为空、源码 checkout 必须干净。它会真实安装、重装、切换 core、运行 Reality/Argo 客户端流量、测试 WARP/上游 SOCKS、卸载并核验备份。需要显式授权，失败后保留私有诊断日志；临时使用已有部署的主机时，provisioner 必须事先核验备份并在测试结束后恢复原部署。回执记录源码 SHA、退出码、源码是否保持干净及已通过用例。
 
 Real-host acceptance is SHA-bound. Any lifecycle-affecting commit after acceptance invalidates the previous acceptance for release purposes.

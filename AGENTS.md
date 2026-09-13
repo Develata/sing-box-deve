@@ -20,6 +20,11 @@ This is mandatory even for small fixes. In particular, always include:
 - checksum regeneration check: `./scripts/update-checksums.sh` followed by a clean `checksums.txt` diff or explicit staged checksum update;
 - `git diff --check`.
 
+Use the ShellCheck version in `scripts/requirements-ci.txt`; see CONTRIBUTING.md
+for isolated installation and the tool update policy. CI runs the same script's
+`lint` and `regression` stages in parallel, but a local pre-push must run the
+default complete suite, not just one stage.
+
 If a check cannot run locally, record the exact blocker before asking to push. Do not assume GitHub CI will catch it later.
 
 ## After every push

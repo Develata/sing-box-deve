@@ -1,0 +1,4 @@
+# Verification tools only; these are not runtime dependencies.
+# shellcheck-py packages the upstream ShellCheck binary without changing its rules.
+shellcheck-py==0.11.0.1
+PyYAML==6.0.3

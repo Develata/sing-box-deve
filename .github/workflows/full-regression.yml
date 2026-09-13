@@ -11,14 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
-      - name: Install verification tools
-        run: |
-          sudo env PROJECT_ROOT="$PWD" SBD_HOST_STATE_DIR="$RUNNER_TEMP/sbd-package-control" bash -eu -o pipefail <<'SH'
-          source "$PROJECT_ROOT/lib/common.sh"
-          sbd_with_mutation_lock sbd_apt_get update
-          sbd_with_mutation_lock sbd_apt_get install -y shellcheck python3-yaml
-          SH
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-verification
       - name: Run all local regression and current-core checks
         run: bash scripts/sing-box-deve-pre-push.sh
       - name: Check committed checksum inventory

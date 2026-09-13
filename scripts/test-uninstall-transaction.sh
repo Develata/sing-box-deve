@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SC2329 directives mark overrides called by sourced lifecycle code, or guards
+# that fail if a forbidden service/filesystem operation is attempted.
 # shellcheck disable=SC1091,SC2034,SC2317
 set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -65,29 +67,42 @@ run_case() (
   printf 'managed-web\n' > "$base/web-candidate"
   sbd_host_file_publish "$base/web.conf" "$base/web-candidate"
   sha256sum "$SBD_CONFIG_DIR/runtime.env" "$SBD_CONFIG_DIR/config.json" "$SBD_BIN_DIR/sing-box" "$SBD_DATA_DIR/uuid" "$SBD_SERVICE_FILE" "$SBD_ARGO_SERVICE_FILE" "$SBD_LAUNCHER_PATH" > "$base/before.sha256"
+  # shellcheck disable=SC2329
   ensure_root() { :; }
   crontab() { return 1; }
+  # shellcheck disable=SC2329
   sbd_service_probe() {
     if [[ "$scenario" == stop-query && "$1" == sing-box-deve && ! -e "$base/$1.active" && ! -e "$base/injected" ]]; then
       touch "$base/injected"; return 69
     fi
     if [[ -e "$base/$1.active" ]]; then echo 'active enabled'; else echo 'inactive disabled'; fi
   }
+  # shellcheck disable=SC2329
   sbd_service_op() { :; }
+  # shellcheck disable=SC2329
   sbd_service_stop() { command rm -f "$base/$1.active"; }
+  # shellcheck disable=SC2329
   sbd_service_is_active() { [[ -e "$base/$1.active" ]]; }
+  # shellcheck disable=SC2329
   sbd_service_daemon_reload() { [[ ! -e "$base/reload-fails" ]]; }
+  # shellcheck disable=SC2329
   safe_service_restart() { [[ -f "$SBD_CONFIG_DIR/config.json" && -f "$SBD_BIN_DIR/sing-box" ]]; touch "$base/sing-box-deve.active"; }
+  # shellcheck disable=SC2329
   provider_restart() { fail 'originally inactive Argo was started'; }
+  # shellcheck disable=SC2329
   write_nodes_output() { :; }
+  # shellcheck disable=SC2329
   fw_detect_backend_optional() { FW_BACKEND=iptables; }
+  # shellcheck disable=SC2329
   fw_remove_rule_by_record() {
     [[ -e "$base/units-removed" || ! -f "$SBD_SERVICE_FILE" ]] || fail 'firewall tested before service removal'
     [[ ! -e "$SBD_LAUNCHER_PATH" ]] || fail 'firewall tested before launcher removal'
     command rm -f "$base/$2"
     if [[ "$scenario" == firewall && "$2" == tcp && ! -e "$base/injected" ]]; then touch "$base/injected"; return 42; fi
   }
+  # shellcheck disable=SC2329
   fw_apply_rule_to_backend() { touch "$base/$2"; }
+  # shellcheck disable=SC2329
   fw_cleanup_nftables_table() { :; }
   PURGE_MANAGED_HOST_CHANGES=false
   [[ "$scenario" != purge ]] || PURGE_MANAGED_HOST_CHANGES=true

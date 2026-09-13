@@ -34,6 +34,8 @@ GitHub：`https://github.com/Develata/sing-box-deve`
 
 当前回归除 shell/Node syntax、shellcheck、CLI/firewall/web schema/checksum 外，还会下载并校验当前 stable sing-box 与 Xray，对 server 配置矩阵和 sing-box client 执行真实 core validation；Clash 产物会断言真实 `proxies` 与 proxy-group 引用。
 
+本地完整验证、CI 并行阶段及工具版本更新规则见 [CONTRIBUTING.md](CONTRIBUTING.md#verification-tools-and-updates)。
+
 仍需谨慎看待的边界：
 
 - 自动化测试不能完全替代真实 VPS root install、真实 nginx/OpenResty webroot ACME 签发、真实 OpenResty/nginx reload、真实客户端连通性测试；

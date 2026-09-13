@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SC2329 directives mark overrides called by sourced lifecycle code, or guards
+# that fail if a forbidden service/filesystem operation is attempted.
 # shellcheck disable=SC1091,SC2034,SC2317
 set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -41,7 +43,9 @@ sbd_service_daemon_reload() { :; }
 sbd_service_stop() { :; }
 sbd_service_probe() { if [[ "$1" == sing-box-deve && -f "$SBD_SERVICE_FILE" ]]; then echo 'active enabled'; else echo 'inactive disabled'; fi; }
 safe_service_restart() { cat "$SBD_DATA_DIR/engine-version" >> "$install_test/restarts"; }
+# shellcheck disable=SC2329
 write_nodes_output() { printf 'derived\n' > "$SBD_DATA_DIR/nodes.txt"; }
+# shellcheck disable=SC2329
 print_post_install_info() { :; }
 fail_late=false
 generation=v9.0.0
@@ -92,6 +96,7 @@ previous_before="$(readlink -f "$SBD_INSTALL_DIR/previous")"
 launcher_before="$(sha256sum "$SBD_LAUNCHER_PATH")"
 printf 'v9.9.10\n' > "$PROJECT_ROOT/version"
 (
+  # shellcheck disable=SC2329
   sbd_update_runtime_script_root() { return 28; }
   if sync_installed_script_root_from_project; then fail 'runtime-root write failure was hidden'; fi
 )

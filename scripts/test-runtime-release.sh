@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SC2329 directives mark overrides called by sourced lifecycle code, or guards
+# that fail if a forbidden service/filesystem operation is attempted.
 # shellcheck disable=SC2317
 # shellcheck disable=SC1091,SC2034
 set -euo pipefail
@@ -49,6 +51,7 @@ sbd_with_mutation_lock sbd_release_rollback
 [[ "$("$SBD_LAUNCHER_PATH" --print-version)" == v9.0.0 ]] || fail 'release rollback failed'
 # Simulate SIGKILL at the only version selector replacement boundary.
 (
+  # shellcheck disable=SC2329
   mv() {
     command mv "$@" || return 1
     [[ "${*: -1}" != "$SBD_INSTALL_DIR/current" ]] || kill -KILL "$BASHPID"
@@ -96,9 +99,13 @@ EOF
   printf '{"existing":"core configuration"}\n' > "$SBD_CONFIG_DIR/config.json"
   printf 'existing identity\n' > "$SBD_DATA_DIR/uuid"
   sha256sum "$SBD_BIN_DIR/sing-box" "$SBD_CONFIG_DIR/config.json" "$SBD_DATA_DIR/uuid" "$SBD_FW_REPLAY_SERVICE_FILE" > "$manual/preserved.sha256"
+  # shellcheck disable=SC2329
   sbd_service_probe() { printf 'active enabled\n'; }
+  # shellcheck disable=SC2329
   sbd_service_op() { fail 'manual script update invoked a service operation'; }
+  # shellcheck disable=SC2329
   provider_restart() { fail 'manual script update restarted a core'; }
+  # shellcheck disable=SC2329
   ensure_root() { :; }
   sleep 120 & sentinel=$!
   trap 'kill "$sentinel" 2>/dev/null || true; wait "$sentinel" 2>/dev/null || true' EXIT
